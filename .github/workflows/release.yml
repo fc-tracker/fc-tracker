@@ -1,0 +1,59 @@
+# A release for every version tag: the installer and the extension from fc-tracker.com, checked
+# against the SHA-256 the website publishes, with the VirusTotal scans in the notes. Created by
+# GitHub Actions, so a release is never attributed to a personal account.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download the official files and check them
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          version="${TAG#v}"
+          base="https://www.fc-tracker.com/downloads"
+          curl -fsSL "$base/latest.json" -o latest.json
+          site_version=$(jq -r .version latest.json)
+          if [ "$site_version" != "$version" ]; then
+            echo "fc-tracker.com offers $site_version, the tag is $version – nothing published" >&2
+            exit 1
+          fi
+          for part in app ext; do
+            file=$(jq -r ".$part.file" latest.json)
+            want=$(jq -r ".$part.sha256" latest.json)
+            curl -fsSL "$base/$file" -o "$file"
+            got=$(sha256sum "$file" | cut -d' ' -f1)
+            if [ "$got" != "$want" ]; then
+              echo "$file: SHA-256 $got does not match the website ($want)" >&2
+              exit 1
+            fi
+          done
+          {
+            echo "FC-Tracker $version – the same files as on https://www.fc-tracker.com/download."
+            echo
+            echo "| File | SHA-256 | VirusTotal |"
+            echo "|---|---|---|"
+            for part in app ext; do
+              echo "| $(jq -r ".$part.file" latest.json) | \`$(jq -r ".$part.sha256" latest.json)\` | [scan]($(jq -r ".$part.virustotal.url // \"https://www.virustotal.com/gui/file/\" + .$part.sha256" latest.json)) |"
+            done
+            echo
+            echo "Installed apps update themselves from fc-tracker.com; updates are signed with the project's key."
+          } > notes.md
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          files=$(jq -r '.app.file, .ext.file' latest.json)
+          gh release create "$TAG" $files --repo "$GITHUB_REPOSITORY" --title "FC-Tracker ${TAG#v}" --notes-file notes.md

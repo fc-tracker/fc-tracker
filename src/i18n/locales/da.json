@@ -423,5 +423,8 @@
   "best.swapOpen": "Ledig plads",
   "best.swapsHow": "I spillet: Swap Player på kortet, der skal ud → vælg det nye → Confirm Changes.",
   "toast.welcome": "Velkommen til Ultimate Team",
-  "toast.welcomeLine": "FC-Tracker kører · {{count}} spillere · den følger dit Gallery – hold View / Create for overlayet"
+  "toast.welcomeLine": "FC-Tracker kører · {{count}} spillere · den følger dit Gallery – hold View / Create for overlayet",
+  "settings.source": "Kildekode",
+  "settings.sourceText": "Hver linje i FC-Tracker er offentlig, så du selv kan tjekke, hvad den gør.",
+  "settings.sourceOpen": "Se på GitHub"
 }

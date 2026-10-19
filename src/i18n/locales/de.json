@@ -423,5 +423,8 @@
   "best.swapOpen": "Freier Platz",
   "best.swapsHow": "Im Spiel: Swap Player auf der Karte, die raus soll → die neue wählen → Änderungen bestätigen.",
   "toast.welcome": "Willkommen bei Ultimate Team",
-  "toast.welcomeLine": "FC-Tracker läuft · {{count}} Spieler · er folgt deiner Gallery – halte View / Create für das Overlay"
+  "toast.welcomeLine": "FC-Tracker läuft · {{count}} Spieler · er folgt deiner Gallery – halte View / Create für das Overlay",
+  "settings.source": "Quellcode",
+  "settings.sourceText": "Jede Zeile von FC-Tracker ist öffentlich – du kannst selbst prüfen, was es tut.",
+  "settings.sourceOpen": "Auf GitHub ansehen"
 }

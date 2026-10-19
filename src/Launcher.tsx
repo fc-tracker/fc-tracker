@@ -447,6 +447,15 @@ export default function Launcher() {
                   {t("footer.dataFolder")}
                 </button>
               </div>
+              <div className="ln-row">
+                <div>
+                  <b>{t("settings.source")}</b>
+                  <p>{t("settings.sourceText")}</p>
+                </div>
+                <button className="ln-btn ghost small" onClick={() => api.openSite("/source").catch(() => {})}>
+                  {t("settings.sourceOpen")}
+                </button>
+              </div>
             </div>
             </>
             )}

@@ -103,6 +103,8 @@ vercel.redirects = [
   { source: "/", has: [{ type: "host", value: "fc-tracker.com" }], destination: "https://www.fc-tracker.com/", permanent: true },
   { source: "/:path*", has: [{ type: "host", value: "fc-tracker.com" }], destination: "https://www.fc-tracker.com/:path*", permanent: true },
   { source: "/support", destination: "https://ko-fi.com/fctracker", permanent: false },
+  // the public source code (source-available, PolyForm Strict)
+  { source: "/source", destination: "https://github.com/fc-tracker/fc-tracker", permanent: false },
   { source: "/download/windows", destination: `/downloads/${appFile}`, permanent: false },
   // the extension lives in the Chrome Web Store (the zip stays in /downloads for Edge-only setups)
   { source: "/download/extension", destination: "https://chromewebstore.google.com/detail/fc-tracker/bpinmgkhbofecfagbehkmpmcnnehclem", permanent: false },
