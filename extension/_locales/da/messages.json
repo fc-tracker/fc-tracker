@@ -105,5 +105,51 @@
   },
   "badgeNotReady": {
     "message": "FC-Tracker – handling påkrævet: Web App’en indlæste ikke din klub. Tjek at du er logget ind, og genindlæs siden."
+  },
+  "lastSync": {
+    "message": "Sidste klub-sync: $WHEN$",
+    "placeholders": {
+      "when": {
+        "content": "$1"
+      }
+    }
+  },
+  "upToDate": {
+    "message": "Du har den nyeste version."
+  },
+  "updateAvailable": {
+    "message": "Opdatering klar: v$VERSION$",
+    "placeholders": {
+      "version": {
+        "content": "$1"
+      }
+    }
+  },
+  "updateNow": {
+    "message": "Opdatér nu"
+  },
+  "checkUpdates": {
+    "message": "Søg efter opdateringer"
+  },
+  "updateChecking": {
+    "message": "Søger efter opdateringer …"
+  },
+  "updateInstalling": {
+    "message": "Opdatering fundet – installerer, udvidelsen genstarter om et øjeblik."
+  },
+  "updateRollingOut": {
+    "message": "Chrome Web Store har ikke sendt den endnu – den installerer sig selv, som regel inden for et døgn."
+  },
+  "upToDateChecked": {
+    "message": "Ingen opdatering – du har den nyeste version."
+  },
+  "updateThrottled": {
+    "message": "Chrome tillader næste tjek om få minutter – prøv igen der."
+  },
+  "updateFailed": {
+    "message": "Tjekket virkede ikke – prøv igen om et øjeblik."
+  },
+  "updateManual": {
+    "message": "Installeret fra .zip: hent den nye, erstat mappen, og tryk Genindlæs i chrome://extensions."
   }
 }

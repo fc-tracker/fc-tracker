@@ -18,6 +18,11 @@
       .dot { width: 8px; height: 8px; border-radius: 50%; background: #8b95ad; }
       .dot.on { background: #3ccf8e; }
       .error { color: #ff6b6b; }
+      .update { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 8px; background: #1a2238; }
+      .update.new { box-shadow: inset 3px 0 0 #8d6bff; }
+      .update b { color: #e8ecf5; font-weight: 600; }
+      button.update-btn { background: #8d6bff; color: #fff; }
+      .muted { color: #8b95ad; font-size: 12px; }
       [hidden] { display: none !important; }
     </style>
   </head>
@@ -30,6 +35,15 @@
         <p data-i18n="enterCode"></p>
         <input id="code" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="off" />
         <button id="pairBtn" data-i18n="connect"></button>
+      </section>
+
+      <p id="lastSync" class="muted" hidden></p>
+      <button id="openAppBtn" data-i18n="openApp" hidden></button>
+
+      <section id="update" class="update">
+        <p id="updateText" class="muted"></p>
+        <button id="updateBtn" class="secondary"></button>
+        <p id="updateResult" class="muted" hidden></p>
       </section>
 
       <button id="unpairBtn" class="secondary" data-i18n="disconnect" hidden></button>

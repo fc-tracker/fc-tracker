@@ -105,5 +105,51 @@
   },
   "badgeNotReady": {
     "message": "FC-Tracker – action requise : la Web App n’a pas chargé ton club. Vérifie ta connexion, puis recharge la page."
+  },
+  "lastSync": {
+    "message": "Dernière synchro du club : $WHEN$",
+    "placeholders": {
+      "when": {
+        "content": "$1"
+      }
+    }
+  },
+  "upToDate": {
+    "message": "Tu as la dernière version."
+  },
+  "updateAvailable": {
+    "message": "Mise à jour disponible : v$VERSION$",
+    "placeholders": {
+      "version": {
+        "content": "$1"
+      }
+    }
+  },
+  "updateNow": {
+    "message": "Mettre à jour"
+  },
+  "checkUpdates": {
+    "message": "Rechercher des mises à jour"
+  },
+  "updateChecking": {
+    "message": "Recherche de mises à jour …"
+  },
+  "updateInstalling": {
+    "message": "Mise à jour trouvée – installation, l'extension redémarre dans un instant."
+  },
+  "updateRollingOut": {
+    "message": "Le Chrome Web Store ne l'a pas encore livrée – elle s'installe toute seule, en général sous un jour."
+  },
+  "upToDateChecked": {
+    "message": "Pas de mise à jour – tu as la dernière version."
+  },
+  "updateThrottled": {
+    "message": "Chrome autorise la prochaine vérification dans quelques minutes – réessaie à ce moment-là."
+  },
+  "updateFailed": {
+    "message": "La vérification n'a pas marché – réessaie dans un instant."
+  },
+  "updateManual": {
+    "message": "Installée depuis le .zip : télécharge la nouvelle, remplace le dossier, puis clique sur Actualiser dans chrome://extensions."
   }
 }

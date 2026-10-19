@@ -105,5 +105,51 @@
   },
   "badgeNotReady": {
     "message": "FC-Tracker – action needed: the Web App did not load your club. Check you are signed in, then reload this page."
+  },
+  "lastSync": {
+    "message": "Last club sync: $WHEN$",
+    "placeholders": {
+      "when": {
+        "content": "$1"
+      }
+    }
+  },
+  "upToDate": {
+    "message": "You have the newest version."
+  },
+  "updateAvailable": {
+    "message": "Update available: v$VERSION$",
+    "placeholders": {
+      "version": {
+        "content": "$1"
+      }
+    }
+  },
+  "updateNow": {
+    "message": "Update now"
+  },
+  "checkUpdates": {
+    "message": "Check for updates"
+  },
+  "updateChecking": {
+    "message": "Checking for updates …"
+  },
+  "updateInstalling": {
+    "message": "Update found – installing, the extension restarts in a moment."
+  },
+  "updateRollingOut": {
+    "message": "The Chrome Web Store hasn't delivered it yet – it installs by itself, usually within a day."
+  },
+  "upToDateChecked": {
+    "message": "No update – you have the newest version."
+  },
+  "updateThrottled": {
+    "message": "Chrome allows the next check in a few minutes – try again then."
+  },
+  "updateFailed": {
+    "message": "The check didn't work – try again in a moment."
+  },
+  "updateManual": {
+    "message": "Installed from the .zip: download the new one, replace the folder, then press Reload in chrome://extensions."
   }
 }

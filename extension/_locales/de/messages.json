@@ -105,5 +105,51 @@
   },
   "badgeNotReady": {
     "message": "FC-Tracker – Aktion nötig: Die Web App hat deinen Verein nicht geladen. Prüfe die Anmeldung und lade die Seite neu."
+  },
+  "lastSync": {
+    "message": "Letzter Vereins-Sync: $WHEN$",
+    "placeholders": {
+      "when": {
+        "content": "$1"
+      }
+    }
+  },
+  "upToDate": {
+    "message": "Du hast die neueste Version."
+  },
+  "updateAvailable": {
+    "message": "Update verfügbar: v$VERSION$",
+    "placeholders": {
+      "version": {
+        "content": "$1"
+      }
+    }
+  },
+  "updateNow": {
+    "message": "Jetzt aktualisieren"
+  },
+  "checkUpdates": {
+    "message": "Nach Updates suchen"
+  },
+  "updateChecking": {
+    "message": "Suche nach Updates …"
+  },
+  "updateInstalling": {
+    "message": "Update gefunden – wird installiert, die Erweiterung startet gleich neu."
+  },
+  "updateRollingOut": {
+    "message": "Der Chrome Web Store hat es noch nicht ausgeliefert – es installiert sich selbst, meist innerhalb eines Tages."
+  },
+  "upToDateChecked": {
+    "message": "Kein Update – du hast die neueste Version."
+  },
+  "updateThrottled": {
+    "message": "Chrome erlaubt die nächste Prüfung in ein paar Minuten – versuch es dann noch einmal."
+  },
+  "updateFailed": {
+    "message": "Die Prüfung hat nicht geklappt – versuch es gleich noch einmal."
+  },
+  "updateManual": {
+    "message": "Aus der .zip installiert: lade die neue herunter, ersetze den Ordner und klicke in chrome://extensions auf Neu laden."
   }
 }

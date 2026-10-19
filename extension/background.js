@@ -148,8 +148,27 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
         case "ping": {
           const res = await call("/ping");
           if (LOCALES.includes(res.locale)) await chrome.storage.local.set({ locale: res.locale });
+          await rememberLatest(res);
+          await showPairingHint(!res.authorized);
           if (res.authorized) flush();
           return reply(res);
+        }
+        case "update-info": {
+          const { latest } = await chrome.storage.local.get("latest");
+          const have = chrome.runtime.getManifest().version;
+          const self = await chrome.management.getSelf();
+          return reply({ have, latest: latest ?? null, outdated: isOlder(have, latest), installType: self.installType });
+        }
+        case "update-check": {
+          // Chrome Web Store copy: ask the store now; an update found is applied by reloading
+          const self = await chrome.management.getSelf();
+          if (self.installType !== "normal") return reply({ status: "manual" });
+          const status = await new Promise((resolve) =>
+            chrome.runtime.requestUpdateCheck((s) => resolve(chrome.runtime.lastError ? "error" : s)),
+          );
+          reply({ status: typeof status === "string" ? status : status?.status ?? "error" });
+          if ((typeof status === "string" ? status : status?.status) === "update_available") setTimeout(() => chrome.runtime.reload(), 1500);
+          return;
         }
         case "status": {
           const { lastSyncAt } = await chrome.storage.local.get("lastSyncAt");
@@ -241,14 +260,40 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
  * code field. Never a tab of its own: opening pages by itself felt like malware (user, 2026-10-15).
  */
 async function showPairingHint(needed) {
-  await chrome.action.setBadgeText({ text: needed ? "!" : "" });
-  if (needed) await chrome.action.setBadgeBackgroundColor({ color: "#f5c542" });
+  if (needed) {
+    await chrome.action.setBadgeText({ text: "!" });
+    await chrome.action.setBadgeBackgroundColor({ color: "#f5c542" });
+    return;
+  }
+  // connected: a newer version is out → "↑" on the icon until it is installed
+  const outdated = isOlder(chrome.runtime.getManifest().version, (await chrome.storage.local.get("latest")).latest);
+  await chrome.action.setBadgeText({ text: outdated ? "↑" : "" });
+  if (outdated) await chrome.action.setBadgeBackgroundColor({ color: "#8d6bff" });
+}
+
+/** "0.10.2" older than "0.10.5"? (missing = not older) */
+function isOlder(have, latest) {
+  if (!have || !latest) return false;
+  const a = have.split(".").map(Number);
+  const b = latest.split(".").map(Number);
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    if ((a[i] ?? 0) !== (b[i] ?? 0)) return (a[i] ?? 0) < (b[i] ?? 0);
+  }
+  return false;
+}
+
+/** The app tells which extension version belongs to it. */
+async function rememberLatest(res) {
+  if (typeof res?.extension_latest === "string" && /^\d+(\.\d+)*$/.test(res.extension_latest)) {
+    await chrome.storage.local.set({ latest: res.extension_latest });
+  }
 }
 
 async function checkIn() {
   try {
     const res = await call("/ping");
     if (LOCALES.includes(res.locale)) await chrome.storage.local.set({ locale: res.locale });
+    await rememberLatest(res);
     await showPairingHint(!res.authorized);
     if (res.authorized) await flush();
     return res;

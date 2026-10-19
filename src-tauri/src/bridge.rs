@@ -292,7 +292,9 @@ fn handle(
                     "abort": abort,
                     // The last club sync (ms): the extension drops a saved sync that is older.
                     "synced_at": if authorized { synced_at } else { None },
-                    "locale": locale
+                    "locale": locale,
+                    // the extension version that belongs to this app – the extension offers an update
+                    "extension_latest": extension_latest()
                 }),
             )
         }
