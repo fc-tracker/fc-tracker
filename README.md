@@ -63,8 +63,17 @@ If you find anything in the code that contradicts this list, please open an issu
 ## Download
 
 Official builds only come from **https://www.fc-tracker.com/download** and this repository's
-**Releases** page. Each release lists its SHA-256 and a VirusTotal scan. A copy from anywhere else is
-not ours.
+**Releases** page – the same files. A copy from anywhere else is not ours.
+
+Every release is **built by GitHub from its tag in this repository** (`.github/workflows/release.yml`),
+not on anyone's PC, and each file gets a build attestation. Check a download yourself:
+
+```bash
+gh attestation verify FC-Tracker-setup-<version>.exe --repo fc-tracker/fc-tracker
+```
+
+It confirms the file was built from this code, by that workflow, at that tag. The only step after the
+build is the in-app updater's signature, added by the project's key; it does not change the installer.
 
 ## Build it yourself
 
