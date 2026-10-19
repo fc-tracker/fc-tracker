@@ -63,7 +63,8 @@ If you find anything in the code that contradicts this list, please open an issu
 ## Download
 
 Official builds only come from **https://www.fc-tracker.com/download** and this repository's
-**Releases** page – the same files. A copy from anywhere else is not ours.
+**Releases** page. A copy from anywhere else is not ours. The releases here are exactly the versions
+the app updates itself to.
 
 Every release is **built by GitHub from its tag in this repository** (`.github/workflows/release.yml`),
 not on anyone's PC, and each file gets a build attestation. Check a download yourself:

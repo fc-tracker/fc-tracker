@@ -8,9 +8,11 @@
 //    %USERPROFILE%\.tauri\fc-tracker-updater.key (never in the repo – back it up: without it,
 //    installed apps can't be updated any more).
 // 2. Copies the installer and a zip of the extension into site/public/downloads (older builds
-//    are removed) and writes downloads/latest.json (version, size, sha256) for the website.
+//    are removed) and writes downloads/latest.json (version, size, sha256) for the website. These
+//    are the files the in-app updater fetches – the download button never changes with a release:
+//    it gives the fixed site/public/installer/FC-Tracker-Installer.exe (scripts/pin-installer.mjs).
 // 3. Writes updates/latest.json – the feed installed apps check (tauri-plugin-updater).
-// 4. Points the stable links /download/windows and /download/extension at the new files.
+// 4. Writes the stable links /download/windows (the fixed installer) and /download/extension.
 // 5. Scans both files on VirusTotal when an API key is set (scripts/virustotal.mjs) – the
 //    website shows the result and links the report. Without a key the release goes out unscanned.
 // Then commit and push: Vercel deploys, and installed apps offer the update.
@@ -136,7 +138,8 @@ vercel.redirects = [
   { source: "/support", destination: "https://ko-fi.com/fctracker", permanent: false },
   // the public source code (source-available, PolyForm Strict)
   { source: "/source", destination: "https://github.com/fc-tracker/fc-tracker", permanent: false },
-  { source: "/download/windows", destination: `/downloads/${appFile}`, permanent: false },
+  // the fixed installer Chrome already knows – never the new release file (see pin-installer.mjs)
+  { source: "/download/windows", destination: "/installer/FC-Tracker-Installer.exe", permanent: false },
   // the extension lives in the Chrome Web Store (the zip stays in /downloads for Edge-only setups)
   { source: "/download/extension", destination: "https://chromewebstore.google.com/detail/fc-tracker/bpinmgkhbofecfagbehkmpmcnnehclem", permanent: false },
   // analytics.fc-tracker.com → the Umami dashboard (Umami's own login keeps it private)

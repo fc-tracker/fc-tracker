@@ -161,9 +161,11 @@ VIAddVersionKey "ProductVersion" "${VERSION}"
   !define MUI_HEADERIMAGE_UNBITMAP "${UNINSTALLERHEADERIMAGE}"
 !endif
 
-; Uninstaller icon
+; Uninstaller icon – the app's own icon too (without it NSIS shows its default box icon)
 !if "${UNINSTALLERICON}" != ""
   !define MUI_UNICON "${UNINSTALLERICON}"
+!else if "${INSTALLERICON}" != ""
+  !define MUI_UNICON "${INSTALLERICON}"
 !endif
 
 ; Define registry key to store installer language
