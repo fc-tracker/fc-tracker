@@ -1,0 +1,137 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "FC-Tracker",
+  "version": "0.1.46",
+  "identifier": "dk.fctracker.app",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "FC-Tracker",
+        "width": 1120,
+        "height": 720,
+        "minWidth": 880,
+        "minHeight": 600,
+        "center": true,
+        "resizable": true,
+        "create": false
+      },
+      {
+        "label": "overlay",
+        "title": "FC-Tracker overlay",
+        "url": "index.html?view=overlay",
+        "width": 1180,
+        "height": 760,
+        "x": 40,
+        "y": 50,
+        "visible": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "resizable": true,
+        "shadow": false,
+        "minWidth": 760,
+        "minHeight": 480,
+        "create": false
+      },
+      {
+        "label": "missing",
+        "title": "FC-Tracker missing players",
+        "url": "index.html?view=missing",
+        "width": 340,
+        "height": 760,
+        "x": 14,
+        "y": 120,
+        "visible": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "resizable": false,
+        "shadow": false,
+        "focus": false,
+        "create": false
+      },
+      {
+        "label": "toast",
+        "title": "FC-Tracker toast",
+        "url": "index.html?view=toast",
+        "width": 640,
+        "height": 92,
+        "x": 680,
+        "y": 20,
+        "visible": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "resizable": false,
+        "shadow": false,
+        "focus": false,
+        "create": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "nsis"
+    ],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "publisher": "FC-Tracker",
+    "shortDescription": "Ultimate Team Gallery companion for EA SPORTS FC 27",
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "displayLanguageSelector": false,
+        "languages": [
+          "English",
+          "Danish",
+          "German",
+          "Spanish",
+          "French"
+        ],
+        "customLanguageFiles": {
+          "Danish": "nsis/Danish.nsh"
+        },
+        "installerHooks": "nsis/hooks.nsh",
+        "installerIcon": "icons/icon.ico",
+        "template": "nsis/installer.nsi"
+      },
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      }
+    },
+    "createUpdaterArtifacts": true,
+    "copyright": "© 2026 FC-Tracker – free fan tool, not affiliated with EA",
+    "homepage": "https://www.fc-tracker.com",
+    "longDescription": "FC-Tracker shows every FC 27 Ultimate Team Gallery set's score, grade and first owner status on top of the game. Free, runs locally, no account."
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDMzQ0QyRjc5QjJEQTYyN0IKUldSN1l0cXllUy9OTTUxTUtzVVFiV245UFNYdCtRc0JOTjlqUU1Bbjk5Q0VLSUlQRWYwSEJIWnQK",
+      "endpoints": [
+        "https://www.fc-tracker.com/updates/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
+}

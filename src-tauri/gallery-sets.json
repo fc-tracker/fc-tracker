@@ -1,0 +1,2501 @@
+{
+ "$comment": "FC27 Gallery set definitions (128 sets), first written 2026-10-13 – every set has source + verified so in-game screen reading can replace numbers. filter: league | club (+ EA-linked women/men team, limited to the category clubLeagues) | rarity. grades: score thresholds = the numbers on the in-game Rewards screen; tokens = Gallery Tokens for that grade (cumulative). syncLeagues: leagues whose card database the extension reads.",
+ "version": 3,
+ "tagCap": 10,
+ "syncLeagues": [
+  13,
+  2216,
+  53,
+  2222,
+  19,
+  2215,
+  31,
+  2236,
+  16,
+  2218
+ ],
+ "categories": [
+  {
+   "key": "rarities",
+   "name": "Rarities"
+  },
+  {
+   "key": "premier-league",
+   "name": "Premier League / Barclays WSL",
+   "clubLeagues": [
+    13,
+    2216
+   ]
+  },
+  {
+   "key": "laliga",
+   "name": "LALIGA EA SPORTS / Liga F Moeve",
+   "clubLeagues": [
+    53,
+    2222
+   ]
+  },
+  {
+   "key": "bundesliga",
+   "name": "Bundesliga / Frauen-Bundesliga",
+   "clubLeagues": [
+    19,
+    2215
+   ]
+  },
+  {
+   "key": "serie-a",
+   "name": "Serie A Enilive",
+   "clubLeagues": [
+    31,
+    2236
+   ]
+  },
+  {
+   "key": "ligue-1",
+   "name": "Ligue 1 McDonald's / Arkema PL",
+   "clubLeagues": [
+    16,
+    2218
+   ]
+  },
+  {
+   "key": "leagues",
+   "name": "Leagues"
+  }
+ ],
+ "sets": [
+  {
+   "key": "set-127",
+   "name": "Season 1",
+   "category": "rarities",
+   "kind": "rarity",
+   "filter": {
+    "rarities": [150, 22, 71]
+   },
+   "slots": 10,
+   "grades": [
+    { "grade": "D", "score": 1000, "tokens": 0 },
+    { "grade": "C", "score": 25000, "tokens": 5 },
+    { "grade": "B", "score": 60000, "tokens": 10 },
+    { "grade": "A", "score": 100000, "tokens": 20 },
+    { "grade": "S", "score": 150000, "tokens": 50 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-99",
+   "name": "TOTW",
+   "category": "rarities",
+   "kind": "rarity",
+   "filter": {
+    "rarities": [3]
+   },
+   "slots": 20,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 5 },
+    { "grade": "C", "score": 125000, "tokens": 15 },
+    { "grade": "B", "score": 175000, "tokens": 30 },
+    { "grade": "A", "score": 300000, "tokens": 50 },
+    { "grade": "S", "score": 550000, "tokens": 75 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-102",
+   "name": "Heroes",
+   "category": "rarities",
+   "kind": "rarity",
+   "filter": {
+    "rarities": [72]
+   },
+   "slots": 5,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 5 },
+    { "grade": "C", "score": 50000, "tokens": 15 },
+    { "grade": "B", "score": 75000, "tokens": 30 },
+    { "grade": "A", "score": 100000, "tokens": 50 },
+    { "grade": "S", "score": 200000, "tokens": 75 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-113",
+   "name": "Holographics",
+   "category": "rarities",
+   "kind": "rarity",
+   "filter": {
+    "holo": true
+   },
+   "slots": 5,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 5 },
+    { "grade": "C", "score": 75000, "tokens": 15 },
+    { "grade": "B", "score": 150000, "tokens": 30 },
+    { "grade": "A", "score": 200000, "tokens": 50 },
+    { "grade": "S", "score": 250000, "tokens": 75 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-114",
+   "name": "Squad Foundations",
+   "category": "rarities",
+   "kind": "rarity",
+   "filter": {
+    "rarities": [87]
+   },
+   "slots": 4,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 750, "tokens": 0 },
+    { "grade": "A", "score": 1000, "tokens": 0 },
+    { "grade": "S", "score": 1250, "tokens": 10 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-116",
+   "name": "Starter Set",
+   "category": "rarities",
+   "kind": "rarity",
+   "filter": {
+    "any": true
+   },
+   "slots": 5,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 250, "tokens": 0 },
+    { "grade": "B", "score": 500, "tokens": 0 },
+    { "grade": "A", "score": 1000, "tokens": 0 },
+    { "grade": "S", "score": 2000, "tokens": 5 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": true
+  },
+  {
+   "key": "set-129",
+   "name": "POTM",
+   "category": "rarities",
+   "kind": "rarity",
+   "filter": {
+    "rarities": [43]
+   },
+   "slots": 7,
+   "grades": [
+    { "grade": "D", "score": 10000, "tokens": 0 },
+    { "grade": "C", "score": 100000, "tokens": 10 },
+    { "grade": "B", "score": 150000, "tokens": 15 },
+    { "grade": "A", "score": 200000, "tokens": 30 },
+    { "grade": "S", "score": 250000, "tokens": 50 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-30",
+   "name": "Arsenal",
+   "category": "premier-league",
+   "kind": "club",
+   "filter": {
+    "club": 1
+   },
+   "slots": 20,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 110000, "tokens": 0 },
+    { "grade": "B", "score": 700000, "tokens": 50 },
+    { "grade": "A", "score": 1300000, "tokens": 70 },
+    { "grade": "S", "score": 2500000, "tokens": 100 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-61",
+   "name": "Aston Villa",
+   "category": "premier-league",
+   "kind": "club",
+   "filter": {
+    "club": 2
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 9000, "tokens": 0 },
+    { "grade": "B", "score": 40000, "tokens": 30 },
+    { "grade": "A", "score": 80000, "tokens": 50 },
+    { "grade": "S", "score": 150000, "tokens": 75 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-76",
+   "name": "Birmingham City",
+   "category": "premier-league",
+   "kind": "club",
+   "filter": {
+    "club": 88
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 300, "tokens": 0 },
+    { "grade": "B", "score": 500, "tokens": 5 },
+    { "grade": "A", "score": 700, "tokens": 8 },
+    { "grade": "S", "score": 1000, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": true
+  },
+  {
+   "key": "set-22",
+   "name": "Bournemouth",
+   "category": "premier-league",
+   "kind": "club",
+   "filter": {
+    "club": 1943
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1600, "tokens": 0 },
+    { "grade": "B", "score": 2800, "tokens": 8 },
+    { "grade": "A", "score": 4200, "tokens": 10 },
+    { "grade": "S", "score": 5900, "tokens": 20 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-17",
+   "name": "Brentford",
+   "category": "premier-league",
+   "kind": "club",
+   "filter": {
+    "club": 1925
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1400, "tokens": 0 },
+    { "grade": "B", "score": 2700, "tokens": 8 },
+    { "grade": "A", "score": 4000, "tokens": 10 },
+    { "grade": "S", "score": 5700, "tokens": 20 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-26",
+   "name": "Brighton & Hove Albion",
+   "category": "premier-league",
+   "kind": "club",
+   "filter": {
+    "club": 1808
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 4000, "tokens": 0 },
+    { "grade": "B", "score": 13000, "tokens": 15 },
+    { "grade": "A", "score": 23500, "tokens": 25 },
+    { "grade": "S", "score": 42500, "tokens": 40 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-14",
+   "name": "Charlton",
+   "category": "premier-league",
+   "kind": "club",
+   "filter": {
+    "club": 89
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 300, "tokens": 0 },
+    { "grade": "B", "score": 500, "tokens": 5 },
+    { "grade": "A", "score": 700, "tokens": 8 },
+    { "grade": "S", "score": 1000, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-94",
+   "name": "Chelsea",
+   "category": "premier-league",
+   "kind": "club",
+   "filter": {
+    "club": 5
+   },
+   "slots": 20,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 50000, "tokens": 0 },
+    { "grade": "B", "score": 600000, "tokens": 50 },
+    { "grade": "A", "score": 900000, "tokens": 70 },
+    { "grade": "S", "score": 1500000, "tokens": 100 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-71",
+   "name": "Coventry City",
+   "category": "premier-league",
+   "kind": "club",
+   "filter": {
+    "club": 1800
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 400, "tokens": 0 },
+    { "grade": "B", "score": 1100, "tokens": 8 },
+    { "grade": "A", "score": 1700, "tokens": 10 },
+    { "grade": "S", "score": 2400, "tokens": 20 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-85",
+   "name": "Crystal Palace",
+   "category": "premier-league",
+   "kind": "club",
+   "filter": {
+    "club": 1799
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 3000, "tokens": 0 },
+    { "grade": "B", "score": 27500, "tokens": 15 },
+    { "grade": "A", "score": 30000, "tokens": 25 },
+    { "grade": "S", "score": 35000, "tokens": 40 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-56",
+   "name": "Everton",
+   "category": "premier-league",
+   "kind": "club",
+   "filter": {
+    "club": 7
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 3000, "tokens": 0 },
+    { "grade": "B", "score": 15000, "tokens": 15 },
+    { "grade": "A", "score": 22500, "tokens": 25 },
+    { "grade": "S", "score": 36000, "tokens": 40 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-54",
+   "name": "Fulham",
+   "category": "premier-league",
+   "kind": "club",
+   "filter": {
+    "club": 144
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1500, "tokens": 0 },
+    { "grade": "B", "score": 2700, "tokens": 8 },
+    { "grade": "A", "score": 4000, "tokens": 10 },
+    { "grade": "S", "score": 5700, "tokens": 20 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-45",
+   "name": "Hull City",
+   "category": "premier-league",
+   "kind": "club",
+   "filter": {
+    "club": 1952
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 400, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 8 },
+    { "grade": "A", "score": 1100, "tokens": 10 },
+    { "grade": "S", "score": 1500, "tokens": 20 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-6",
+   "name": "Ipswich Town",
+   "category": "premier-league",
+   "kind": "club",
+   "filter": {
+    "club": 94
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 600, "tokens": 0 },
+    { "grade": "B", "score": 1400, "tokens": 8 },
+    { "grade": "A", "score": 2100, "tokens": 10 },
+    { "grade": "S", "score": 3000, "tokens": 20 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-20",
+   "name": "Leeds United",
+   "category": "premier-league",
+   "kind": "club",
+   "filter": {
+    "club": 8
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1100, "tokens": 0 },
+    { "grade": "B", "score": 2300, "tokens": 8 },
+    { "grade": "A", "score": 3400, "tokens": 10 },
+    { "grade": "S", "score": 4800, "tokens": 20 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-46",
+   "name": "Liverpool",
+   "category": "premier-league",
+   "kind": "club",
+   "filter": {
+    "club": 9
+   },
+   "slots": 20,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 60000, "tokens": 0 },
+    { "grade": "B", "score": 600000, "tokens": 50 },
+    { "grade": "A", "score": 1100000, "tokens": 70 },
+    { "grade": "S", "score": 2000000, "tokens": 100 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-25",
+   "name": "London City Lionesses",
+   "category": "premier-league",
+   "kind": "club",
+   "filter": {
+    "club": 132176
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 5000, "tokens": 0 },
+    { "grade": "B", "score": 25000, "tokens": 15 },
+    { "grade": "A", "score": 31500, "tokens": 25 },
+    { "grade": "S", "score": 44000, "tokens": 40 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-49",
+   "name": "Manchester City",
+   "category": "premier-league",
+   "kind": "club",
+   "filter": {
+    "club": 10
+   },
+   "slots": 20,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 60000, "tokens": 0 },
+    { "grade": "B", "score": 700000, "tokens": 50 },
+    { "grade": "A", "score": 1300000, "tokens": 70 },
+    { "grade": "S", "score": 2500000, "tokens": 100 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-44",
+   "name": "Manchester United",
+   "category": "premier-league",
+   "kind": "club",
+   "filter": {
+    "club": 11
+   },
+   "slots": 20,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 20000, "tokens": 0 },
+    { "grade": "B", "score": 300000, "tokens": 50 },
+    { "grade": "A", "score": 700000, "tokens": 70 },
+    { "grade": "S", "score": 1500000, "tokens": 100 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-92",
+   "name": "Newcastle United",
+   "category": "premier-league",
+   "kind": "club",
+   "filter": {
+    "club": 13
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 11500, "tokens": 0 },
+    { "grade": "B", "score": 154000, "tokens": 15 },
+    { "grade": "A", "score": 187500, "tokens": 25 },
+    { "grade": "S", "score": 250000, "tokens": 40 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-48",
+   "name": "Nottingham Forest",
+   "category": "premier-league",
+   "kind": "club",
+   "filter": {
+    "club": 14
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 2100, "tokens": 0 },
+    { "grade": "B", "score": 7200, "tokens": 8 },
+    { "grade": "A", "score": 10700, "tokens": 10 },
+    { "grade": "S", "score": 15200, "tokens": 20 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-86",
+   "name": "Sunderland",
+   "category": "premier-league",
+   "kind": "club",
+   "filter": {
+    "club": 106
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 2500, "tokens": 0 },
+    { "grade": "B", "score": 11000, "tokens": 15 },
+    { "grade": "A", "score": 15000, "tokens": 25 },
+    { "grade": "S", "score": 22500, "tokens": 40 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-8",
+   "name": "Tottenham Hotspur",
+   "category": "premier-league",
+   "kind": "club",
+   "filter": {
+    "club": 18
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 9000, "tokens": 0 },
+    { "grade": "B", "score": 40000, "tokens": 30 },
+    { "grade": "A", "score": 100000, "tokens": 50 },
+    { "grade": "S", "score": 200000, "tokens": 75 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-9",
+   "name": "West Ham",
+   "category": "premier-league",
+   "kind": "club",
+   "filter": {
+    "club": 116014
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1400, "tokens": 0 },
+    { "grade": "B", "score": 2000, "tokens": 5 },
+    { "grade": "A", "score": 3200, "tokens": 8 },
+    { "grade": "S", "score": 4600, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-16",
+   "name": "Athletic Club",
+   "category": "laliga",
+   "kind": "club",
+   "filter": {
+    "club": 448
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 7000, "tokens": 0 },
+    { "grade": "B", "score": 52500, "tokens": 15 },
+    { "grade": "A", "score": 79000, "tokens": 25 },
+    { "grade": "S", "score": 128000, "tokens": 40 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-53",
+   "name": "Atlético de Madrid",
+   "category": "laliga",
+   "kind": "club",
+   "filter": {
+    "club": 240
+   },
+   "slots": 20,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 20000, "tokens": 0 },
+    { "grade": "B", "score": 400000, "tokens": 50 },
+    { "grade": "A", "score": 700000, "tokens": 70 },
+    { "grade": "S", "score": 1300000, "tokens": 100 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-12",
+   "name": "CA Osasuna",
+   "category": "laliga",
+   "kind": "club",
+   "filter": {
+    "club": 479
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1300, "tokens": 0 },
+    { "grade": "B", "score": 1800, "tokens": 5 },
+    { "grade": "A", "score": 2800, "tokens": 8 },
+    { "grade": "S", "score": 4100, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-81",
+   "name": "Celta de Vigo",
+   "category": "laliga",
+   "kind": "club",
+   "filter": {
+    "club": 450
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1300, "tokens": 0 },
+    { "grade": "B", "score": 4600, "tokens": 8 },
+    { "grade": "A", "score": 7000, "tokens": 10 },
+    { "grade": "S", "score": 9900, "tokens": 20 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-89",
+   "name": "Costa Adeje Tenerife",
+   "category": "laliga",
+   "kind": "club",
+   "filter": {
+    "club": 116332
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 300, "tokens": 0 },
+    { "grade": "B", "score": 500, "tokens": 5 },
+    { "grade": "A", "score": 700, "tokens": 8 },
+    { "grade": "S", "score": 1000, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-62",
+   "name": "Deportivo Alavés",
+   "category": "laliga",
+   "kind": "club",
+   "filter": {
+    "club": 463
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1100, "tokens": 8 },
+    { "grade": "S", "score": 1600, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-80",
+   "name": "Elche CF",
+   "category": "laliga",
+   "kind": "club",
+   "filter": {
+    "club": 468
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 1400, "tokens": 8 },
+    { "grade": "A", "score": 2000, "tokens": 10 },
+    { "grade": "S", "score": 2900, "tokens": 20 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-40",
+   "name": "FC Badalona Women",
+   "category": "laliga",
+   "kind": "club",
+   "filter": {
+    "club": 131125
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 600, "tokens": 0 },
+    { "grade": "B", "score": 800, "tokens": 5 },
+    { "grade": "A", "score": 1200, "tokens": 8 },
+    { "grade": "S", "score": 1800, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-68",
+   "name": "FC Barcelona",
+   "category": "laliga",
+   "kind": "club",
+   "filter": {
+    "club": 241
+   },
+   "slots": 20,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 170000, "tokens": 0 },
+    { "grade": "B", "score": 1200000, "tokens": 50 },
+    { "grade": "A", "score": 1800000, "tokens": 70 },
+    { "grade": "S", "score": 2800000, "tokens": 100 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-13",
+   "name": "Getafe CF",
+   "category": "laliga",
+   "kind": "club",
+   "filter": {
+    "club": 1860
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 900, "tokens": 0 },
+    { "grade": "B", "score": 1300, "tokens": 5 },
+    { "grade": "A", "score": 2000, "tokens": 8 },
+    { "grade": "S", "score": 3000, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-11",
+   "name": "Granada CF",
+   "category": "laliga",
+   "kind": "club",
+   "filter": {
+    "club": 110832
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 400, "tokens": 0 },
+    { "grade": "B", "score": 600, "tokens": 5 },
+    { "grade": "A", "score": 1000, "tokens": 8 },
+    { "grade": "S", "score": 1400, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-24",
+   "name": "Levante UD",
+   "category": "laliga",
+   "kind": "club",
+   "filter": {
+    "club": 1853
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1200, "tokens": 8 },
+    { "grade": "S", "score": 1700, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-97",
+   "name": "Logroño United",
+   "category": "laliga",
+   "kind": "club",
+   "filter": {
+    "club": 132629
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 300, "tokens": 0 },
+    { "grade": "B", "score": 500, "tokens": 5 },
+    { "grade": "A", "score": 700, "tokens": 8 },
+    { "grade": "S", "score": 1000, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-35",
+   "name": "Madrid CFF",
+   "category": "laliga",
+   "kind": "club",
+   "filter": {
+    "club": 116334
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 600, "tokens": 0 },
+    { "grade": "B", "score": 2400, "tokens": 8 },
+    { "grade": "A", "score": 3600, "tokens": 10 },
+    { "grade": "S", "score": 5100, "tokens": 20 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-90",
+   "name": "Malaga CF",
+   "category": "laliga",
+   "kind": "club",
+   "filter": {
+    "club": 573
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 300, "tokens": 0 },
+    { "grade": "B", "score": 400, "tokens": 5 },
+    { "grade": "A", "score": 700, "tokens": 8 },
+    { "grade": "S", "score": 900, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-91",
+   "name": "Rayo Vallecano",
+   "category": "laliga",
+   "kind": "club",
+   "filter": {
+    "club": 480
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1400, "tokens": 0 },
+    { "grade": "B", "score": 2200, "tokens": 8 },
+    { "grade": "A", "score": 3300, "tokens": 10 },
+    { "grade": "S", "score": 4700, "tokens": 20 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-41",
+   "name": "RC Deportivo",
+   "category": "laliga",
+   "kind": "club",
+   "filter": {
+    "club": 242
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 3700, "tokens": 8 },
+    { "grade": "A", "score": 5500, "tokens": 10 },
+    { "grade": "S", "score": 7800, "tokens": 20 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-2",
+   "name": "RCD Espanyol",
+   "category": "laliga",
+   "kind": "club",
+   "filter": {
+    "club": 452
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 800, "tokens": 0 },
+    { "grade": "B", "score": 1500, "tokens": 8 },
+    { "grade": "A", "score": 2300, "tokens": 10 },
+    { "grade": "S", "score": 3200, "tokens": 20 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-96",
+   "name": "Real Betis Balompié",
+   "category": "laliga",
+   "kind": "club",
+   "filter": {
+    "club": 449
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1900, "tokens": 0 },
+    { "grade": "B", "score": 7300, "tokens": 8 },
+    { "grade": "A", "score": 10900, "tokens": 10 },
+    { "grade": "S", "score": 15400, "tokens": 20 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-74",
+   "name": "Real Madrid",
+   "category": "laliga",
+   "kind": "club",
+   "filter": {
+    "club": 243
+   },
+   "slots": 20,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 70000, "tokens": 0 },
+    { "grade": "B", "score": 1000000, "tokens": 50 },
+    { "grade": "A", "score": 1400000, "tokens": 70 },
+    { "grade": "S", "score": 2100000, "tokens": 100 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-79",
+   "name": "Real Racing Club",
+   "category": "laliga",
+   "kind": "club",
+   "filter": {
+    "club": 456
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 600, "tokens": 5 },
+    { "grade": "A", "score": 1000, "tokens": 8 },
+    { "grade": "S", "score": 1500, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-42",
+   "name": "Real Sociedad",
+   "category": "laliga",
+   "kind": "club",
+   "filter": {
+    "club": 457
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 3500, "tokens": 0 },
+    { "grade": "B", "score": 22000, "tokens": 15 },
+    { "grade": "A", "score": 37000, "tokens": 25 },
+    { "grade": "S", "score": 65000, "tokens": 40 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-84",
+   "name": "SD Eibar",
+   "category": "laliga",
+   "kind": "club",
+   "filter": {
+    "club": 116331
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 300, "tokens": 0 },
+    { "grade": "B", "score": 500, "tokens": 5 },
+    { "grade": "A", "score": 700, "tokens": 8 },
+    { "grade": "S", "score": 1000, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-32",
+   "name": "Sevilla FC",
+   "category": "laliga",
+   "kind": "club",
+   "filter": {
+    "club": 481
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1500, "tokens": 0 },
+    { "grade": "B", "score": 4500, "tokens": 15 },
+    { "grade": "A", "score": 5500, "tokens": 25 },
+    { "grade": "S", "score": 7000, "tokens": 40 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-69",
+   "name": "Valencia CF",
+   "category": "laliga",
+   "kind": "club",
+   "filter": {
+    "club": 461
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1300, "tokens": 0 },
+    { "grade": "B", "score": 1800, "tokens": 5 },
+    { "grade": "A", "score": 2800, "tokens": 8 },
+    { "grade": "S", "score": 4100, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-5",
+   "name": "Villarreal CF",
+   "category": "laliga",
+   "kind": "club",
+   "filter": {
+    "club": 483
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1900, "tokens": 0 },
+    { "grade": "B", "score": 3500, "tokens": 8 },
+    { "grade": "A", "score": 5300, "tokens": 10 },
+    { "grade": "S", "score": 7500, "tokens": 20 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-73",
+   "name": "1. FC Nürnberg",
+   "category": "bundesliga",
+   "kind": "club",
+   "filter": {
+    "club": 171
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 400, "tokens": 0 },
+    { "grade": "B", "score": 600, "tokens": 5 },
+    { "grade": "A", "score": 1000, "tokens": 8 },
+    { "grade": "S", "score": 1400, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-65",
+   "name": "Bayer 04 Leverkusen",
+   "category": "bundesliga",
+   "kind": "club",
+   "filter": {
+    "club": 32
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 9000, "tokens": 0 },
+    { "grade": "B", "score": 70000, "tokens": 30 },
+    { "grade": "A", "score": 160000, "tokens": 50 },
+    { "grade": "S", "score": 325000, "tokens": 75 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-4",
+   "name": "Borussia Dortmund",
+   "category": "bundesliga",
+   "kind": "club",
+   "filter": {
+    "club": 22
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 13000, "tokens": 0 },
+    { "grade": "B", "score": 150000, "tokens": 30 },
+    { "grade": "A", "score": 320000, "tokens": 50 },
+    { "grade": "S", "score": 625000, "tokens": 75 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-31",
+   "name": "Borussia Mönchengladbach",
+   "category": "bundesliga",
+   "kind": "club",
+   "filter": {
+    "club": 23
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1100, "tokens": 0 },
+    { "grade": "B", "score": 2400, "tokens": 8 },
+    { "grade": "A", "score": 3500, "tokens": 10 },
+    { "grade": "S", "score": 5000, "tokens": 20 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-59",
+   "name": "Eintracht Frankfurt",
+   "category": "bundesliga",
+   "kind": "club",
+   "filter": {
+    "club": 1824
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 9000, "tokens": 0 },
+    { "grade": "B", "score": 40000, "tokens": 30 },
+    { "grade": "A", "score": 80000, "tokens": 50 },
+    { "grade": "S", "score": 150000, "tokens": 75 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-10",
+   "name": "FC Augsburg",
+   "category": "bundesliga",
+   "kind": "club",
+   "filter": {
+    "club": 100409
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 800, "tokens": 0 },
+    { "grade": "B", "score": 1600, "tokens": 8 },
+    { "grade": "A", "score": 2400, "tokens": 10 },
+    { "grade": "S", "score": 3500, "tokens": 20 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-52",
+   "name": "FC Bayern München",
+   "category": "bundesliga",
+   "kind": "club",
+   "filter": {
+    "club": 115995
+   },
+   "slots": 20,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 60000, "tokens": 0 },
+    { "grade": "B", "score": 700000, "tokens": 50 },
+    { "grade": "A", "score": 1400000, "tokens": 70 },
+    { "grade": "S", "score": 2800000, "tokens": 100 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-15",
+   "name": "FC Köln",
+   "category": "bundesliga",
+   "kind": "club",
+   "filter": {
+    "club": 31
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1000, "tokens": 0 },
+    { "grade": "B", "score": 1700, "tokens": 8 },
+    { "grade": "A", "score": 2500, "tokens": 10 },
+    { "grade": "S", "score": 3600, "tokens": 20 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-64",
+   "name": "FC Union Berlin",
+   "category": "bundesliga",
+   "kind": "club",
+   "filter": {
+    "club": 1831
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 900, "tokens": 0 },
+    { "grade": "B", "score": 1300, "tokens": 5 },
+    { "grade": "A", "score": 2000, "tokens": 8 },
+    { "grade": "S", "score": 3000, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-33",
+   "name": "FSV Mainz 05",
+   "category": "bundesliga",
+   "kind": "club",
+   "filter": {
+    "club": 169
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1000, "tokens": 0 },
+    { "grade": "B", "score": 2200, "tokens": 8 },
+    { "grade": "A", "score": 3400, "tokens": 10 },
+    { "grade": "S", "score": 4800, "tokens": 20 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-67",
+   "name": "Hamburger SV",
+   "category": "bundesliga",
+   "kind": "club",
+   "filter": {
+    "club": 28
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 1000, "tokens": 8 },
+    { "grade": "A", "score": 1400, "tokens": 10 },
+    { "grade": "S", "score": 2000, "tokens": 20 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-28",
+   "name": "RB Leipzig",
+   "category": "bundesliga",
+   "kind": "club",
+   "filter": {
+    "club": 112172
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 7000, "tokens": 0 },
+    { "grade": "B", "score": 40000, "tokens": 30 },
+    { "grade": "A", "score": 80000, "tokens": 50 },
+    { "grade": "S", "score": 175000, "tokens": 75 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-21",
+   "name": "SC Freiburg",
+   "category": "bundesliga",
+   "kind": "club",
+   "filter": {
+    "club": 25
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 2000, "tokens": 0 },
+    { "grade": "B", "score": 11500, "tokens": 15 },
+    { "grade": "A", "score": 18000, "tokens": 25 },
+    { "grade": "S", "score": 30000, "tokens": 40 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-47",
+   "name": "SC Paderborn 07",
+   "category": "bundesliga",
+   "kind": "club",
+   "filter": {
+    "club": 10030
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 400, "tokens": 0 },
+    { "grade": "B", "score": 600, "tokens": 5 },
+    { "grade": "A", "score": 1000, "tokens": 8 },
+    { "grade": "S", "score": 1400, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-57",
+   "name": "Schalke 04",
+   "category": "bundesliga",
+   "kind": "club",
+   "filter": {
+    "club": 34
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 400, "tokens": 0 },
+    { "grade": "B", "score": 600, "tokens": 5 },
+    { "grade": "A", "score": 1000, "tokens": 8 },
+    { "grade": "S", "score": 1400, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-38",
+   "name": "SV Elversberg",
+   "category": "bundesliga",
+   "kind": "club",
+   "filter": {
+    "club": 580
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 400, "tokens": 0 },
+    { "grade": "B", "score": 600, "tokens": 5 },
+    { "grade": "A", "score": 1000, "tokens": 8 },
+    { "grade": "S", "score": 1400, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-19",
+   "name": "TSG Hoffenheim",
+   "category": "bundesliga",
+   "kind": "club",
+   "filter": {
+    "club": 10029
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 3000, "tokens": 0 },
+    { "grade": "B", "score": 10000, "tokens": 30 },
+    { "grade": "A", "score": 100000, "tokens": 50 },
+    { "grade": "S", "score": 250000, "tokens": 75 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-37",
+   "name": "VfB Stuttgart",
+   "category": "bundesliga",
+   "kind": "club",
+   "filter": {
+    "club": 36
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1500, "tokens": 0 },
+    { "grade": "B", "score": 4700, "tokens": 8 },
+    { "grade": "A", "score": 7000, "tokens": 10 },
+    { "grade": "S", "score": 9900, "tokens": 20 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-88",
+   "name": "VfL Wolfsburg",
+   "category": "bundesliga",
+   "kind": "club",
+   "filter": {
+    "club": 115998
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 4000, "tokens": 0 },
+    { "grade": "B", "score": 30000, "tokens": 15 },
+    { "grade": "A", "score": 46000, "tokens": 25 },
+    { "grade": "S", "score": 75000, "tokens": 40 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-34",
+   "name": "Werder Bremen",
+   "category": "bundesliga",
+   "kind": "club",
+   "filter": {
+    "club": 38
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 2000, "tokens": 0 },
+    { "grade": "B", "score": 5500, "tokens": 15 },
+    { "grade": "A", "score": 7500, "tokens": 25 },
+    { "grade": "S", "score": 11000, "tokens": 40 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-83",
+   "name": "Bergamo Calcio",
+   "category": "serie-a",
+   "kind": "club",
+   "filter": {
+    "club": 115845
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 2200, "tokens": 0 },
+    { "grade": "B", "score": 3600, "tokens": 8 },
+    { "grade": "A", "score": 5400, "tokens": 10 },
+    { "grade": "S", "score": 7600, "tokens": 20 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-93",
+   "name": "Bologna",
+   "category": "serie-a",
+   "kind": "club",
+   "filter": {
+    "club": 189
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1300, "tokens": 0 },
+    { "grade": "B", "score": 2800, "tokens": 8 },
+    { "grade": "A", "score": 4100, "tokens": 10 },
+    { "grade": "S", "score": 5900, "tokens": 20 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-39",
+   "name": "Cagliari",
+   "category": "serie-a",
+   "kind": "club",
+   "filter": {
+    "club": 1842
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 700, "tokens": 0 },
+    { "grade": "B", "score": 1000, "tokens": 5 },
+    { "grade": "A", "score": 1500, "tokens": 8 },
+    { "grade": "S", "score": 2200, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-63",
+   "name": "Como",
+   "category": "serie-a",
+   "kind": "club",
+   "filter": {
+    "club": 1745
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 2000, "tokens": 0 },
+    { "grade": "B", "score": 13000, "tokens": 15 },
+    { "grade": "A", "score": 15500, "tokens": 25 },
+    { "grade": "S", "score": 19500, "tokens": 40 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-70",
+   "name": "Fiorentina",
+   "category": "serie-a",
+   "kind": "club",
+   "filter": {
+    "club": 110374
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1900, "tokens": 0 },
+    { "grade": "B", "score": 5600, "tokens": 8 },
+    { "grade": "A", "score": 8400, "tokens": 10 },
+    { "grade": "S", "score": 11800, "tokens": 20 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-123",
+   "name": "Frosinone",
+   "category": "serie-a",
+   "kind": "club",
+   "filter": {
+    "club": 111657
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 200, "tokens": 0 },
+    { "grade": "B", "score": 320, "tokens": 5 },
+    { "grade": "A", "score": 480, "tokens": 8 },
+    { "grade": "S", "score": 720, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-126",
+   "name": "Genoa",
+   "category": "serie-a",
+   "kind": "club",
+   "filter": {
+    "club": 110556
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 600, "tokens": 0 },
+    { "grade": "B", "score": 900, "tokens": 5 },
+    { "grade": "A", "score": 1400, "tokens": 8 },
+    { "grade": "S", "score": 2000, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-119",
+   "name": "Juventus",
+   "category": "serie-a",
+   "kind": "club",
+   "filter": {
+    "club": 45
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 12000, "tokens": 0 },
+    { "grade": "B", "score": 60000, "tokens": 30 },
+    { "grade": "A", "score": 180000, "tokens": 50 },
+    { "grade": "S", "score": 375000, "tokens": 75 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-124",
+   "name": "Lecce",
+   "category": "serie-a",
+   "kind": "club",
+   "filter": {
+    "club": 347
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 800, "tokens": 5 },
+    { "grade": "A", "score": 1200, "tokens": 8 },
+    { "grade": "S", "score": 1700, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-107",
+   "name": "Lombardia FC",
+   "category": "serie-a",
+   "kind": "club",
+   "filter": {
+    "club": 131682
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 41000, "tokens": 0 },
+    { "grade": "B", "score": 220000, "tokens": 30 },
+    { "grade": "A", "score": 440000, "tokens": 50 },
+    { "grade": "S", "score": 825000, "tokens": 75 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-29",
+   "name": "Milano FC",
+   "category": "serie-a",
+   "kind": "club",
+   "filter": {
+    "club": 131681
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 10000, "tokens": 0 },
+    { "grade": "B", "score": 180000, "tokens": 30 },
+    { "grade": "A", "score": 400000, "tokens": 50 },
+    { "grade": "S", "score": 825000, "tokens": 75 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-105",
+   "name": "Monza",
+   "category": "serie-a",
+   "kind": "club",
+   "filter": {
+    "club": 111811
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1100, "tokens": 8 },
+    { "grade": "S", "score": 1700, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-112",
+   "name": "Napoli",
+   "category": "serie-a",
+   "kind": "club",
+   "filter": {
+    "club": 48
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 13000, "tokens": 0 },
+    { "grade": "B", "score": 180000, "tokens": 30 },
+    { "grade": "A", "score": 280000, "tokens": 50 },
+    { "grade": "S", "score": 450000, "tokens": 75 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-125",
+   "name": "Parma",
+   "category": "serie-a",
+   "kind": "club",
+   "filter": {
+    "club": 50
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1100, "tokens": 8 },
+    { "grade": "S", "score": 1600, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-104",
+   "name": "Roma",
+   "category": "serie-a",
+   "kind": "club",
+   "filter": {
+    "club": 52
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 10000, "tokens": 0 },
+    { "grade": "B", "score": 80000, "tokens": 30 },
+    { "grade": "A", "score": 160000, "tokens": 50 },
+    { "grade": "S", "score": 300000, "tokens": 75 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-118",
+   "name": "Sassuolo",
+   "category": "serie-a",
+   "kind": "club",
+   "filter": {
+    "club": 111974
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 600, "tokens": 0 },
+    { "grade": "B", "score": 5100, "tokens": 8 },
+    { "grade": "A", "score": 7300, "tokens": 10 },
+    { "grade": "S", "score": 9565, "tokens": 20 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-110",
+   "name": "SS Lazio",
+   "category": "serie-a",
+   "kind": "club",
+   "filter": {
+    "club": 115841
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 2000, "tokens": 0 },
+    { "grade": "B", "score": 3400, "tokens": 8 },
+    { "grade": "A", "score": 5100, "tokens": 10 },
+    { "grade": "S", "score": 7200, "tokens": 20 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-117",
+   "name": "Torino",
+   "category": "serie-a",
+   "kind": "club",
+   "filter": {
+    "club": 54
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1100, "tokens": 0 },
+    { "grade": "B", "score": 1800, "tokens": 8 },
+    { "grade": "A", "score": 2700, "tokens": 10 },
+    { "grade": "S", "score": 3900, "tokens": 20 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-106",
+   "name": "Udinese",
+   "category": "serie-a",
+   "kind": "club",
+   "filter": {
+    "club": 55
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1200, "tokens": 8 },
+    { "grade": "S", "score": 1700, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-101",
+   "name": "Venezia",
+   "category": "serie-a",
+   "kind": "club",
+   "filter": {
+    "club": 205
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 600, "tokens": 5 },
+    { "grade": "A", "score": 1000, "tokens": 8 },
+    { "grade": "S", "score": 1500, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-75",
+   "name": "AJ Auxerre",
+   "category": "ligue-1",
+   "kind": "club",
+   "filter": {
+    "club": 57
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1000, "tokens": 8 },
+    { "grade": "S", "score": 1500, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-87",
+   "name": "Angers SCO",
+   "category": "ligue-1",
+   "kind": "club",
+   "filter": {
+    "club": 1530
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1000, "tokens": 8 },
+    { "grade": "S", "score": 1500, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-98",
+   "name": "AS Monaco",
+   "category": "ligue-1",
+   "kind": "club",
+   "filter": {
+    "club": 69
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1700, "tokens": 0 },
+    { "grade": "B", "score": 3100, "tokens": 8 },
+    { "grade": "A", "score": 4700, "tokens": 10 },
+    { "grade": "S", "score": 6600, "tokens": 20 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-78",
+   "name": "ESTAC Troyes",
+   "category": "ligue-1",
+   "kind": "club",
+   "filter": {
+    "club": 294
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 400, "tokens": 0 },
+    { "grade": "B", "score": 600, "tokens": 5 },
+    { "grade": "A", "score": 1000, "tokens": 8 },
+    { "grade": "S", "score": 1400, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-77",
+   "name": "FC Fleury 91",
+   "category": "ligue-1",
+   "kind": "club",
+   "filter": {
+    "club": 116036
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1300, "tokens": 0 },
+    { "grade": "B", "score": 1900, "tokens": 5 },
+    { "grade": "A", "score": 3000, "tokens": 8 },
+    { "grade": "S", "score": 4300, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-60",
+   "name": "FC Lorient",
+   "category": "ligue-1",
+   "kind": "club",
+   "filter": {
+    "club": 217
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1100, "tokens": 8 },
+    { "grade": "S", "score": 1600, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-23",
+   "name": "FC Nantes",
+   "category": "ligue-1",
+   "kind": "club",
+   "filter": {
+    "club": 116417
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1200, "tokens": 8 },
+    { "grade": "S", "score": 1700, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-7",
+   "name": "Le Havre AC",
+   "category": "ligue-1",
+   "kind": "club",
+   "filter": {
+    "club": 1738
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1100, "tokens": 8 },
+    { "grade": "S", "score": 1600, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-82",
+   "name": "Le Mans FC",
+   "category": "ligue-1",
+   "kind": "club",
+   "filter": {
+    "club": 1739
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 300, "tokens": 0 },
+    { "grade": "B", "score": 500, "tokens": 5 },
+    { "grade": "A", "score": 700, "tokens": 8 },
+    { "grade": "S", "score": 1000, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-43",
+   "name": "LOSC Lille",
+   "category": "ligue-1",
+   "kind": "club",
+   "filter": {
+    "club": 65
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1300, "tokens": 0 },
+    { "grade": "B", "score": 2500, "tokens": 8 },
+    { "grade": "A", "score": 3700, "tokens": 10 },
+    { "grade": "S", "score": 5200, "tokens": 20 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-55",
+   "name": "Montpellier Hérault SC",
+   "category": "ligue-1",
+   "kind": "club",
+   "filter": {
+    "club": 116037
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 300, "tokens": 0 },
+    { "grade": "B", "score": 500, "tokens": 5 },
+    { "grade": "A", "score": 700, "tokens": 8 },
+    { "grade": "S", "score": 1000, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-1",
+   "name": "OGC Nice",
+   "category": "ligue-1",
+   "kind": "club",
+   "filter": {
+    "club": 72
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1200, "tokens": 0 },
+    { "grade": "B", "score": 2000, "tokens": 8 },
+    { "grade": "A", "score": 3000, "tokens": 10 },
+    { "grade": "S", "score": 4200, "tokens": 20 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-18",
+   "name": "Olympique de Marseille",
+   "category": "ligue-1",
+   "kind": "club",
+   "filter": {
+    "club": 219
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 6000, "tokens": 0 },
+    { "grade": "B", "score": 50000, "tokens": 30 },
+    { "grade": "A", "score": 80000, "tokens": 50 },
+    { "grade": "S", "score": 150000, "tokens": 75 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-36",
+   "name": "Olympique Lyonnais",
+   "category": "ligue-1",
+   "kind": "club",
+   "filter": {
+    "club": 66
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 58000, "tokens": 0 },
+    { "grade": "B", "score": 170000, "tokens": 30 },
+    { "grade": "A", "score": 400000, "tokens": 50 },
+    { "grade": "S", "score": 800000, "tokens": 75 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-3",
+   "name": "Paris FC",
+   "category": "ligue-1",
+   "kind": "club",
+   "filter": {
+    "club": 111817
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 5000, "tokens": 0 },
+    { "grade": "B", "score": 20000, "tokens": 30 },
+    { "grade": "A", "score": 60000, "tokens": 50 },
+    { "grade": "S", "score": 125000, "tokens": 75 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-95",
+   "name": "Paris Saint-Germain",
+   "category": "ligue-1",
+   "kind": "club",
+   "filter": {
+    "club": 73
+   },
+   "slots": 20,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 80000, "tokens": 0 },
+    { "grade": "B", "score": 900000, "tokens": 50 },
+    { "grade": "A", "score": 1700000, "tokens": 70 },
+    { "grade": "S", "score": 3100000, "tokens": 100 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-66",
+   "name": "RC Lens",
+   "category": "ligue-1",
+   "kind": "club",
+   "filter": {
+    "club": 64
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1000, "tokens": 0 },
+    { "grade": "B", "score": 22500, "tokens": 15 },
+    { "grade": "A", "score": 38000, "tokens": 25 },
+    { "grade": "S", "score": 67000, "tokens": 40 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-51",
+   "name": "RC Strasbourg",
+   "category": "ligue-1",
+   "kind": "club",
+   "filter": {
+    "club": 131724
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1500, "tokens": 0 },
+    { "grade": "B", "score": 5000, "tokens": 15 },
+    { "grade": "A", "score": 6500, "tokens": 25 },
+    { "grade": "S", "score": 9500, "tokens": 40 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-58",
+   "name": "Stade Brestois 29",
+   "category": "ligue-1",
+   "kind": "club",
+   "filter": {
+    "club": 378
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 700, "tokens": 0 },
+    { "grade": "B", "score": 1000, "tokens": 5 },
+    { "grade": "A", "score": 1600, "tokens": 8 },
+    { "grade": "S", "score": 2300, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-27",
+   "name": "Stade Rennais FC",
+   "category": "ligue-1",
+   "kind": "club",
+   "filter": {
+    "club": 74
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1100, "tokens": 0 },
+    { "grade": "B", "score": 4700, "tokens": 8 },
+    { "grade": "A", "score": 7000, "tokens": 10 },
+    { "grade": "S", "score": 9900, "tokens": 20 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-72",
+   "name": "Toulouse FC",
+   "category": "ligue-1",
+   "kind": "club",
+   "filter": {
+    "club": 1809
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1100, "tokens": 8 },
+    { "grade": "S", "score": 1600, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-50",
+   "name": "US Saint-Malo",
+   "category": "ligue-1",
+   "kind": "club",
+   "filter": {
+    "club": 132861
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 300, "tokens": 0 },
+    { "grade": "B", "score": 500, "tokens": 5 },
+    { "grade": "A", "score": 700, "tokens": 8 },
+    { "grade": "S", "score": 1000, "tokens": 15 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-108",
+   "name": "Premier League",
+   "category": "leagues",
+   "kind": "league",
+   "filter": {
+    "league": 13
+   },
+   "slots": 30,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 10 },
+    { "grade": "C", "score": 400000, "tokens": 35 },
+    { "grade": "B", "score": 800000, "tokens": 50 },
+    { "grade": "A", "score": 1900000, "tokens": 70 },
+    { "grade": "S", "score": 4000000, "tokens": 100 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-100",
+   "name": "Barclays WSL",
+   "category": "leagues",
+   "kind": "league",
+   "filter": {
+    "league": 2216
+   },
+   "slots": 30,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 10 },
+    { "grade": "C", "score": 200000, "tokens": 35 },
+    { "grade": "B", "score": 725000, "tokens": 50 },
+    { "grade": "A", "score": 1900000, "tokens": 70 },
+    { "grade": "S", "score": 4000000, "tokens": 100 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-111",
+   "name": "Ligue 1 McDonald's",
+   "category": "leagues",
+   "kind": "league",
+   "filter": {
+    "league": 16
+   },
+   "slots": 30,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 10 },
+    { "grade": "C", "score": 75000, "tokens": 35 },
+    { "grade": "B", "score": 275000, "tokens": 50 },
+    { "grade": "A", "score": 1600000, "tokens": 70 },
+    { "grade": "S", "score": 4000000, "tokens": 100 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-115",
+   "name": "Arkema PL",
+   "category": "leagues",
+   "kind": "league",
+   "filter": {
+    "league": 2218
+   },
+   "slots": 30,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 10 },
+    { "grade": "C", "score": 75000, "tokens": 35 },
+    { "grade": "B", "score": 575000, "tokens": 50 },
+    { "grade": "A", "score": 1800000, "tokens": 70 },
+    { "grade": "S", "score": 4000000, "tokens": 100 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-109",
+   "name": "LALIGA EA SPORTS",
+   "category": "leagues",
+   "kind": "league",
+   "filter": {
+    "league": 53
+   },
+   "slots": 30,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 10 },
+    { "grade": "C", "score": 275000, "tokens": 35 },
+    { "grade": "B", "score": 725000, "tokens": 50 },
+    { "grade": "A", "score": 1900000, "tokens": 70 },
+    { "grade": "S", "score": 4000000, "tokens": 100 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-121",
+   "name": "Liga F Moeve",
+   "category": "leagues",
+   "kind": "league",
+   "filter": {
+    "league": 2222
+   },
+   "slots": 30,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 10 },
+    { "grade": "C", "score": 125000, "tokens": 35 },
+    { "grade": "B", "score": 625000, "tokens": 50 },
+    { "grade": "A", "score": 1800000, "tokens": 70 },
+    { "grade": "S", "score": 4000000, "tokens": 100 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-103",
+   "name": "Serie A Enilive",
+   "category": "leagues",
+   "kind": "league",
+   "filter": {
+    "league": 31
+   },
+   "slots": 30,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 10 },
+    { "grade": "C", "score": 100000, "tokens": 35 },
+    { "grade": "B", "score": 425000, "tokens": 50 },
+    { "grade": "A", "score": 1500000, "tokens": 70 },
+    { "grade": "S", "score": 3500000, "tokens": 100 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-122",
+   "name": "Bundesliga",
+   "category": "leagues",
+   "kind": "league",
+   "filter": {
+    "league": 19
+   },
+   "slots": 30,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 10 },
+    { "grade": "C", "score": 100000, "tokens": 35 },
+    { "grade": "B", "score": 400000, "tokens": 50 },
+    { "grade": "A", "score": 1500000, "tokens": 70 },
+    { "grade": "S", "score": 3500000, "tokens": 100 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-120",
+   "name": "Frauen-Bundesliga",
+   "category": "leagues",
+   "kind": "league",
+   "filter": {
+    "league": 2215
+   },
+   "slots": 30,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 10 },
+    { "grade": "C", "score": 50000, "tokens": 35 },
+    { "grade": "B", "score": 200000, "tokens": 50 },
+    { "grade": "A", "score": 1400000, "tokens": 70 },
+    { "grade": "S", "score": 3500000, "tokens": 100 }
+   ],
+   "source": "initial-2026-10-13",
+   "verified": false
+  }
+ ]
+}

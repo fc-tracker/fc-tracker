@@ -1,0 +1,127 @@
+/* Shared design tokens and the four themes – used by the overlay windows and the launcher. */
+
+:root {
+  --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --font-body: "Manrope", "Segoe UI", sans-serif;
+  --cut: 14px;                 /* size of the angular corner cut */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur: 260ms;
+
+  /* grade colours (shared by all themes, like the game) */
+  --grade-d: #e2733a;
+  --grade-c: #b9c6cf;
+  --grade-b: #e2bd55;
+  --grade-a: #2fd3c4;
+  --grade-s: #a86bff;
+  --gem: #3fe0b8;
+
+  /* "$ Support me" – Ultimate Team coin gold, the same in every theme */
+  --support-gold: #f2c94c;
+  --support-gold-hi: #ffe28a;
+  --support-ink: #241a02;
+
+  /* bonus-tag colour groups, matching the in-game chips */
+  --tag-gold: #e7c24a;        /* First Owner, Golden */
+  --tag-position: #3fcf6e;    /* Defensive Wall, Midfield Control, All out Attack, skills */
+  --tag-special: #9a7cff;     /* Heroic, Holographic, Iconic, TOTW */
+  --tag-composition: #8fa3c8; /* Same/Different Nation, Club, League, Multiples */
+  --tag-silver: #c3cbd6;
+  --tag-bronze: #c9814f;
+
+  /* special card families (EA rarities, src/rarities.ts) – shared by all themes, like card art */
+  --rar-totw-a: #3a3426; --rar-totw-b: #0d0d10; --rar-totw-ink: #f2d27a; --rar-totw-hi: #f2d27a;
+  --rar-icon-a: #f6efd9; --rar-icon-b: #c2a96c; --rar-icon-ink: #2b2410; --rar-icon-hi: #f3e2b0;
+  --rar-toty-a: #1a3f9c; --rar-toty-b: #06143a; --rar-toty-ink: #ffe6a3; --rar-toty-hi: #7fb2ff;
+  --rar-hero-a: #5a45d6; --rar-hero-b: #140e46; --rar-hero-ink: #ffffff; --rar-hero-hi: #a796ff;
+  --rar-performer-a: #b6408c; --rar-performer-b: #3d0f4f; --rar-performer-ink: #ffffff; --rar-performer-hi: #e483c4;
+  --rar-hof-a: #b07a4c; --rar-hof-b: #3a2414; --rar-hof-ink: #fbe3c6; --rar-hof-hi: #d39b68;
+  --rar-tots-a: #2a7fd0; --rar-tots-b: #062546; --rar-tots-ink: #ffffff; --rar-tots-hi: #59b6ff;
+  --rar-evo-a: #2a9c84; --rar-evo-b: #0a2c27; --rar-evo-ink: #ffffff; --rar-evo-hi: #4fd1b0;
+  --rar-champions-a: #c21a2a; --rar-champions-b: #2a0306; --rar-champions-ink: #ffffff; --rar-champions-hi: #ff5c66;
+  --rar-glory-a: #d6b25c; --rar-glory-b: #0f4f4f; --rar-glory-ink: #ffffff; --rar-glory-hi: #e6c46b;
+  --rar-flashback-a: #7c9aa3; --rar-flashback-b: #1f2c31; --rar-flashback-ink: #f3e6c8; --rar-flashback-hi: #a8c7cf;
+  --rar-birthday-a: #f05a9a; --rar-birthday-b: #4a1a8c; --rar-birthday-ink: #ffffff; --rar-birthday-hi: #ff8cc3;
+  --rar-uefa-a: #2a52b8; --rar-uefa-b: #050b26; --rar-uefa-ink: #ffffff; --rar-uefa-hi: #6fa0ff;
+  --rar-potm-pl-a: #00b46e; --rar-potm-pl-b: #3d195b; --rar-potm-pl-ink: #ffffff; --rar-potm-pl-hi: #2ff59a;
+  --rar-potm-bl-a: #e3262f; --rar-potm-bl-b: #3e0005; --rar-potm-bl-ink: #ffffff; --rar-potm-bl-hi: #ff5a63;
+  --rar-potm-laliga-a: #ff6a3d; --rar-potm-laliga-b: #6b1000; --rar-potm-laliga-ink: #ffffff; --rar-potm-laliga-hi: #ff8a6e;
+  --rar-potm-seriea-a: #1f8fe0; --rar-potm-seriea-b: #00244a; --rar-potm-seriea-ink: #ffffff; --rar-potm-seriea-hi: #5fbfff;
+  --rar-potm-ligue1-a: #c7cc1a; --rar-potm-ligue1-b: #091c3e; --rar-potm-ligue1-ink: #ffffff; --rar-potm-ligue1-hi: #e3e85a;
+  --rar-potm-ligaf-a: #e2427b; --rar-potm-ligaf-b: #4e1675; --rar-potm-ligaf-ink: #ffffff; --rar-potm-ligaf-hi: #f27cb0;
+  --rar-potm-eredivisie-a: #ff7a1a; --rar-potm-eredivisie-b: #4a1c00; --rar-potm-eredivisie-ink: #ffffff; --rar-potm-eredivisie-hi: #ff9e57;
+  --rar-potm-a: #7a6cff; --rar-potm-b: #1f1747; --rar-potm-ink: #ffffff; --rar-potm-hi: #a99cff;
+  --rar-excellence-a: #dfe5f0; --rar-excellence-b: #59637a; --rar-excellence-ink: #10141c; --rar-excellence-hi: #dfe5f0;
+  --rar-showdown-a: #d1202f; --rar-showdown-b: #1c3fae; --rar-showdown-ink: #ffffff; --rar-showdown-hi: #ff7b84;
+  --rar-futurestars-a: #ff3fd0; --rar-futurestars-b: #12082e; --rar-futurestars-ink: #ffffff; --rar-futurestars-hi: #ff7ae2;
+  --rar-ads-a: #ff6f9f; --rar-ads-b: #f2eef4; --rar-ads-ink: #1a0a12; --rar-ads-hi: #ff8db3;
+  --rar-foundations-a: #36c47b; --rar-foundations-b: #0c3f27; --rar-foundations-ink: #ffffff; --rar-foundations-hi: #5fe39a;
+  --rar-moments-a: #c8d6f2; --rar-moments-b: #4e6db8; --rar-moments-ink: #0d1426; --rar-moments-hi: #a9c1f2;
+  --rar-otw-a: #2fb6ff; --rar-otw-b: #0a1748; --rar-otw-ink: #ffffff; --rar-otw-hi: #62d2ff;
+  --rar-special-a: #6d4cff; --rar-special-b: #2a1a7a; --rar-special-ink: #ffffff; --rar-special-hi: #9a7cff;
+}
+
+/* Midnight – FC27 navy with violet glow (default) */
+:root[data-theme="midnight"] {
+  --bg: rgba(9, 13, 30, 0.94);
+  --bg-2: rgba(20, 27, 56, 0.9);
+  --menu: #141b38;         /* opaque: native dropdown lists can't show through */
+  --surface: rgba(31, 40, 78, 0.72);
+  --surface-hi: rgba(48, 60, 112, 0.85);
+  --line: rgba(140, 160, 255, 0.16);
+  --text: #eef1ff;
+  --muted: #8f9ac4;
+  --accent: #8d6bff;
+  --accent-2: #3fe0b8;
+  --on-accent: #ffffff;
+  --glow: radial-gradient(1200px 500px at 85% -10%, rgba(141, 107, 255, 0.28), transparent 60%),
+    radial-gradient(800px 400px at -10% 110%, rgba(63, 224, 184, 0.12), transparent 60%);
+}
+
+/* Pitch – the green of the in-game club/gallery screens */
+:root[data-theme="pitch"] {
+  --bg: rgba(6, 22, 14, 0.94);
+  --bg-2: rgba(10, 36, 22, 0.9);
+  --menu: #0a2416;         /* opaque: native dropdown lists can't show through */
+  --surface: rgba(18, 56, 34, 0.7);
+  --surface-hi: rgba(28, 82, 50, 0.85);
+  --line: rgba(160, 255, 200, 0.14);
+  --text: #effff4;
+  --muted: #8fb79e;
+  --accent: #5df08f;
+  --accent-2: #f2d35b;
+  --on-accent: #04210f;
+  --glow: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.025) 0 80px, transparent 80px 160px),
+    radial-gradient(900px 500px at 80% -20%, rgba(93, 240, 143, 0.18), transparent 60%);
+}
+
+/* Gold – dark with Ultimate Team gold */
+:root[data-theme="gold"] {
+  --bg: rgba(14, 12, 8, 0.95);
+  --bg-2: rgba(28, 24, 14, 0.92);
+  --menu: #1c180e;         /* opaque: native dropdown lists can't show through */
+  --surface: rgba(44, 37, 20, 0.72);
+  --surface-hi: rgba(70, 58, 28, 0.85);
+  --line: rgba(242, 205, 110, 0.18);
+  --text: #fff8e6;
+  --muted: #b8a67a;
+  --accent: #f2c94c;
+  --accent-2: #3fe0b8;
+  --on-accent: #1d1500;
+  --glow: radial-gradient(1000px 500px at 90% -20%, rgba(242, 201, 76, 0.22), transparent 60%);
+}
+
+/* Glass – minimal, light-on-blur */
+:root[data-theme="glass"] {
+  --bg: rgba(18, 20, 26, 0.72);
+  --bg-2: rgba(255, 255, 255, 0.06);
+  --menu: #1b1e26;         /* opaque: native dropdown lists can't show through */
+  --surface: rgba(255, 255, 255, 0.07);
+  --surface-hi: rgba(255, 255, 255, 0.14);
+  --line: rgba(255, 255, 255, 0.12);
+  --text: #ffffff;
+  --muted: #a7adbd;
+  --accent: #ffffff;
+  --accent-2: #3fe0b8;
+  --on-accent: #0d0f14;
+  --glow: none;
+}

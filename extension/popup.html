@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      body { margin: 0; width: 280px; background: #0f1420; color: #e8ecf5; font: 13px "Segoe UI", sans-serif; }
+      main { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+      h1 { font-size: 16px; margin: 0; }
+      p { margin: 0; color: #8b95ad; }
+      section { display: flex; flex-direction: column; gap: 10px; }
+      input { font: 600 22px "Segoe UI", sans-serif; letter-spacing: 0.3em; text-align: center; padding: 8px;
+              background: #1f2840; color: #e8ecf5; border: 1px solid #1f2840; border-radius: 8px; }
+      input:focus { outline: none; border-color: #f5c542; }
+      button { font: inherit; font-weight: 600; padding: 9px; border-radius: 8px; border: 0; cursor: pointer;
+               background: #f5c542; color: #1a1a1a; }
+      button.secondary { background: #1f2840; color: #e8ecf5; font-weight: 400; }
+      .status { display: flex; align-items: center; gap: 8px; color: #e8ecf5; }
+      .dot { width: 8px; height: 8px; border-radius: 50%; background: #8b95ad; }
+      .dot.on { background: #3ccf8e; }
+      .error { color: #ff6b6b; }
+      [hidden] { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>FC-Tracker <small id="version" style="color:#8b95ad;font-weight:400;font-size:11px"></small></h1>
+      <div class="status"><span id="dot" class="dot"></span><span id="status" data-i18n="checking">Checking …</span></div>
+
+      <section id="pair" hidden>
+        <p data-i18n="enterCode"></p>
+        <input id="code" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="off" />
+        <button id="pairBtn" data-i18n="connect"></button>
+      </section>
+
+      <button id="unpairBtn" class="secondary" data-i18n="disconnect" hidden></button>
+      <p id="error" class="error"></p>
+    </main>
+    <script src="i18n.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>

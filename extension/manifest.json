@@ -1,0 +1,53 @@
+{
+  "manifest_version": 3,
+  "name": "FC-Tracker",
+  "version": "0.10.4",
+  "description": "__MSG_extDescription__",
+  "default_locale": "en",
+  "icons": {
+    "32": "icons/32.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
+  "permissions": [
+    "storage",
+    "alarms",
+    "unlimitedStorage"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1:47827/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "FC-Tracker",
+    "default_icon": {
+      "32": "icons/32.png",
+      "48": "icons/48.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.ea.com/*ea-sports-fc/ultimate-team/web-app/*"
+      ],
+      "js": [
+        "hook.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://www.ea.com/*ea-sports-fc/ultimate-team/web-app/*"
+      ],
+      "js": [
+        "i18n.js",
+        "relay.js"
+      ],
+      "run_at": "document_start"
+    }
+  ]
+}

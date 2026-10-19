@@ -1,0 +1,27 @@
+/* Website demo only: a drawn stand-in for the FC 27 menu behind the overlay (no EA artwork). */
+html.demo,
+html.demo body {
+  background:
+    radial-gradient(900px 520px at 78% 18%, rgba(70, 120, 255, 0.35), transparent 60%),
+    radial-gradient(700px 480px at 12% 90%, rgba(40, 220, 170, 0.18), transparent 60%),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.025) 0 90px, transparent 90px 180px),
+    linear-gradient(160deg, #0b1636, #050a1c 60%, #040714) !important;
+}
+
+/* controller hint (DemoPad): bottom right, above the overlay's key legend */
+.demo-pad {
+  position: fixed; right: 22px; bottom: 74px; z-index: 50; display: flex; align-items: center; gap: 10px; max-width: 560px;
+  padding: 10px 16px; font: 600 13px/1.35 var(--font-body); color: var(--text);
+  background: rgba(20, 27, 56, 0.96); box-shadow: inset 3px 0 0 var(--accent), 0 10px 30px rgba(0, 0, 0, 0.45);
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+  animation: demo-pad-in 400ms var(--ease) both;
+}
+.demo-pad b { color: var(--accent-2); font-family: var(--font-display); font-size: 15px; letter-spacing: 0.02em; margin-right: 4px; }
+.demo-pad.on { box-shadow: inset 3px 0 0 var(--accent-2), 0 10px 30px rgba(0, 0, 0, 0.45); }
+.demo-pad.on:not(.fresh) { padding: 7px 12px; font-size: 12px; color: var(--muted); }
+.demo-pad-icon { width: 22px; height: 22px; flex: none; fill: var(--accent); }
+.demo-pad.on .demo-pad-icon { fill: var(--accent-2); }
+.demo-pad:not(.on) .demo-pad-icon { animation: demo-pad-pulse 1.8s ease-in-out infinite; }
+@keyframes demo-pad-in { from { opacity: 0; transform: translateY(10px); } }
+@keyframes demo-pad-pulse { 50% { opacity: 0.4; } }
+@media (prefers-reduced-motion: reduce) { .demo-pad, .demo-pad-icon { animation: none !important; } }

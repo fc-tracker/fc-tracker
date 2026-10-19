@@ -1,0 +1,81 @@
+[package]
+name = "fc-tracker"
+version = "0.1.46"
+description = "Launcher + overlay for EA SPORTS FC 27"
+authors = ["fc-tracker contributors"]
+edition = "2021"
+
+[lib]
+# The `_lib` suffix avoids a lib/bin name clash on Windows (cargo#8519).
+name = "fc_tracker_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-global-shortcut = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+gilrs = "0.11"
+tiny_http = "0.12"
+# Windows built-in OCR + image decoding for the in-game Gallery scan (no extra model download).
+windows = { version = "0.62", features = [
+  "Foundation",
+  "Foundation_Collections",
+  "Globalization",
+  "Graphics_Imaging",
+  "Media_Ocr",
+  "Storage",
+  "Storage_Streams",
+  "Win32_Foundation",
+  "Win32_Graphics_Dwm",
+  "Win32_System_Diagnostics_ToolHelp",
+  # links (ShellExecuteW) and the user's own registry keys (fctracker://, Start with Windows)
+  "Win32_UI_Shell",
+  "Win32_System_Registry",
+  # tracking speed presets: RAM size and battery state
+  "Win32_System_SystemInformation",
+  "Win32_System_Power",
+  "Win32_Security",
+  "Win32_Graphics_Gdi",
+  "Win32_System_ProcessStatus",
+  "Win32_System_Threading",
+  "Win32_UI_HiDpi",
+  "Win32_UI_WindowsAndMessaging",
+  # one-frame window capture of the game (wgc.rs)
+  "Graphics",
+  "Graphics_Capture",
+  "Graphics_DirectX",
+  "Graphics_DirectX_Direct3D11",
+  "Win32_Graphics_Direct3D",
+  "Win32_Graphics_Direct3D11",
+  "Win32_Graphics_Dxgi",
+  "Win32_Graphics_Dxgi_Common",
+  "Win32_System_WinRT",
+  "Win32_System_WinRT_Direct3D11",
+  "Win32_System_WinRT_Graphics_Capture",
+] }
+getrandom = "0.3"
+tauri-plugin-single-instance = "2"
+tauri-plugin-updater = "2"
+
+# `npm run tauri dev` is how the app is run day to day: unoptimised, the screen reading and
+# the lineup optimiser were ~10× slower (overview 5.5 s instead of 0.5 s) and pages were missed.
+[profile.dev]
+opt-level = 2
+# Incremental builds with optimisation intermittently fail to link on MSVC ("unresolved external
+# symbol anon.…llvm…", seen twice on 2026-10-14) – a clean, slower rebuild is the reliable one.
+incremental = false
+
+[profile.dev.package."*"]
+opt-level = 2
+
+[profile.release]
+# Small binary and low resource usage are requirements.
+lto = true
+codegen-units = 1
+opt-level = "s"
+strip = true
+panic = "abort"

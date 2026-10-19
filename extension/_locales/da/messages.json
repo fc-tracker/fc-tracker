@@ -1,0 +1,109 @@
+{
+  "extDescription": {
+    "message": "Sender din Ultimate Team-klub fra Web App'en til FC-Tracker-appen på din egen computer."
+  },
+  "checking": {
+    "message": "Tjekker …"
+  },
+  "appNotRunning": {
+    "message": "Appen kører ikke"
+  },
+  "connected": {
+    "message": "Forbundet til appen"
+  },
+  "notConnected": {
+    "message": "Ikke forbundet"
+  },
+  "enterCode": {
+    "message": "Indtast koden, der vises i FC-Tracker-appen:"
+  },
+  "connect": {
+    "message": "Forbind"
+  },
+  "disconnect": {
+    "message": "Afbryd forbindelse"
+  },
+  "wrongCode": {
+    "message": "Forkert kode – prøv igen"
+  },
+  "error": {
+    "message": "Fejl"
+  },
+  "badgeSending": {
+    "message": "FC-Tracker: sender til appen …"
+  },
+  "badgeSynced": {
+    "message": "FC-Tracker: $COUNT$ spillere synket ✓",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "badgeNoApp": {
+    "message": "FC-Tracker: appen kører ikke eller er ikke forbundet"
+  },
+  "badgeNotPaired": {
+    "message": "FC-Tracker: ikke forbundet – klik på extension-ikonet"
+  },
+  "syncNow": {
+    "message": "Synk klub"
+  },
+  "badgeReady": {
+    "message": "FC-Tracker: klar"
+  },
+  "badgeWaiting": {
+    "message": "FC-Tracker: venter på Web App’en …"
+  },
+  "badgeProgress": {
+    "message": "FC-Tracker: $COUNT$ spillere læst …",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "badgeError": {
+    "message": "FC-Tracker: synkroniseringen stoppede ($ERROR$) – genindlæs Web App’en for at prøve igen.",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "bgNoResponse": {
+    "message": "Extensionens baggrund svarer ikke – genindlæs extensionen"
+  },
+  "badgeGallery": {
+    "message": "FC-Tracker: læser Gallery-sæt $DONE$ af $TOTAL$ …",
+    "placeholders": {
+      "done": {
+        "content": "$1"
+      },
+      "total": {
+        "content": "$2"
+      }
+    }
+  },
+  "badgeAborted": {
+    "message": "FC-Tracker: du gik ind i Ultimate Team – sync stoppet, lukker Web App'en"
+  },
+  "badgeSaved": {
+    "message": "FC-Tracker: gemt ✓ – appen henter det, næste gang den kører"
+  },
+  "openApp": {
+    "message": "Åbn FC-Tracker"
+  },
+  "badgeAppClosed": {
+    "message": "FC-Tracker: appen er lukket – din sync gemmes. Åbn appen for den bedste sync"
+  },
+  "badgeDelivered": {
+    "message": "FC-Tracker: afleveret til appen ✓"
+  },
+  "badgeSignIn": {
+    "message": "FC-Tracker – handling påkrævet: log ind i Web App’en – så starter synkroniseringen af sig selv."
+  },
+  "badgeNotReady": {
+    "message": "FC-Tracker – handling påkrævet: Web App’en indlæste ikke din klub. Tjek at du er logget ind, og genindlæs siden."
+  }
+}

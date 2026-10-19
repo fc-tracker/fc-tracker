@@ -1,0 +1,48 @@
+/* "$ Support me" button + QR panel (overlay top bar and launcher header). Tokens only. */
+
+.support { position: relative; display: inline-flex; }
+
+.support-btn {
+  all: unset; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 7px;
+  font: 700 12px/1 var(--font-body); padding: 6px 14px 6px 8px;
+  color: var(--support-gold);
+  background: color-mix(in srgb, var(--support-gold) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--support-gold) 45%, transparent);
+  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.support-btn:hover, .support-btn:focus-visible, .support-btn.active {
+  background: var(--support-gold); color: var(--support-ink);
+}
+.support-btn:hover .support-coin, .support-btn:focus-visible .support-coin, .support-btn.active .support-coin { background: var(--support-ink); color: var(--support-gold); }
+.support-coin {
+  width: 16px; height: 16px; display: grid; place-items: center; flex: none;
+  font: 800 11px/1 var(--font-display); color: var(--support-ink);
+  background: radial-gradient(circle at 35% 30%, var(--support-gold-hi), var(--support-gold));
+  border-radius: 50%;
+}
+
+.support-panel {
+  position: fixed; z-index: 1000; font-family: var(--font-body);
+  width: 236px; padding: 16px 16px 14px;
+  display: grid; gap: 8px; justify-items: center; text-align: center;
+  color: var(--text); background: var(--menu, var(--bg));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--support-gold) 35%, transparent), 0 18px 40px rgba(0, 0, 0, 0.45);
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+  animation: support-in 220ms var(--ease) both;
+}
+.support-title { font: 700 20px/1 var(--font-display); letter-spacing: 0.02em; text-transform: uppercase; color: var(--support-gold); }
+.support-panel p { margin: 0; font-size: 12px; line-height: 1.45; color: var(--muted); }
+.support-qr { width: 150px; height: 150px; padding: 6px; background: #fff; }
+.support-qr svg { display: block; width: 100%; height: 100%; }
+.support-panel .support-scan { color: var(--text); font-weight: 700; }
+.support-open {
+  all: unset; cursor: pointer; margin-top: 2px;
+  font: 700 12px/1 var(--font-body); color: var(--support-gold);
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.support-open:hover, .support-open:focus-visible { color: var(--support-gold-hi); }
+
+@keyframes support-in { from { transform: translateY(-6px); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .support-panel { animation: none; } }

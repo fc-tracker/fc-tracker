@@ -1,0 +1,270 @@
+// Service worker: the only part that talks to the app on 127.0.0.1.
+// When the app isn't running, what the Web App delivers is saved here (on this PC, in the
+// extension's own storage) and handed to the app the next time it runs – nothing gets lost.
+const APP = "http://127.0.0.1:47827";
+
+async function token() {
+  const { token } = await chrome.storage.local.get("token");
+  return token;
+}
+
+async function call(path, { method = "GET", body } = {}) {
+  // The version lets the app tell the user when a newer extension is out.
+  const headers = { "X-FCT-Version": chrome.runtime.getManifest().version, ...(body ? { "Content-Type": "application/json" } : {}) };
+  const t = await token();
+  if (t) headers["X-FCT-Token"] = t;
+  const res = await fetch(APP + path, { method, headers, body: body && JSON.stringify(body) });
+  const data = await res.json().catch(() => ({}));
+  return { ok: res.ok, status: res.status, ...data };
+}
+
+// ---------- i18n: follow the app's language (English by default), not Chrome's ----------
+
+const LOCALES = ["en", "es", "fr", "de", "da"];
+const messageCache = new Map();
+
+async function loadMessages(locale) {
+  if (!messageCache.has(locale)) {
+    const res = await fetch(chrome.runtime.getURL(`_locales/${locale}/messages.json`));
+    messageCache.set(locale, await res.json());
+  }
+  return messageCache.get(locale);
+}
+
+async function currentLocale() {
+  const { locale } = await chrome.storage.local.get("locale");
+  return LOCALES.includes(locale) ? locale : "en";
+}
+
+/** Messages for the app's language with English as fallback for missing keys. */
+async function messages() {
+  const locale = await currentLocale();
+  const en = await loadMessages("en");
+  return { locale, messages: locale === "en" ? en : { ...en, ...(await loadMessages(locale)) } };
+}
+
+// ---------- saved syncs (app not running) ----------
+// Each response is one storage key ("q:…"); "qIndex" lists them in order with what we need to
+// decide without loading them: the sync they belong to (batch), the time and the size.
+// A batch is one active sync (club + Gallery reads); passive responses have no batch.
+
+const MAX_SAVED_BYTES = 80 * 1024 * 1024; // a full sync is ~5–6 MB; keep the newest
+let chain = Promise.resolve();
+/** Runs queue operations one after another (messages arrive in parallel). */
+const serial = (fn) => (chain = chain.then(fn, fn));
+
+async function queueIndex() {
+  const { qIndex } = await chrome.storage.local.get("qIndex");
+  return Array.isArray(qIndex) ? qIndex : [];
+}
+
+async function currentBatch() {
+  const { batch } = await chrome.storage.local.get("batch");
+  return batch ?? null;
+}
+
+function enqueue(entry) {
+  return serial(async () => {
+    const index = await queueIndex();
+    const key = `q:${entry.at}:${Math.random().toString(36).slice(2, 8)}`;
+    const size = entry.done ? 64 : JSON.stringify(entry.body ?? null).length;
+    index.push({ key, at: entry.at, batch: entry.batch ?? null, done: !!entry.done, size });
+    // Over the cap: drop the oldest saved responses first.
+    let total = index.reduce((n, e) => n + e.size, 0);
+    const drop = [];
+    while (total > MAX_SAVED_BYTES && index.length > 1) {
+      const e = index.shift();
+      total -= e.size;
+      drop.push(e.key);
+    }
+    if (drop.length) await chrome.storage.local.remove(drop);
+    await chrome.storage.local.set({ [key]: entry, qIndex: index });
+  });
+}
+
+/** A new sync starts: an older saved sync that was never delivered is replaced by it. */
+function startBatch() {
+  return serial(async () => {
+    const batch = Date.now();
+    const index = await queueIndex();
+    const old = index.filter((e) => e.batch);
+    if (old.length) await chrome.storage.local.remove(old.map((e) => e.key));
+    await chrome.storage.local.set({ batch, qIndex: index.filter((e) => !e.batch) });
+    return batch;
+  });
+}
+
+/**
+ * Hands everything saved to the app, oldest first, with the time it was really read.
+ * A saved sync older than the app's own last sync is outdated and dropped.
+ */
+function flush() {
+  return serial(async () => {
+    let index = await queueIndex();
+    if (!index.length) return;
+    let ping;
+    try {
+      ping = await call("/ping");
+    } catch {
+      return; // app not running – keep everything
+    }
+    if (!ping.authorized) return;
+    // Anything read before the app's own last sync is older than what the app knows – e.g. a
+    // player sold since then would come back. Such data is dropped, synced or passive alike.
+    const syncedAt = Number(ping.synced_at ?? 0);
+    const outdated = new Set(index.filter((e) => e.batch && e.batch <= syncedAt).map((e) => e.batch));
+    for (const e of [...index]) {
+      if (!(e.batch && outdated.has(e.batch)) && e.at > syncedAt) {
+        const stored = (await chrome.storage.local.get(e.key))[e.key];
+        if (stored) {
+          let res;
+          try {
+            res = stored.done
+              ? await call("/sync-done", { method: "POST", body: { at: stored.at } })
+              : await call("/capture", { method: "POST", body: { url: stored.url, body: stored.body, at: stored.at } });
+          } catch {
+            return; // the app went away: the rest stays saved
+          }
+          if (!res.ok && res.status !== 400) return;
+        }
+      }
+      await chrome.storage.local.remove(e.key);
+      index = index.filter((x) => x.key !== e.key);
+      await chrome.storage.local.set({ qIndex: index });
+    }
+  });
+}
+
+async function hasSaved() {
+  return (await queueIndex()).length > 0;
+}
+
+chrome.runtime.onMessage.addListener((msg, sender, reply) => {
+  (async () => {
+    try {
+      switch (msg.type) {
+        case "i18n":
+          return reply(await messages());
+        case "ping": {
+          const res = await call("/ping");
+          if (LOCALES.includes(res.locale)) await chrome.storage.local.set({ locale: res.locale });
+          if (res.authorized) flush();
+          return reply(res);
+        }
+        case "status": {
+          const { lastSyncAt } = await chrome.storage.local.get("lastSyncAt");
+          return reply({ paired: !!(await token()), lastSyncAt: lastSyncAt ?? 0, saved: await hasSaved() });
+        }
+        case "pair": {
+          const res = await call("/pair", { method: "POST", body: { code: msg.code } });
+          if (res.ok && res.token) await chrome.storage.local.set({ token: res.token });
+          if (res.ok) {
+            await showPairingHint(false);
+            flush();
+          }
+          return reply({ ok: res.ok, error: res.error });
+        }
+        case "gallerySets": {
+          // Which Gallery sets to read comes from the app; the last list is kept for syncs
+          // that run while the app is closed.
+          try {
+            const res = await call("/gallery-sets");
+            if (res.ok && Array.isArray(res.sets)) await chrome.storage.local.set({ gallerySets: res.sets });
+            if (res.ok) return reply(res);
+          } catch {}
+          const { gallerySets } = await chrome.storage.local.get("gallerySets");
+          return reply({ ok: true, sets: Array.isArray(gallerySets) ? gallerySets : [], cached: true });
+        }
+        case "syncBlocked":
+          // The Web App isn't signed in: the app tells the user on top of the game.
+          try {
+            return reply(await call("/sync-blocked", { method: "POST", body: { reason: msg.reason } }));
+          } catch {
+            return reply({ ok: false, error: "app_unreachable" });
+          }
+        case "syncStart":
+          return reply({ batch: await startBatch() });
+        case "capture": {
+          const at = Date.now();
+          try {
+            if (await hasSaved()) await flush(); // keep the order: older saved data first
+            const res = await call("/capture", { method: "POST", body: { url: msg.url, body: msg.body, at } });
+            if (res.ok || res.status === 401) return reply(res);
+          } catch {}
+          if (!(await token())) return reply({ ok: false, error: "app_unreachable" });
+          await enqueue({ url: msg.url, body: msg.body, at, batch: msg.url.startsWith("fct://") ? await currentBatch() : null });
+          return reply({ ok: true, queued: true, items: 0 });
+        }
+        case "done": {
+          const at = Date.now();
+          try {
+            if (await hasSaved()) await flush();
+            const res = await call("/sync-done", { method: "POST", body: { at } });
+            if (res.ok) {
+              await chrome.storage.local.set({ lastSyncAt: at });
+              reply({ ok: true, players: res.player_count });
+              // Close the Web App tab so its session does not clash with the game.
+              if (msg.closeTab && sender.tab?.id) setTimeout(() => chrome.tabs.remove(sender.tab.id), 1500);
+              return;
+            }
+          } catch {}
+          if (!(await token())) return reply({ ok: false, error: "app_unreachable" });
+          await enqueue({ done: true, at, batch: await currentBatch() });
+          await chrome.storage.local.set({ lastSyncAt: at });
+          return reply({ ok: true, queued: true });
+        }
+        case "abortSync":
+          // The game entered Ultimate Team: close the Web App so the game keeps the session.
+          if (sender.tab?.id) chrome.tabs.remove(sender.tab.id);
+          return reply({ ok: true });
+        case "unpair":
+          await chrome.storage.local.remove("token");
+          return reply({ ok: true });
+        default:
+          return reply({ ok: false, error: "unknown_message" });
+      }
+    } catch (e) {
+      console.warn("fc-tracker: app unreachable", e);
+      reply({ ok: false, error: "app_unreachable", detail: String(e?.message ?? e) });
+    }
+  })();
+  return true; // replies asynchronously
+});
+
+// ---------- check in with the app: on install/start and every minute while Chrome runs ----------
+// The app can only tell "connected" from "needs the code" when the extension speaks up, so it
+// does so on its own – the launcher then shows the right state before the user starts a sync.
+// The same check delivers anything saved while the app was closed (within a minute of its start).
+
+/**
+ * Not connected yet: a small "!" on the toolbar icon says "click me" – the popup holds the
+ * code field. Never a tab of its own: opening pages by itself felt like malware (user, 2026-10-15).
+ */
+async function showPairingHint(needed) {
+  await chrome.action.setBadgeText({ text: needed ? "!" : "" });
+  if (needed) await chrome.action.setBadgeBackgroundColor({ color: "#f5c542" });
+}
+
+async function checkIn() {
+  try {
+    const res = await call("/ping");
+    if (LOCALES.includes(res.locale)) await chrome.storage.local.set({ locale: res.locale });
+    await showPairingHint(!res.authorized);
+    if (res.authorized) await flush();
+    return res;
+  } catch {
+    await showPairingHint(!(await token()));
+    return null; // app not running
+  }
+}
+
+// Every 30 s (the shortest Chrome allows): the launcher sees quickly when the extension is gone.
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.alarms.create("check-in", { periodInMinutes: 0.5 });
+  checkIn();
+});
+chrome.runtime.onStartup.addListener(() => {
+  chrome.alarms.create("check-in", { periodInMinutes: 0.5 });
+  checkIn();
+});
+chrome.alarms.onAlarm.addListener((a) => a.name === "check-in" && checkIn());

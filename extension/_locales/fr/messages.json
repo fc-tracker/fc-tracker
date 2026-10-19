@@ -1,0 +1,109 @@
+{
+  "extDescription": {
+    "message": "Envoie ton club Ultimate Team depuis la Web App vers l'application FC-Tracker sur ton propre ordinateur."
+  },
+  "checking": {
+    "message": "Vérification …"
+  },
+  "appNotRunning": {
+    "message": "L'application n'est pas lancée"
+  },
+  "connected": {
+    "message": "Connectée à l'application"
+  },
+  "notConnected": {
+    "message": "Non connectée"
+  },
+  "enterCode": {
+    "message": "Saisis le code affiché dans l'application FC-Tracker :"
+  },
+  "connect": {
+    "message": "Connecter"
+  },
+  "disconnect": {
+    "message": "Déconnecter"
+  },
+  "wrongCode": {
+    "message": "Code incorrect – réessaie"
+  },
+  "error": {
+    "message": "Erreur"
+  },
+  "badgeSending": {
+    "message": "FC-Tracker : envoi à l'application …"
+  },
+  "badgeSynced": {
+    "message": "FC-Tracker : $COUNT$ joueurs synchronisés ✓",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "badgeNoApp": {
+    "message": "FC-Tracker : l'application n'est pas lancée ou pas connectée"
+  },
+  "badgeNotPaired": {
+    "message": "FC-Tracker : non connectée – clique sur l'icône de l'extension"
+  },
+  "syncNow": {
+    "message": "Synchroniser le club"
+  },
+  "badgeReady": {
+    "message": "FC-Tracker : prêt"
+  },
+  "badgeWaiting": {
+    "message": "FC-Tracker : en attente de la Web App …"
+  },
+  "badgeProgress": {
+    "message": "FC-Tracker : $COUNT$ joueurs lus …",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "badgeError": {
+    "message": "FC-Tracker : la synchronisation s’est arrêtée ($ERROR$) – recharge la Web App pour réessayer.",
+    "placeholders": {
+      "error": {
+        "content": "$1"
+      }
+    }
+  },
+  "bgNoResponse": {
+    "message": "L’arrière-plan de l’extension ne répond pas – recharge l’extension"
+  },
+  "badgeGallery": {
+    "message": "FC-Tracker : lecture du set Gallery $DONE$ sur $TOTAL$ …",
+    "placeholders": {
+      "done": {
+        "content": "$1"
+      },
+      "total": {
+        "content": "$2"
+      }
+    }
+  },
+  "badgeAborted": {
+    "message": "FC-Tracker : vous êtes entré dans Ultimate Team – synchro arrêtée, fermeture de la Web App"
+  },
+  "badgeSaved": {
+    "message": "FC-Tracker : enregistré ✓ – l’app le récupère à son prochain lancement"
+  },
+  "openApp": {
+    "message": "Ouvrir FC-Tracker"
+  },
+  "badgeAppClosed": {
+    "message": "FC-Tracker : l’app est fermée – votre sync est enregistrée. Ouvrez l’app pour la meilleure sync"
+  },
+  "badgeDelivered": {
+    "message": "FC-Tracker : transmis à l’app ✓"
+  },
+  "badgeSignIn": {
+    "message": "FC-Tracker – action requise : connecte-toi à la Web App – la synchronisation démarre ensuite toute seule."
+  },
+  "badgeNotReady": {
+    "message": "FC-Tracker – action requise : la Web App n’a pas chargé ton club. Vérifie ta connexion, puis recharge la page."
+  }
+}
