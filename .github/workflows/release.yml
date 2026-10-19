@@ -1,6 +1,7 @@
-# A release for every version tag: the installer and the extension from fc-tracker.com, checked
-# against the SHA-256 the website publishes, with the VirusTotal scans in the notes. Created by
-# GitHub Actions, so a release is never attributed to a personal account.
+# Every version tag is built here, by GitHub, from this repository's code – the installer people
+# download from fc-tracker.com is this build. Each file gets a build attestation: a signed record
+# (GitHub + Sigstore) that the file with this SHA-256 was built from this tag by this workflow.
+# Check a download yourself:  gh attestation verify FC-Tracker-setup-<version>.exe --repo fc-tracker/fc-tracker
 name: Release
 
 on:
@@ -8,52 +9,73 @@ on:
     tags: ["v*"]
 
 permissions:
-  contents: write
+  contents: write # create the release
+  id-token: write # sign the attestations
+  attestations: write
 
 jobs:
-  release:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: windows-latest
     steps:
-      - name: Download the official files and check them
-        env:
-          TAG: ${{ github.ref_name }}
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build the installer
+        shell: pwsh
         run: |
-          set -euo pipefail
-          version="${TAG#v}"
-          base="https://www.fc-tracker.com/downloads"
-          curl -fsSL "$base/latest.json" -o latest.json
-          site_version=$(jq -r .version latest.json)
-          if [ "$site_version" != "$version" ]; then
-            echo "fc-tracker.com offers $site_version, the tag is $version – nothing published" >&2
-            exit 1
-          fi
-          for part in app ext; do
-            file=$(jq -r ".$part.file" latest.json)
-            want=$(jq -r ".$part.sha256" latest.json)
-            curl -fsSL "$base/$file" -o "$file"
-            got=$(sha256sum "$file" | cut -d' ' -f1)
-            if [ "$got" != "$want" ]; then
-              echo "$file: SHA-256 $got does not match the website ($want)" >&2
-              exit 1
-            fi
-          done
-          {
-            echo "FC-Tracker $version – the same files as on https://www.fc-tracker.com/download."
-            echo
-            echo "| File | SHA-256 | VirusTotal |"
-            echo "|---|---|---|"
-            for part in app ext; do
-              echo "| $(jq -r ".$part.file" latest.json) | \`$(jq -r ".$part.sha256" latest.json)\` | [scan]($(jq -r ".$part.virustotal.url // \"https://www.virustotal.com/gui/file/\" + .$part.sha256" latest.json)) |"
-            done
-            echo
-            echo "Installed apps update themselves from fc-tracker.com; updates are signed with the project's key."
-          } > notes.md
+          # the in-app updater signature is added afterwards by the maintainer's key, which never
+          # leaves their PC – this build only makes the installer itself
+          '{ "bundle": { "createUpdaterArtifacts": false } }' | Set-Content -Encoding utf8 ci.conf.json
+          npx tauri build --config ci.conf.json
+
+      - name: Name the files
+        id: files
+        shell: pwsh
+        run: |
+          $version = (Get-Content src-tauri/tauri.conf.json | ConvertFrom-Json).version
+          $extVersion = (Get-Content extension/manifest.json | ConvertFrom-Json).version
+          if ("v$version" -ne "${{ github.ref_name }}") { throw "tag ${{ github.ref_name }} does not match version $version" }
+          New-Item -ItemType Directory -Force out | Out-Null
+          Copy-Item "src-tauri/target/release/bundle/nsis/FC-Tracker_${version}_x64-setup.exe" "out/FC-Tracker-setup-$version.exe"
+          # the extension folder as a zip, its contents at the top level ("Load unpacked" works on it)
+          Push-Location extension
+          tar -a -c -f "../out/FC-Tracker-extension-$extVersion.zip" (Get-ChildItem -Name)
+          Pop-Location
+          "app=out/FC-Tracker-setup-$version.exe" >> $env:GITHUB_OUTPUT
+          "ext=out/FC-Tracker-extension-$extVersion.zip" >> $env:GITHUB_OUTPUT
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Attest
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            ${{ steps.files.outputs.app }}
+            ${{ steps.files.outputs.ext }}
 
       - name: Publish the release
+        shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
         run: |
-          set -euo pipefail
-          files=$(jq -r '.app.file, .ext.file' latest.json)
-          gh release create "$TAG" $files --repo "$GITHUB_REPOSITORY" --title "FC-Tracker ${TAG#v}" --notes-file notes.md
+          $app = "${{ steps.files.outputs.app }}"; $ext = "${{ steps.files.outputs.ext }}"
+          $rows = foreach ($f in @($app, $ext)) { "| $(Split-Path $f -Leaf) | ``$((Get-FileHash $f -Algorithm SHA256).Hash.ToLower())`` |" }
+          @(
+            "FC-Tracker ${{ steps.files.outputs.version }} – built by GitHub from this tag. The installer on https://www.fc-tracker.com/download is this file.",
+            "",
+            "| File | SHA-256 |",
+            "|---|---|"
+          ) + $rows + @(
+            "",
+            "Each file has a build attestation – check a download yourself:",
+            '`gh attestation verify FC-Tracker-setup-${{ steps.files.outputs.version }}.exe --repo fc-tracker/fc-tracker`',
+            "",
+            "The VirusTotal scan of each version is linked on https://www.fc-tracker.com/download."
+          ) | Set-Content -Encoding utf8 notes.md
+          gh release create "${{ github.ref_name }}" $app $ext --repo "$env:GITHUB_REPOSITORY" --title "FC-Tracker ${{ steps.files.outputs.version }}" --notes-file notes.md

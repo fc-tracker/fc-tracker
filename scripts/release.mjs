@@ -1,6 +1,9 @@
 // Puts a release on the website – one command:
-//   node scripts/release.mjs            (builds, signs and publishes into site/)
-//   node scripts/release.mjs --no-build (reuses the last build)
+//   node scripts/release.mjs --from-github (the normal way, run by scripts/ship.mjs: takes the
+//                                           installer and extension GitHub built and attested from
+//                                           the public tag, and signs it for the updater here)
+//   node scripts/release.mjs               (builds on this PC – only for a local test release)
+//   node scripts/release.mjs --no-build    (reuses the last local build)
 // 1. Builds the NSIS installer, signed for the in-app updater with the private key in
 //    %USERPROFILE%\.tauri\fc-tracker-updater.key (never in the repo – back it up: without it,
 //    installed apps can't be updated any more).
@@ -28,7 +31,8 @@ const conf = JSON.parse(fs.readFileSync(path.join(root, "src-tauri", "tauri.conf
 const ext = JSON.parse(fs.readFileSync(path.join(root, "extension", "manifest.json"), "utf8"));
 
 const keyFile = path.join(os.homedir(), ".tauri", "fc-tracker-updater.key");
-if (!process.argv.includes("--no-build")) {
+const fromGithub = process.argv.includes("--from-github");
+if (!fromGithub && !process.argv.includes("--no-build")) {
   if (!fs.existsSync(keyFile)) {
     console.error(`missing updater key ${keyFile}`);
     process.exit(1);
@@ -40,26 +44,53 @@ if (!process.argv.includes("--no-build")) {
   });
 }
 
-const installer = path.join(root, "src-tauri", "target", "release", "bundle", "nsis", `${conf.productName}_${conf.version}_x64-setup.exe`);
-for (const f of [installer, `${installer}.sig`]) {
-  if (!fs.existsSync(f)) {
-    console.error(`missing ${path.relative(root, f)} – build first (without --no-build)`);
-    process.exit(1);
-  }
-}
+const appFile = `FC-Tracker-setup-${conf.version}.exe`;
+const extFile = `FC-Tracker-extension-${ext.version}.zip`;
+let signature;
 
 fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(out, { recursive: true });
 
-const appFile = `FC-Tracker-setup-${conf.version}.exe`;
-fs.copyFileSync(installer, path.join(out, appFile));
-
-// The extension folder as a zip (its contents at the zip's top level → "Load unpacked" on the
-// unzipped folder works directly). Windows tar writes standard zips with / paths.
-const extFile = `FC-Tracker-extension-${ext.version}.zip`;
-const extDir = path.join(root, "extension");
-const tar = path.join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe");
-execFileSync(tar, ["-a", "-c", "-f", path.join(out, extFile), ...fs.readdirSync(extDir)], { cwd: extDir });
+if (fromGithub) {
+  // the files GitHub built from the public tag (attested there) – byte for byte what people get
+  if (!fs.existsSync(keyFile)) {
+    console.error(`missing updater key ${keyFile}`);
+    process.exit(1);
+  }
+  const base = `https://github.com/fc-tracker/fc-tracker/releases/download/v${conf.version}`;
+  for (const file of [appFile, extFile]) {
+    const r = await fetch(`${base}/${file}`);
+    if (!r.ok) {
+      console.error(`${file} is not on the GitHub release v${conf.version} (HTTP ${r.status}) – run scripts/publish-public.mjs first`);
+      process.exit(1);
+    }
+    fs.writeFileSync(path.join(out, file), Buffer.from(await r.arrayBuffer()));
+  }
+  // the in-app updater signature, made here with the key that never leaves this PC
+  execSync(`npx tauri signer sign -f "${keyFile}" "${path.join(out, appFile)}"`, {
+    cwd: root,
+    stdio: "inherit",
+    env: { ...process.env, TAURI_SIGNING_PRIVATE_KEY_PASSWORD: "" },
+  });
+  const sigFile = path.join(out, `${appFile}.sig`);
+  signature = fs.readFileSync(sigFile, "utf8").trim();
+  fs.rmSync(sigFile);
+} else {
+  const installer = path.join(root, "src-tauri", "target", "release", "bundle", "nsis", `${conf.productName}_${conf.version}_x64-setup.exe`);
+  for (const f of [installer, `${installer}.sig`]) {
+    if (!fs.existsSync(f)) {
+      console.error(`missing ${path.relative(root, f)} – build first (without --no-build)`);
+      process.exit(1);
+    }
+  }
+  fs.copyFileSync(installer, path.join(out, appFile));
+  signature = fs.readFileSync(`${installer}.sig`, "utf8").trim();
+  // The extension folder as a zip (its contents at the zip's top level → "Load unpacked" on the
+  // unzipped folder works directly). Windows tar writes standard zips with / paths.
+  const extDir = path.join(root, "extension");
+  const tar = path.join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe");
+  execFileSync(tar, ["-a", "-c", "-f", path.join(out, extFile), ...fs.readdirSync(extDir)], { cwd: extDir });
+}
 
 const info = (file) => {
   const data = fs.readFileSync(path.join(out, file));
@@ -89,7 +120,7 @@ const feed = {
   version: conf.version,
   pub_date: now.toISOString(),
   platforms: {
-    "windows-x86_64": { signature: fs.readFileSync(`${installer}.sig`, "utf8").trim(), url: `${SITE}/downloads/${appFile}` },
+    "windows-x86_64": { signature, url: `${SITE}/downloads/${appFile}` },
   },
 };
 fs.writeFileSync(path.join(pub, "updates", "latest.json"), JSON.stringify(feed, null, 2) + "\n");
