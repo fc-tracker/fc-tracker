@@ -151,5 +151,8 @@
   },
   "updateManual": {
     "message": "Installée depuis le .zip : télécharge la nouvelle, remplace le dossier, puis clique sur Actualiser dans chrome://extensions."
+  },
+  "badgeWebSynced": {
+    "message": "FC-Tracker : club synchronisé ✓ – retourne sur FC-Tracker Web"
   }
 }

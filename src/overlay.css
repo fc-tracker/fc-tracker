@@ -894,3 +894,12 @@ html[data-view="toast"] #root {
 .ov-empty { grid-row: 2 / 4; }
 /* dense best selection: an arrow marks the cards to put in (gold alone clashed with gold ratings) */
 .ml-list.dense .ml-row.put-in .ml-name::before { content: "▶ "; color: var(--tag-gold); }
+
+/* ── Best selection | Buy next inside the view (full screen and the browser version) ── */
+.ov-body.with-ml { grid-template-columns: 300px minmax(0, 1fr) minmax(320px, 400px); }
+.ov-ml { min-height: 0; min-width: 0; }
+.ov-ml .ml { height: 100%; padding: 0; }
+@container ovframe (max-width: 1180px) {
+  .ov-body.with-ml { grid-template-columns: minmax(190px, 34%) 1fr; grid-template-rows: minmax(0, 1fr) minmax(0, 44%); }
+  .ov-body.with-ml .ov-ml { grid-column: 1 / -1; }
+}

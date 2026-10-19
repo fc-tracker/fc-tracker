@@ -8,34 +8,13 @@ use std::fs;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+pub use crate::types::{Acquired, GalleryCard, Item, ListObs, Price, SetObs};
+use crate::sync_data::{collect_items, endpoint_key, is_card_database_search, parse_gallery_card, raw_concept_cards, strip_query, CLUB_READ_PREFIX, GALLERY_PREFIX};
+
 const MAX_RAW_CAPTURES: usize = 200;
 
 pub fn now_ms() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Item {
-    pub id: u64,
-    pub asset_id: Option<u64>,
-    pub rating: Option<u64>,
-    pub position: Option<String>,
-    pub item_type: Option<String>,
-    pub untradeable: Option<bool>,
-    #[serde(default)]
-    pub name: Option<String>,
-    /// EA's Gallery points for this card (`gradingScore`).
-    #[serde(default)]
-    pub grading_score: Option<u64>,
-    #[serde(default)]
-    pub league_id: Option<u64>,
-    #[serde(default)]
-    pub team_id: Option<u64>,
-    #[serde(default)]
-    pub nation_id: Option<u64>,
-    #[serde(default)]
-    pub rareflag: Option<u64>,
-    pub last_seen: u64,
 }
 
 const SCHEMA_VERSION: u32 = 2;
@@ -114,27 +93,13 @@ pub struct Snapshot {
 /// first owner (Lucy Bronze, Dunk, Mijnans – user, 2026-10-13), so it is no fact for them.
 const FO_DETECTOR: u32 = 4;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct Acquired {
-    pub source: String,
-    pub at: u64,
-}
-
 /// How long a card's first source is remembered.
 const ACQUIRED_KEEP_MS: u64 = 30 * 24 * 60 * 60 * 1000;
-
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct FlagSample {
     pub sig: Vec<f32>,
     pub n: u32,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct ListObs {
-    pub score: Option<u32>,
-    pub filled: Option<(u32, u32)>,
-    pub at: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -144,158 +109,8 @@ pub struct SummaryObs {
     pub at: u64,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
-pub struct Price {
-    /// Lowest Buy Now price seen (0 = none seen).
-    pub bin: u64,
-    /// Listings it was based on.
-    pub listings: u32,
-    pub at: u64,
-    /// EA's own market average (the in-game "market average" on a card's info page).
-    #[serde(default)]
-    pub avg: Option<u64>,
-}
-
-impl Price {
-    /// EA's average first (stable, official), else the lowest Buy Now seen.
-    pub fn value(&self) -> Option<u64> {
-        self.avg.or((self.bin > 0).then_some(self.bin))
-    }
-}
-
 /// Observations of the same card within this window are one price check (narrowing searches).
 const PRICE_SESSION_MS: u64 = 15 * 60 * 1000;
-
-/// The user's in-game lineup of one set, read from the set page and its swap pages.
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
-pub struct SetObs {
-    pub slots: Vec<crate::lineup::SlotObs>,
-    /// Points sum matched the in-game Base Grade.
-    pub verified: bool,
-    pub total: Option<u32>,
-    pub base: Option<u32>,
-    pub bonus: Option<u32>,
-    pub lineup_at: Option<u64>,
-    /// Collected cards seen on this set's swap pages = not in the lineup.
-    pub unselected: BTreeSet<u64>,
-    /// Slot → card, where certain.
-    pub identified: BTreeMap<usize, u64>,
-    pub ambiguous: usize,
-    /// The verified lineup holds cards we didn't know as collected (points proven by the Base
-    /// Grade, cards not named yet): no first-owner facts from it, no box clean-up by counts.
-    #[serde(default)]
-    pub unnamed: bool,
-    /// The user marked suggested swaps as done: the lineup below is their word, not a read. The
-    /// next verified read of the set page replaces it (and clears this).
-    #[serde(default)]
-    pub user_swapped: bool,
-}
-
-/// One card definition from EA's card database (concept search), as used by the Gallery.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct GalleryCard {
-    pub def_id: u64,
-    pub score: u64,
-    /// EA's "ever owned" flag – stays true after selling.
-    pub collected: bool,
-    pub rating: Option<u64>,
-    pub rareflag: Option<u64>,
-    pub league: Option<u64>,
-    pub team: Option<u64>,
-    pub nation: Option<u64>,
-    pub name: Option<String>,
-    pub position: Option<String>,
-    pub weak_foot: Option<u64>,
-    pub skill_moves: Option<u64>,
-    /// Every position the card can play (EA `possiblePositions`, preferred first); empty until
-    /// the raw card data has been seen – then the preferred position stands in.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub positions: Vec<String>,
-    #[serde(default)]
-    pub team_name: Option<String>,
-    /// Holographic version (EA `hyperCosmetics` present): ×1.5 points and the Holographic tag.
-    /// Only special cards can be holographic (verified 2026-10-13: 402 same-player pairs, all ×1.5).
-    #[serde(default)]
-    pub holo: bool,
-}
-
-const GALLERY_PREFIX: &str = "fct://gallery/";
-
-fn parse_gallery_card(v: &Value) -> Option<GalleryCard> {
-    let u = |k: &str| v.get(k).and_then(Value::as_u64);
-    Some(GalleryCard {
-        def_id: u("definitionId").filter(|&d| d > 0)?,
-        score: u("gradingScore").unwrap_or(0),
-        collected: v.get("isCollected").and_then(Value::as_bool).unwrap_or(false),
-        rating: u("rating"),
-        rareflag: u("rareflag"),
-        league: u("leagueId"),
-        team: u("teamId"),
-        nation: u("nationId"),
-        name: v.get("name").and_then(Value::as_str).map(str::to_string),
-        position: v.get("preferredPosition").and_then(Value::as_str).map(str::to_string),
-        weak_foot: u("weakFoot"),
-        skill_moves: u("skillMoves"),
-        positions: Vec::new(),
-        team_name: v.get("teamName").and_then(Value::as_str).map(str::to_string),
-        holo: v.get("holo").and_then(Value::as_bool).unwrap_or(false),
-    })
-}
-
-/// The same card in EA's raw JSON (the Web App's own `/defid` responses, captured passively).
-/// This is the reliable source of `isCollected` – the in-page entities can report it as false
-/// (seen 2026-10-13: 0 collected via entities, 1,527 in the raw responses of the same sync).
-fn parse_raw_concept_card(v: &Value) -> Option<GalleryCard> {
-    let u = |k: &str| v.get(k).and_then(Value::as_u64);
-    Some(GalleryCard {
-        def_id: u("resourceId").or_else(|| u("id")).filter(|&d| d > 0)?,
-        score: u("gradingScore").unwrap_or(0),
-        collected: v.get("isCollected").and_then(Value::as_bool).unwrap_or(false),
-        rating: u("rating"),
-        rareflag: u("rareflag"),
-        league: u("leagueId"),
-        team: u("teamid"),
-        nation: u("nation"),
-        name: None,
-        position: v.get("preferredPosition").and_then(Value::as_str).map(str::to_string),
-        weak_foot: u("weakfootabilitytypecode"),
-        // EA stores skill moves as stars − 1.
-        skill_moves: u("skillmoves").map(|s| s + 1),
-        positions: v
-            .get("possiblePositions")
-            .and_then(Value::as_array)
-            .map(|a| a.iter().filter_map(Value::as_str).map(str::to_string).collect())
-            .unwrap_or_default(),
-        team_name: None,
-        holo: v.get("hyperCosmetics").and_then(Value::as_object).is_some_and(|o| !o.is_empty()),
-    })
-}
-
-impl GalleryCard {
-    /// Combines two observations of the same card. `collected` is sticky: in-game a card
-    /// stays collected forever, so one positive observation wins. Missing fields are filled in.
-    fn merged_with(mut self, old: &GalleryCard) -> GalleryCard {
-        self.collected |= old.collected;
-        self.holo |= old.holo;
-        if self.score == 0 {
-            self.score = old.score;
-        }
-        self.rating = self.rating.or(old.rating);
-        self.rareflag = self.rareflag.or(old.rareflag);
-        self.league = self.league.or(old.league);
-        self.team = self.team.or(old.team);
-        self.nation = self.nation.or(old.nation);
-        self.name = self.name.take().or_else(|| old.name.clone());
-        self.position = self.position.take().or_else(|| old.position.clone());
-        self.weak_foot = self.weak_foot.or(old.weak_foot);
-        self.skill_moves = self.skill_moves.or(old.skill_moves);
-        if self.positions.is_empty() {
-            self.positions = old.positions.clone();
-        }
-        self.team_name = self.team_name.take().or_else(|| old.team_name.clone());
-        self
-    }
-}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Summary {
@@ -392,8 +207,6 @@ impl PendingBuy {
     /// A purchase is confirmed within this time or forgotten.
     pub const KEEP: std::time::Duration = std::time::Duration::from_secs(180);
 }
-
-const CLUB_READ_PREFIX: &str = "fct://club/";
 
 impl Item {
     /// Fills in fields the new observation lacks from the previous one, so a sparse
@@ -1062,23 +875,6 @@ impl Store {
     }
 }
 
-fn strip_query(url: &str) -> &str {
-    url.split(['?', '#']).next().unwrap_or(url)
-}
-
-/// `https://host/ut/game/fc27/club?x=1` → `/ut/game/fc27/club`. Numeric ids are normalised to `{id}`.
-pub fn endpoint_key(url: &str) -> String {
-    let no_query = strip_query(url);
-    if no_query.starts_with("fct://") {
-        return no_query.to_string(); // our own synthetic sources, e.g. fct://club/players
-    }
-    let path = no_query.splitn(4, '/').nth(3).map(|p| format!("/{p}")).unwrap_or_default();
-    path.split('/')
-        .map(|seg| if !seg.is_empty() && seg.chars().all(|c| c.is_ascii_digit()) { "{id}" } else { seg })
-        .collect::<Vec<_>>()
-        .join("/")
-}
-
 fn sanitize(s: &str) -> String {
     s.chars().map(|c| if c.is_ascii_alphanumeric() { c } else { '_' }).take(80).collect()
 }
@@ -1133,68 +929,6 @@ fn entered_points(old: &[crate::lineup::SlotObs], new: &[crate::lineup::SlotObs]
         }
     }
     out
-}
-
-/// (item, `owners`, card definition id). The definition id (`resourceId`) is what the Gallery
-/// uses; for special cards it differs from `assetId` (the base player).
-fn collect_items(v: &Value, out: &mut Vec<(Item, Option<u64>, Option<u64>)>, now: u64) {
-    match v {
-        Value::Object(map) => {
-            for (k, child) in map {
-                if k == "itemData" {
-                    let arr = match child {
-                        Value::Array(a) => a.iter().collect::<Vec<_>>(),
-                        obj @ Value::Object(_) => vec![obj],
-                        _ => vec![],
-                    };
-                    out.extend(arr.into_iter().filter_map(|i| {
-                        let def_id = i.get("resourceId").and_then(Value::as_u64);
-                        Some((parse_item(i, now)?, i.get("owners").and_then(Value::as_u64), def_id))
-                    }));
-                } else {
-                    collect_items(child, out, now);
-                }
-            }
-        }
-        Value::Array(arr) => arr.iter().for_each(|c| collect_items(c, out, now)),
-        _ => {}
-    }
-}
-
-fn raw_concept_cards(body: &Value) -> Vec<GalleryCard> {
-    body.get("itemData")
-        .and_then(Value::as_array)
-        .map(|a| a.iter().filter_map(parse_raw_concept_card).collect())
-        .unwrap_or_default()
-}
-
-/// `/ut/game/fc27/defid` is the Web App's concept (card database) search.
-fn is_card_database_search(url: &str) -> bool {
-    endpoint_key(url).ends_with("/defid")
-}
-
-fn parse_item(v: &Value, now: u64) -> Option<Item> {
-    if v.get("concept").and_then(Value::as_bool) == Some(true) {
-        return None;
-    }
-    // id 0 = placeholder slots (empty squad/SBC positions), not owned items.
-    let id = v.get("id")?.as_u64().filter(|&id| id > 0)?;
-    Some(Item {
-        id,
-        asset_id: v.get("assetId").and_then(Value::as_u64),
-        rating: v.get("rating").and_then(Value::as_u64),
-        position: v.get("preferredPosition").and_then(Value::as_str).map(str::to_string),
-        item_type: v.get("itemType").and_then(Value::as_str).map(str::to_string),
-        untradeable: v.get("untradeable").and_then(Value::as_bool),
-        name: v.get("name").and_then(Value::as_str).map(str::to_string),
-        grading_score: v.get("gradingScore").and_then(Value::as_u64),
-        league_id: v.get("leagueId").and_then(Value::as_u64),
-        // EA's raw JSON uses `teamid`; our plain items use `teamId`.
-        team_id: v.get("teamId").or_else(|| v.get("teamid")).and_then(Value::as_u64),
-        nation_id: v.get("nationId").or_else(|| v.get("nation")).and_then(Value::as_u64),
-        rareflag: v.get("rareflag").and_then(Value::as_u64),
-        last_seen: now,
-    })
 }
 
 #[cfg(test)]

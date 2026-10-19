@@ -151,5 +151,8 @@
   },
   "updateManual": {
     "message": "Installeret fra .zip: hent den nye, erstat mappen, og tryk Genindlæs i chrome://extensions."
+  },
+  "badgeWebSynced": {
+    "message": "FC-Tracker: klubben er synkroniseret ✓ – tilbage til FC-Tracker Web"
   }
 }

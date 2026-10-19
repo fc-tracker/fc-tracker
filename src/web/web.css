@@ -1,0 +1,142 @@
+/* FC-Tracker Web (fc-tracker.com/web): the overlay and side panel on a page, a top bar for the
+   shared source, the live preview, the download prompts. Theme tokens only (themes.css). */
+
+html.web {
+  /* the page behind the panels – the game is not behind them here */
+  --wb-page: radial-gradient(900px 520px at 78% 8%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 60%),
+    radial-gradient(700px 480px at 10% 95%, color-mix(in srgb, var(--accent-2) 14%, transparent), transparent 60%),
+    #050816;
+  --wb-ok: var(--accent-2);
+  --wb-warn: var(--grade-b);
+  --wb-bad: var(--grade-d);
+}
+html.web,
+html.web body,
+html.web #root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--wb-page);
+}
+html.web body { font-family: var(--font-body); color: var(--text); }
+
+.wb { height: 100%; display: grid; grid-template-rows: auto 1fr auto; }
+
+/* ── top bar ──────────────────────────────────────────────────────────── */
+.wb-bar {
+  display: flex; align-items: center; gap: 16px; padding: 10px 18px;
+  background: var(--bg); box-shadow: inset 0 -1px 0 var(--line);
+}
+.wb-brand { display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; flex: none; }
+.wb-brand-name { font: 700 22px/1 var(--font-display); letter-spacing: 0.04em; text-transform: uppercase; }
+.wb-badge {
+  font: 700 11px/1 var(--font-body); letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 4px 7px; color: var(--accent-2); box-shadow: inset 0 0 0 1px var(--accent-2);
+  clip-path: polygon(5px 0, 100% 0, calc(100% - 5px) 100%, 0 100%);
+}
+.wb-status { flex: 1; min-width: 0; margin: 0; display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wb-dot { width: 8px; height: 8px; flex: none; background: var(--muted); transform: rotate(45deg); }
+.wb-status.ok { color: var(--text); } .wb-status.ok .wb-dot { background: var(--wb-ok); box-shadow: 0 0 10px var(--wb-ok); }
+.wb-status.warn .wb-dot { background: var(--wb-warn); }
+.wb-status.bad { color: var(--wb-bad); } .wb-status.bad .wb-dot { background: var(--wb-bad); }
+.wb-status.busy { color: var(--text); } .wb-status.busy .wb-dot { background: var(--accent); }
+@media (prefers-reduced-motion: no-preference) {
+  .wb-status.busy .wb-dot { animation: wb-pulse 1s ease-in-out infinite; }
+}
+@keyframes wb-pulse { 50% { opacity: 0.3; } }
+.wb-actions { display: flex; gap: 8px; flex: none; }
+.wb-club {
+  all: unset; cursor: pointer; flex: none; display: inline-flex; align-items: center; gap: 8px;
+  padding: 7px 12px; font: 600 13px/1 var(--font-body); color: var(--text); text-decoration: none;
+  background: var(--surface); box-shadow: inset 0 0 0 1px var(--line);
+  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+}
+.wb-club:hover, .wb-club:focus-visible { background: var(--surface-hi); }
+.wb-club:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
+.wb-club.busy { cursor: default; }
+.wb-club-dot { width: 7px; height: 7px; transform: rotate(45deg); background: var(--accent); }
+.wb-club-dot.on { background: var(--wb-ok); }
+.wb-club-dot.off { background: var(--wb-warn); }
+@media (prefers-reduced-motion: no-preference) { .wb-club.busy .wb-club-dot { animation: wb-pulse 1s ease-in-out infinite; } }
+
+.wb-btn {
+  all: unset; cursor: pointer; box-sizing: border-box; display: inline-flex; align-items: center; gap: 8px;
+  padding: 9px 16px; font: 700 14px/1 var(--font-body); color: var(--text); background: var(--accent);
+  clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+}
+.wb-btn:hover, .wb-btn:focus-visible { filter: brightness(1.12); }
+.wb-btn:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
+.wb-btn.ghost { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+.wb-btn.app { background: var(--accent-2); color: var(--bg); }
+.wb-btn:disabled { opacity: 0.45; cursor: default; filter: none; }
+.wb-link { all: unset; cursor: pointer; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+.wb-link:hover, .wb-link:focus-visible { color: var(--text); }
+
+/* ── panels ───────────────────────────────────────────────────────────── */
+.wb-main { min-height: 0; display: grid; grid-template-columns: 1fr; }
+.wb-ov { min-height: 0; min-width: 0; }
+.wb-ov .ov { height: 100%; }
+
+/* live preview with the reader's boxes (bottom left, above the footer) */
+.wb-preview {
+  position: fixed; left: 18px; bottom: 44px; z-index: 20; width: 300px; aspect-ratio: 16 / 9;
+  background: var(--bg); box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5), inset 0 0 0 1px var(--line);
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+}
+.wb-preview video, .wb-preview canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.wb-preview-meta {
+  position: absolute; left: 8px; bottom: 6px; font: 700 11px/1 var(--font-body); color: var(--text);
+  background: var(--bg); padding: 3px 6px;
+}
+
+/* first visit: three steps */
+.wb-intro, .wb-picker, .wb-nudge {
+  position: fixed; z-index: 30; background: var(--glow), var(--bg); color: var(--text);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), inset 3px 0 0 var(--accent);
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+}
+.wb-intro { left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(560px, calc(100vw - 32px)); padding: 26px 28px; }
+.wb-intro h1, .wb-picker h2 { font: 700 30px/1.05 var(--font-display); text-transform: uppercase; letter-spacing: 0.02em; margin: 0 0 14px; }
+.wb-intro ol { margin: 0 0 14px; padding-left: 22px; display: grid; gap: 8px; font-size: 15px; }
+.wb-intro li::marker { color: var(--accent-2); font-weight: 800; }
+.wb-note { margin: 10px 0 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.wb-note.bad { color: var(--wb-bad); }
+.wb-nudge-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+
+.wb-picker { left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(720px, calc(100vw - 32px)); padding: 22px 24px; }
+.wb-picker-head { display: flex; align-items: start; justify-content: space-between; }
+.wb-x { all: unset; cursor: pointer; font-size: 26px; line-height: 1; color: var(--muted); padding: 0 4px; }
+.wb-x:hover, .wb-x:focus-visible { color: var(--text); }
+.wb-sources { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
+.wb-source {
+  all: unset; cursor: pointer; box-sizing: border-box; display: grid; gap: 4px; padding: 14px 16px;
+  background: var(--surface); box-shadow: inset 0 0 0 1px var(--line);
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+}
+.wb-source:hover, .wb-source:focus-visible { background: var(--surface-hi); box-shadow: inset 0 0 0 1px var(--accent-2); }
+.wb-source b { font: 700 20px/1.1 var(--font-display); text-transform: uppercase; }
+.wb-source span { color: var(--muted); font-size: 13px; line-height: 1.4; }
+.wb-icon { width: 26px; height: 26px; color: var(--accent-2); }
+.wb-card-row { display: flex; gap: 8px; margin-top: 12px; }
+.wb-card-row select { flex: 1; min-width: 0; background: var(--surface); color: var(--text); border: 0; box-shadow: inset 0 0 0 1px var(--line); padding: 8px; font: inherit; }
+
+/* the download prompt after a read */
+.wb-nudge { right: 18px; bottom: 44px; width: min(380px, calc(100vw - 36px)); padding: 16px 18px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), inset 3px 0 0 var(--accent-2); }
+.wb-nudge b { font: 700 20px/1.1 var(--font-display); text-transform: uppercase; }
+.wb-nudge p { margin: 6px 0 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+@media (prefers-reduced-motion: no-preference) {
+  .wb-nudge, .wb-intro, .wb-picker { animation: frame-in 320ms var(--ease) both; }
+  .wb-intro, .wb-picker { animation: none; }
+}
+
+.wb-foot {
+  display: flex; justify-content: space-between; gap: 16px; padding: 7px 18px; font-size: 12px; color: var(--muted);
+  background: var(--bg); box-shadow: inset 0 1px 0 var(--line);
+}
+
+@media (max-width: 760px) {
+  .wb-bar { flex-wrap: wrap; gap: 8px 12px; padding: 10px 16px; }
+  .wb-status { order: 3; flex-basis: 100%; }
+  .wb-club { order: 4; }
+  .wb-preview { width: 180px; left: 16px; }
+}

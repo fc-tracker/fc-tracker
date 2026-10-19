@@ -326,12 +326,14 @@ export interface GalleryCategory {
 
 // In a plain browser during development there is no Tauri backend; serve sample data instead.
 // Sample data outside Tauri: in the dev server, and in the website demo (vite build --mode demo).
-const browserDev = (import.meta.env.DEV || import.meta.env.MODE === "demo") && !("__TAURI_INTERNALS__" in window);
+/** The browser version (fc-tracker.com/web, `npm run build:web`): the screen is read in the tab. */
+export const IS_WEB = import.meta.env.MODE === "web";
+const browserDev = (import.meta.env.DEV || import.meta.env.MODE === "demo" || IS_WEB) && !("__TAURI_INTERNALS__" in window);
 const mock = <T,>(load: (m: typeof import("./devMock")) => T) => import("./devMock").then(load);
 /** Launcher states in the browser: ?demo=unpaired | syncing | running | windowed | outdated | chrome-closed. */
 const demo = new URLSearchParams(location.search).get("demo");
 
-export const api = {
+const appApi = {
   galleryStatus: () =>
     browserDev
       ? mock((m) => m.mockStatus)
@@ -414,7 +416,42 @@ export const api = {
   openDiagnostics: () => invoke<void>("open_diagnostics"),
 };
 
+// The browser version: the gallery comes from the screen read in this tab (src/web/backend.ts).
+// Registered by src/web/main.tsx – the app never imports the browser version's code.
+type WebBackend = typeof import("./web/backend");
+let webBackend: WebBackend | null = null;
+export function setWebBackend(b: WebBackend) {
+  webBackend = b;
+}
+const wb = <T,>(f: (b: WebBackend) => T | Promise<T>): Promise<T> =>
+  webBackend ? Promise.resolve().then(() => f(webBackend!)) : Promise.reject(new Error("web backend not set"));
+function withWeb(a: typeof appApi): typeof appApi {
+  return {
+    ...a,
+    galleryOverview: () => wb((b) => b.webApi.galleryOverview()),
+    shoppingList: (key?: string) => wb((b) => b.webApi.shoppingList(key)),
+    galleryStatus: () => wb((b) => b.webApi.galleryStatus()),
+    currentPage: () => wb((b) => b.webApi.currentPage()),
+    followSet: (key: string) => wb((b) => b.webApi.followSet(key)),
+    toggleMissingList: () => wb((b) => b.webApi.toggleMissingList()),
+    missingListVisible: () => wb((b) => b.webApi.missingListVisible()),
+    setFirstOwner: (defId: number, value: boolean | null) => wb((b) => b.webApi.setFirstOwner(defId, value)),
+    gameSession: () => wb((b) => (b.webStream() ? "in_ultimate_team" : "closed") as GameSession),
+    autoScan: () => wb((b) => b.webStream() != null),
+    setAutoScan: (enabled: boolean) => wb((b) => (enabled ? undefined : b.stopCapture())),
+    uiPrefs: () => Promise.resolve<UiPrefs>({ mode: "full", missing_side: "right", after_play: "off" }),
+    syncSummary: () => Promise.resolve<SyncSummary>({ synced_at: null, item_count: 0, player_count: 0, endpoint_count: 0, sync_active: false }),
+    markSwapDone: () => Promise.resolve(false),
+    openHelp: () => Promise.resolve(void window.open("/faq", "_blank", "noopener")),
+    openSite: (path: string) => Promise.resolve(void window.open(path, "_blank", "noopener")),
+    hideOverlay: () => Promise.resolve(),
+  };
+}
+export const api = IS_WEB ? withWeb(appApi) : appApi;
+
 const noListen = (): Promise<UnlistenFn> => Promise.resolve(() => {});
+const webListen = <T,>(pick: (b: WebBackend) => (cb: (v: T) => void) => () => void, cb: (v: T) => void): Promise<UnlistenFn> =>
+  wb((b) => pick(b)(cb));
 
 // Browser design mode: ?view=toast&demo=pack shows the pack toast, otherwise the swap toast.
 function mockToast(cb: (t: ToastPayload) => void): Promise<UnlistenFn> {
@@ -425,7 +462,7 @@ function mockToast(cb: (t: ToastPayload) => void): Promise<UnlistenFn> {
   return noListen();
 }
 
-export const events = {
+const appEvents = {
   onPaired: (cb: () => void): Promise<UnlistenFn> => (browserDev ? noListen() : listen("bridge-paired", () => cb())),
   onSyncUpdate: (cb: (s: SyncSummary) => void) =>
     browserDev ? noListen() : listen<SyncSummary>("sync-update", (e) => cb(e.payload)),
@@ -475,6 +512,20 @@ export const events = {
   onScanFailed: (cb: (code: string) => void) =>
     browserDev ? noListen() : listen<string>("scan-failed", (e) => cb(e.payload)),
 };
+
+export const events: typeof appEvents = IS_WEB
+  ? {
+      ...appEvents,
+      onGalleryUpdated: (cb: () => void) => webListen((b) => b.webEvents.onGalleryUpdated, () => cb()),
+      onPageChanged: (cb: (p: CurrentPage) => void) => webListen((b) => b.webEvents.onPageChanged, cb),
+      onFocusSet: (cb: (key: string) => void) => webListen((b) => b.webEvents.onFocusSet, cb),
+      onMissingSet: (cb: (key: string) => void) => webListen((b) => b.webEvents.onMissingSet, cb),
+      onMissingVisible: (cb: (v: boolean) => void) => webListen((b) => b.webEvents.onMissingVisible, cb),
+      onGameSession: (cb: (s: GameSession) => void) =>
+        webListen((b) => b.webEvents.onStatus, (st) => cb(st.phase === "off" ? "closed" : "in_ultimate_team")),
+      onToast: () => noListen(),
+    }
+  : appEvents;
 
 export function formatAge(ms: number | null): string {
   if (!ms) return t("time.never");

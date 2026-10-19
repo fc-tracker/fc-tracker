@@ -47,7 +47,10 @@ Everything below can be checked in the code; the file is named for each point.
 - Never searches the transfer market, and never buys, sells, bids or lists anything. Prices come only
   from EA's own market average in your club data.
 - Sends that data only to the FC-Tracker app on your own PC, `127.0.0.1` (`extension/background.js`,
-  `extension/relay.js`). It never sends anything to any other server.
+  `extension/relay.js`) – or, if you use FC-Tracker Web (fc-tracker.com/web), keeps the last sync
+  in the extension and hands it to that page in your own browser when it asks (only fc-tracker.com
+  may ask: `externally_connectable` in `extension/manifest.json`; the page keeps it in the browser).
+  It never sends anything to any server.
 - Never reads, stores or sends your EA login, session or token – responses from login and token
   endpoints are dropped before anything is read (`BLOCKED`, `SECRET_KEYS` in `extension/hook.js`).
 

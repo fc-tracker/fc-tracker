@@ -8,7 +8,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "build:demo": "vite build --mode demo"
+    "build:demo": "vite build --mode demo",
+    "build:web": "node scripts/build-web.mjs"
   },
   "dependencies": {
     "@fontsource/barlow-condensed": "^5.2.6",

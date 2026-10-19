@@ -43,6 +43,80 @@ async function messages() {
   return { locale, messages: locale === "en" ? en : { ...en, ...(await loadMessages(locale)) } };
 }
 
+// ---------- FC-Tracker Web (fc-tracker.com/web) ----------
+// The browser version has no app to receive a sync. Once the user opened it with this extension
+// installed ("webLinked"), every club sync is also kept here – the last complete one only, on
+// this PC – and handed to that page when it asks (chrome.runtime.sendMessage from the site;
+// externally_connectable allows only fc-tracker.com). Nothing is sent anywhere else.
+const WEB_ORIGINS = ["https://www.fc-tracker.com", "https://fc-tracker.com"];
+
+async function webLinked() {
+  return !!(await chrome.storage.local.get("webLinked")).webLinked;
+}
+
+/** A sync starts: what the page gets is collected from scratch. */
+function webStart() {
+  return serial(async () => {
+    const { wPending } = await chrome.storage.local.get("wPending");
+    if (Array.isArray(wPending) && wPending.length) await chrome.storage.local.remove(wPending);
+    await chrome.storage.local.set({ wPending: [], wActive: true });
+  });
+}
+
+function webKeep(url, body, at) {
+  return serial(async () => {
+    const { wPending, wActive } = await chrome.storage.local.get(["wPending", "wActive"]);
+    if (!wActive) return;
+    const key = `w:${at}:${Math.random().toString(36).slice(2, 8)}`;
+    await chrome.storage.local.set({ [key]: { url, body, at }, wPending: [...(Array.isArray(wPending) ? wPending : []), key] });
+  });
+}
+
+/** The sync finished: it becomes the one the page gets (the one before is removed). */
+function webDone(at) {
+  return serial(async () => {
+    const { wPending, wLast, wActive } = await chrome.storage.local.get(["wPending", "wLast", "wActive"]);
+    if (!wActive) return;
+    if (wLast?.keys?.length) await chrome.storage.local.remove(wLast.keys);
+    await chrome.storage.local.set({ wLast: { at, keys: Array.isArray(wPending) ? wPending : [] }, wPending: [], wActive: false });
+  });
+}
+
+chrome.runtime.onMessageExternal.addListener((msg, sender, reply) => {
+  if (!WEB_ORIGINS.includes(sender.origin)) return false;
+  (async () => {
+    switch (msg?.type) {
+      case "hello": {
+        // the page is open: from now on syncs are kept for it (also without the app)
+        await chrome.storage.local.set({ webLinked: true });
+        const { wLast, wActive } = await chrome.storage.local.get(["wLast", "wActive"]);
+        await showPairingHint(false);
+        return reply({ ok: true, version: chrome.runtime.getManifest().version, syncAt: wLast?.at ?? null, syncing: !!wActive });
+      }
+      case "sets":
+        // which Gallery sets a sync reads (the page has the same list as the app)
+        if (Array.isArray(msg.sets) && msg.sets.length) {
+          const { gallerySets } = await chrome.storage.local.get("gallerySets");
+          if (!Array.isArray(gallerySets) || !gallerySets.length) await chrome.storage.local.set({ gallerySets: msg.sets });
+        }
+        return reply({ ok: true });
+      case "get-sync": {
+        const { wLast } = await chrome.storage.local.get("wLast");
+        if (!wLast?.keys?.length) return reply({ ok: true, at: null, entries: [] });
+        const stored = await chrome.storage.local.get(wLast.keys);
+        return reply({ ok: true, at: wLast.at, entries: wLast.keys.map((k) => stored[k]).filter(Boolean).map(({ url, body }) => ({ url, body })) });
+      }
+      case "open-webapp":
+        // the user asked for a sync: the Web App syncs by itself when it opens
+        await chrome.tabs.create({ url: "https://www.ea.com/ea-sports-fc/ultimate-team/web-app/" });
+        return reply({ ok: true });
+      default:
+        return reply({ ok: false, error: "unknown_message" });
+    }
+  })().catch((e) => reply({ ok: false, error: String(e?.message ?? e) }));
+  return true;
+});
+
 // ---------- saved syncs (app not running) ----------
 // Each response is one storage key ("q:…"); "qIndex" lists them in order with what we need to
 // decide without loading them: the sync they belong to (batch), the time and the size.
@@ -172,7 +246,7 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
         }
         case "status": {
           const { lastSyncAt } = await chrome.storage.local.get("lastSyncAt");
-          return reply({ paired: !!(await token()), lastSyncAt: lastSyncAt ?? 0, saved: await hasSaved() });
+          return reply({ paired: !!(await token()), web: await webLinked(), lastSyncAt: lastSyncAt ?? 0, saved: await hasSaved() });
         }
         case "pair": {
           const res = await call("/pair", { method: "POST", body: { code: msg.code } });
@@ -202,20 +276,26 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
             return reply({ ok: false, error: "app_unreachable" });
           }
         case "syncStart":
+          if (await webLinked()) await webStart();
           return reply({ batch: await startBatch() });
         case "capture": {
           const at = Date.now();
+          const web = await webLinked();
+          if (web) await webKeep(msg.url, msg.body, at);
           try {
             if (await hasSaved()) await flush(); // keep the order: older saved data first
             const res = await call("/capture", { method: "POST", body: { url: msg.url, body: msg.body, at } });
             if (res.ok || res.status === 401) return reply(res);
           } catch {}
-          if (!(await token())) return reply({ ok: false, error: "app_unreachable" });
+          // no app: kept for FC-Tracker Web only
+          if (!(await token())) return reply(web ? { ok: true, web: true, items: 0 } : { ok: false, error: "app_unreachable" });
           await enqueue({ url: msg.url, body: msg.body, at, batch: msg.url.startsWith("fct://") ? await currentBatch() : null });
           return reply({ ok: true, queued: true, items: 0 });
         }
         case "done": {
           const at = Date.now();
+          const web = await webLinked();
+          if (web) await webDone(at);
           try {
             if (await hasSaved()) await flush();
             const res = await call("/sync-done", { method: "POST", body: { at } });
@@ -227,7 +307,11 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
               return;
             }
           } catch {}
-          if (!(await token())) return reply({ ok: false, error: "app_unreachable" });
+          if (!(await token())) {
+            if (!web) return reply({ ok: false, error: "app_unreachable" });
+            await chrome.storage.local.set({ lastSyncAt: at });
+            return reply({ ok: true, web: true });
+          }
           await enqueue({ done: true, at, batch: await currentBatch() });
           await chrome.storage.local.set({ lastSyncAt: at });
           return reply({ ok: true, queued: true });
@@ -260,6 +344,8 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
  * code field. Never a tab of its own: opening pages by itself felt like malware (user, 2026-10-15).
  */
 async function showPairingHint(needed) {
+  // used with FC-Tracker Web only: no app to pair with, nothing to point at
+  if (needed && !(await token()) && (await webLinked())) needed = false;
   if (needed) {
     await chrome.action.setBadgeText({ text: "!" });
     await chrome.action.setBadgeBackgroundColor({ color: "#f5c542" });

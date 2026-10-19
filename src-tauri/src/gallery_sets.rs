@@ -552,11 +552,11 @@ fn complete_selection_certain(collected: &[&GalleryCard], obs: &SetObs, ctx: &Co
         proven: Option<Vec<&'a GalleryCard>>,
         nodes: usize,
         leaves: usize,
-        deadline: std::time::Instant,
+        deadline: crate::clock::Instant,
     }
     impl<'s, 'a> Search<'s, 'a> {
         fn go(&mut self, k: usize) {
-            if self.proven.is_some() || self.nodes >= COMPLETE_NODES || self.leaves >= COMPLETE_LEAVES || std::time::Instant::now() >= self.deadline {
+            if self.proven.is_some() || self.nodes >= COMPLETE_NODES || self.leaves >= COMPLETE_LEAVES || crate::clock::Instant::now() >= self.deadline {
                 return;
             }
             self.nodes += 1;
@@ -613,7 +613,7 @@ fn complete_selection_certain(collected: &[&GalleryCard], obs: &SetObs, ctx: &Co
         })
     };
     let Some(matching) = matching else { return None };
-    let mut s = Search { open: &open, fixed: &fixed, slots: &obs.slots, slot_card: &slot_card, target, chosen: Vec::new(), used: BTreeSet::new(), first: Some(matching), proven: None, nodes: 0, leaves: 0, deadline: std::time::Instant::now() + COMPLETE_BUDGET };
+    let mut s = Search { open: &open, fixed: &fixed, slots: &obs.slots, slot_card: &slot_card, target, chosen: Vec::new(), used: BTreeSet::new(), first: Some(matching), proven: None, nodes: 0, leaves: 0, deadline: crate::clock::Instant::now() + COMPLETE_BUDGET };
     s.go(0);
     let (pick, how) = match (s.proven, s.first) {
         (Some(p), _) => (p, Completion::Proven),

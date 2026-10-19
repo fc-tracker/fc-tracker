@@ -27,8 +27,15 @@ const scrollListeners = new Set<Listener<number>>();
 const connectListeners = new Set<Listener<string | null>>();
 const held = new Map<number, { since: number; last: number }>();
 let timer = 0;
+// The browser version: the controller drives the page only while it has focus – the game gets the
+// same input (Chrome reports pads to unfocused pages too), R1 in-game must not switch the set here.
+let requireFocus = false;
 
 function poll() {
+  if (requireFocus && !document.hasFocus()) {
+    held.clear();
+    return;
+  }
   const pads = [...(navigator.getGamepads?.() ?? [])].filter((p): p is Gamepad => !!p && p.mapping === "standard");
   const now = performance.now();
   for (const [index, action] of Object.entries(NAV)) {
@@ -73,6 +80,8 @@ export const browserPad = {
   onScroll: (cb: Listener<number>) => subscribe(scrollListeners, cb),
   /** The controller's name when one is connected, null when the last one left. */
   onConnect: (cb: Listener<string | null>) => subscribe(connectListeners, cb),
+  /** Only act while this page has focus (the browser version, where the game is in front). */
+  requireFocus: (on: boolean) => void (requireFocus = on),
   /** For tests: one polling step. */
   poll,
 };

@@ -144,6 +144,8 @@
     const res = await send({ type: "done", closeTab: syncActive });
     // App closed: the sync is saved in the extension and delivered when the app runs.
     if (res?.queued) return render(msg("badgeSaved"), false);
+    // No app, FC-Tracker Web: the page picks it up by itself
+    if (res?.web) return render(msg("badgeWebSynced"), false);
     render(res?.ok ? msg("badgeSynced", [String(res.players ?? items)]) : msg("badgeNoApp"), !res?.ok);
   }
 
@@ -201,8 +203,8 @@
     whenBody(() => {
       appUp = !!(res && res.app === "fc-tracker");
       if (appUp && !res.authorized) return render(msg("badgeNotPaired"), false);
-      if (!appUp && !status?.paired) return render(msg("badgeNoApp"), false);
-      if (!appUp) render(msg("badgeAppClosed"), false);
+      if (!appUp && !status?.paired && !status?.web) return render(msg("badgeNoApp"), false);
+      if (!appUp && status?.paired) render(msg("badgeAppClosed"), false);
       syncActive = appUp && !!res.sync_active;
       const lastSync = Math.max(Number(status?.lastSyncAt ?? 0), Number((appUp && res.synced_at) || 0));
       if (syncActive || Date.now() - lastSync > AUTO_SYNC_AFTER_MS) return requestSync();

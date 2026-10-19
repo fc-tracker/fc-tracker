@@ -13,6 +13,11 @@ export default defineConfig(async ({ mode }) => ({
     ? { base: "/demo/", build: { outDir: "site/public/demo", emptyOutDir: true, rollupOptions: { input: "demo.html" } } }
     : {}),
 
+  // `npm run build:web`: the browser version (fc-tracker.com/web) – the overlay fed by screen reading in the tab.
+  ...(mode === "web"
+    ? { base: "/web/", build: { outDir: "site/public/web", emptyOutDir: true, rollupOptions: { input: "web.html" } } }
+    : {}),
+
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
   // 1. prevent Vite from obscuring rust errors

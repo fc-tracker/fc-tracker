@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, events, type BestSelection, type GalleryCardView, type ShoppingList } from "./api";
+import { IS_WEB, api, events, type BestSelection, type GalleryCardView, type ShoppingList } from "./api";
 import { cardTier, compact, num } from "./format";
 import { rarity } from "./rarities";
 import { t, useLocale, type MessageKey } from "./i18n";
@@ -35,7 +35,8 @@ function autoTab(list: ShoppingList): Tab {
  * the overlay) the best selection from their own cards, and the cards to buy next. Never takes
  * focus – only the tab strip at the top takes mouse clicks, the game keeps the input.
  */
-export default function MissingList() {
+/** `embedded`: inside the overlay (full screen, browser version) instead of its own window. */
+export default function MissingList({ embedded = false }: { embedded?: boolean }) {
   useLocale();
   useTheme();
   const [list, setList] = useState<ShoppingList | null>(null);
@@ -52,7 +53,7 @@ export default function MissingList() {
     api.setMissingSide(next).then((p) => setSide(p.missing_side)).catch(() => {});
   };
   // Left/Right switch, top-right (clickable through side_switch_watch in lib.rs)
-  const sideSwitch = (
+  const sideSwitch = IS_WEB || embedded ? null : (
     <button className="ml-side" onClick={switchSide} title={t("missing.sideHint")} aria-label={t("missing.sideHint")}>
       <span className={side === "left" ? "on" : ""}>{t("settings.left")}</span>
       <span className={side === "right" ? "on" : ""}>{t("settings.right")}</span>

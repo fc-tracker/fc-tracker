@@ -1,0 +1,21 @@
+[package]
+name = "fct-web-core"
+version = "0.1.0"
+edition = "2021"
+description = "FC-Tracker's Gallery model for the browser version: the app's own gallery, gallery_sets and lineup code built for WebAssembly"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+path = "src/lib.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

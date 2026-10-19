@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
+  IS_WEB,
   api,
   events,
   formatAge,
@@ -20,6 +21,7 @@ import { t, useLocale, type MessageKey } from "./i18n";
 import { Gem } from "./icons";
 import { THEMES, useTheme } from "./theme";
 import { SupportButton } from "./Support";
+import MissingList from "./MissingList";
 import { PadButton, useInputMode } from "./padGlyphs";
 import "./overlay.css";
 
@@ -509,6 +511,22 @@ export default function Overlay() {
   const [tracking, setTracking] = useState(true);
   const [mode, setMode] = useState<OverlayMode>("panel");
   const [missingOn, setMissingOn] = useState(false);
+  // Full screen (and the browser version): Best selection | Buy next sit right in the view, next to
+  // the set. The separate side panel (double-tap View) stays as it is.
+  const [embedOn, setEmbedOn] = useState(() => {
+    try {
+      return localStorage.getItem("fct.embedMissing") !== "off";
+    } catch {
+      return true;
+    }
+  });
+  const toggleEmbed = () =>
+    setEmbedOn((on) => {
+      try {
+        localStorage.setItem("fct.embedMissing", on ? "off" : "on");
+      } catch {}
+      return !on;
+    });
   const [status, setStatus] = useState<GalleryStatus | null>(null);
   const [session, setSession] = useState<GameSession>("unknown");
   // Set to show after Ctrl+Shift+G, applied once the overview contains it.
@@ -623,6 +641,8 @@ export default function Overlay() {
   };
 
   const toggleTracking = () => {
+    // the browser version: the pill opens the source picker (what to read the game from)
+    if (IS_WEB && !tracking) return void window.dispatchEvent(new Event("fct-web-source"));
     const next = !tracking;
     setTracking(next);
     api.setAutoScan(next).catch(() => {});
@@ -763,7 +783,10 @@ export default function Overlay() {
         load();
       }),
       events.onMissingVisible(setMissingOn),
-      events.onGameSession(setSession),
+      events.onGameSession((s) => {
+        setSession(s);
+        if (IS_WEB) setTracking(s !== "closed");
+      }),
     ];
     api.gameSession().then(setSession).catch(() => {});
     api.currentPage().then(setPage).catch(() => {});
@@ -806,6 +829,7 @@ export default function Overlay() {
     };
   }, [nav]);
 
+  const embedded = IS_WEB || mode === "full";
   const input = useInputMode();
   const pad = input === "keyboard" ? null : input;
   const syncedAt = sync?.synced_at ?? null;
@@ -829,10 +853,12 @@ export default function Overlay() {
             >
               <span className="track-dot" aria-hidden="true" />
               {!tracking
-                ? t("track.off")
+                ? t(IS_WEB ? "web.track.off" : "track.off")
                 : session === "in_ultimate_team" && page
                   ? t("track.following", { set: page.set_name })
-                  : t(`session.${session}` as MessageKey)}
+                  : IS_WEB
+                    ? t("web.track.watching")
+                    : t(`session.${session}` as MessageKey)}
             </button>
             {passive && (
               <span className="pill rec-pill" title={t("overlay.recordingHint")}>
@@ -841,10 +867,10 @@ export default function Overlay() {
               </span>
             )}
             <button
-              className={`theme-btn ${missingOn ? "active" : ""}`}
-              onClick={() => api.toggleMissingList().catch(() => {})}
+              className={`theme-btn ${(embedded ? embedOn : missingOn) ? "active" : ""}`}
+              onClick={() => (embedded ? toggleEmbed() : api.toggleMissingList().catch(() => {}))}
               title={t("missing.toggleHint")}
-              aria-pressed={missingOn}
+              aria-pressed={embedded ? embedOn : missingOn}
             >
               {t("missing.toggle")}
             </button>
@@ -858,6 +884,7 @@ export default function Overlay() {
               {t("overlay.help")}
             </button>
             <SupportButton />
+            {!IS_WEB && (
             <button className="close-btn" onClick={() => api.hideOverlay()} title={t("overlay.closeHint")}>
               <span className="close-keys">
                 <kbd>Esc</kbd>
@@ -867,6 +894,8 @@ export default function Overlay() {
                 ×
               </span>
             </button>
+            )}
+            {!IS_WEB && (
             <div className="mode-switch" role="group" aria-label={t("overlay.mode.title")}>
               {(["panel", "half", "full"] as const).map((m) => (
                 <button
@@ -880,6 +909,7 @@ export default function Overlay() {
                 </button>
               ))}
             </div>
+            )}
           </div>
         </header>
 
@@ -926,13 +956,15 @@ export default function Overlay() {
             {sync && sync.player_count > 0 && (
               <span className="pill">{t("overlay.clubPlayers", { count: num(sync.player_count) })}</span>
             )}
+            {!IS_WEB && (
             <span className="pill muted">
               {syncedAt ? t("overlay.synced", { age: formatAge(syncedAt) }) : t("overlay.notSynced")}
             </span>
+            )}
               </span>
             </div>
 
-            <div className={`ov-body zone-${zone}`} onClick={() => setMenu(null)}>
+            <div className={`ov-body zone-${zone} ${embedded && embedOn ? "with-ml" : ""}`} onClick={() => setMenu(null)}>
               <aside className="set-list" key={category?.key}>
                 {category?.sets.map((s, i) => (
                   <div key={s.key} data-set={s.key}>
@@ -949,6 +981,11 @@ export default function Overlay() {
                 ))}
               </aside>
               <main className="detail-wrap">{selected && <SetDetail set={selected} ui={cardUi} />}</main>
+              {embedded && embedOn && (
+                <div className="ov-ml" onClick={(e) => e.stopPropagation()}>
+                  <MissingList embedded />
+                </div>
+              )}
             </div>
           </>
         )}
@@ -963,8 +1000,8 @@ export default function Overlay() {
               <span><PadButton id="south" layout={pad} size={20} /> {t("overlay.hintOpen")}</span>
               <span><PadButton id="east" layout={pad} size={20} /> {t("overlay.hintBack")}</span>
               <span><PadButton id="west" layout={pad} size={20} /> {t("overlay.hintInfo")}</span>
-              <span>{t("pad.hold")} <PadButton id="view" layout={pad} size={20} /> {t("overlay.hintToggle")}</span>
-              <span>{t("pad.doubleTap")} <PadButton id="view" layout={pad} size={20} /> {t("overlay.hintMissing")}</span>
+              {!IS_WEB && <span>{t("pad.hold")} <PadButton id="view" layout={pad} size={20} /> {t("overlay.hintToggle")}</span>}
+              {!IS_WEB && <span>{t("pad.doubleTap")} <PadButton id="view" layout={pad} size={20} /> {t("overlay.hintMissing")}</span>}
             </>
           ) : (
             <>
@@ -973,8 +1010,8 @@ export default function Overlay() {
               <span><kbd>Enter</kbd> {t("overlay.hintOpen")}</span>
               <span><kbd>Esc</kbd> {t("overlay.hintBack")}</span>
               <span><kbd>I</kbd> {t("overlay.hintInfo")}</span>
-              <span><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> {t("overlay.hintToggle")}</span>
-              <span><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd> {t("overlay.hintMissing")}</span>
+              {!IS_WEB && <span><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> {t("overlay.hintToggle")}</span>}
+              {!IS_WEB && <span><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd> {t("overlay.hintMissing")}</span>}
             </>
           )}
         </footer>
