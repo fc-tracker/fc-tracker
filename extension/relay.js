@@ -187,6 +187,7 @@
         return finish();
       case "syncError":
         syncing = false;
+        send({ type: "syncFailed" }); // FC-Tracker Web stops showing "syncing"
         // No session (or the club never loaded): the user has to act – sign in.
         if (data.error === "not_signed_in" || data.error === "webapp_not_ready") return signInNeeded(data.error);
         return render(msg("badgeError", [data.error]));

@@ -93,12 +93,20 @@ function ClubChip() {
         {t("web.sync.get")}
       </a>
     );
-  if (c.reading || c.syncing)
+  if (c.reading)
     return (
       <span className="wb-club busy" role="status">
         <span className="wb-club-dot" aria-hidden="true" />
-        {t(c.reading ? "web.sync.reading" : "web.sync.running")}
+        {t("web.sync.reading")}
       </span>
+    );
+  // still clickable while it syncs: closed the Web App by mistake → open it again
+  if (c.syncing)
+    return (
+      <button className="wb-club busy" onClick={() => void syncClub()} title={t("web.sync.getHint")}>
+        <span className="wb-club-dot" aria-hidden="true" />
+        {t("web.sync.running")}
+      </button>
     );
   return (
     <button className="wb-club" onClick={() => void syncClub()} title={t("web.sync.getHint")}>

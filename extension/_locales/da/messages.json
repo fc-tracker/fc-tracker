@@ -154,5 +154,8 @@
   },
   "badgeWebSynced": {
     "message": "FC-Tracker: klubben er synkroniseret ✓ – tilbage til FC-Tracker Web"
+  },
+  "openWeb": {
+    "message": "Åbn FC-Tracker Web"
   }
 }

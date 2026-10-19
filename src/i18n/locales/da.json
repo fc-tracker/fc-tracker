@@ -477,7 +477,7 @@
   "web.reset": "Start forfra",
   "web.resetConfirm": "Glemme alt, som denne browser har læst?",
   "web.unofficial": "Uofficielt fanprojekt – ikke tilknyttet EA.",
-  "web.sync.get": "Synkronisér din klub – tilføj udvidelsen",
+  "web.sync.get": "Synkronisér din klub – tilføj eller opdatér udvidelsen",
   "web.sync.getHint": "FC-Tracker-udvidelsen læser din klub i EA's Web App – samme synkronisering som appen, cirka én side i sekundet",
   "web.sync.now": "Synkronisér min klub",
   "web.sync.running": "Synkroniserer din klub i Web App'en…",

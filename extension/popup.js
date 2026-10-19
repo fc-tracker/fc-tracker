@@ -18,7 +18,8 @@ async function refresh() {
   $("dot").classList.toggle("on", !!authorized);
   $("status").textContent = msg(!res ? "bgNoResponse" : !running ? "appNotRunning" : authorized ? "connected" : "notConnected");
   // Technical detail helps debugging connection problems.
-  $("error").textContent = res && !running ? res.detail ?? res.error ?? `HTTP ${res.status}` : "";
+  // "app not running" says it all; only a real answer with an error status is worth showing
+  $("error").textContent = res && !running && res.status ? res.detail ?? res.error ?? `HTTP ${res.status}` : "";
   $("pair").hidden = !running || authorized;
   $("unpairBtn").hidden = !authorized;
   $("openAppBtn").hidden = !!running;
@@ -78,6 +79,8 @@ $("updateBtn").onclick = async () => {
 };
 
 $("openAppBtn").onclick = () => chrome.tabs.create({ url: "fctracker://open" });
+// FC-Tracker Web, told which extension this is (a copy from the .zip has its own id)
+$("openWebBtn").onclick = () => chrome.tabs.create({ url: `https://www.fc-tracker.com/web?ext=${chrome.runtime.id}` });
 
 // Shown so it is easy to confirm that a reload picked up the latest version.
 $("version").textContent = `v${chrome.runtime.getManifest().version}`;

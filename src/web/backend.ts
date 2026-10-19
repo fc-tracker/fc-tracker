@@ -380,7 +380,10 @@ let sentSets = false;
 async function checkClub() {
   const hello = await ext({ type: "hello" });
   if (!hello?.ok) return setClub({ version: null, syncing: false });
-  setClub({ version: hello.version ?? "?", syncAt: hello.syncAt ?? null, syncing: !!hello.syncing });
+  // "Sync my club" opens the Web App; it counts as syncing until the extension says otherwise
+  // (a sync starts once the Web App is signed in) – at most a minute without its word
+  const opening = Date.now() - openedAt < 60_000 && !(hello.syncAt && hello.syncAt > openedAt);
+  setClub({ version: hello.version ?? "?", syncAt: hello.syncAt ?? null, syncing: !!hello.syncing || opening });
   if (!sentSets) {
     sentSets = true;
     await restored;
@@ -407,8 +410,11 @@ void restored.then(checkClub);
 setInterval(() => document.visibilityState === "visible" && void checkClub(), 10_000);
 document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && void checkClub());
 
+let openedAt = 0;
 /** "Sync my club": the extension opens the Web App, which syncs by itself. */
 export async function syncClub() {
-  await ext({ type: "open-webapp" });
+  openedAt = Date.now();
   setClub({ syncing: true });
+  await ext({ type: "open-webapp" });
+  setTimeout(() => void checkClub(), 61_000);
 }

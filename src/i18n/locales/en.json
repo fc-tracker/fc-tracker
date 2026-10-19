@@ -477,7 +477,7 @@
   "web.reset": "Start over",
   "web.resetConfirm": "Forget everything this browser has read?",
   "web.unofficial": "Unofficial fan project – not affiliated with EA.",
-  "web.sync.get": "Sync your club – add the extension",
+  "web.sync.get": "Sync your club – add or update the extension",
   "web.sync.getHint": "The FC-Tracker extension reads your club in EA's Web App – the same sync as the app, a page about every second",
   "web.sync.now": "Sync my club",
   "web.sync.running": "Syncing your club in the Web App…",

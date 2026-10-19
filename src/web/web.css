@@ -53,7 +53,7 @@ html.web body { font-family: var(--font-body); color: var(--text); }
 }
 .wb-club:hover, .wb-club:focus-visible { background: var(--surface-hi); }
 .wb-club:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
-.wb-club.busy { cursor: default; }
+.wb-club.busy:is(span) { cursor: default; }
 .wb-club-dot { width: 7px; height: 7px; transform: rotate(45deg); background: var(--accent); }
 .wb-club-dot.on { background: var(--wb-ok); }
 .wb-club-dot.off { background: var(--wb-warn); }

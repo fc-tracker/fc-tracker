@@ -154,5 +154,8 @@
   },
   "badgeWebSynced": {
     "message": "FC-Tracker: club synced ✓ – back to FC-Tracker Web"
+  },
+  "openWeb": {
+    "message": "Open FC-Tracker Web"
   }
 }

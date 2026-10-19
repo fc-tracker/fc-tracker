@@ -54,14 +54,39 @@ async function webLinked() {
   return !!(await chrome.storage.local.get("webLinked")).webLinked;
 }
 
-/** A sync starts: what the page gets is collected from scratch. */
-function webStart() {
+/** A sync starts (in the Web App tab `tab`): what the page gets is collected from scratch. */
+function webStart(tab) {
   return serial(async () => {
     const { wPending } = await chrome.storage.local.get("wPending");
     if (Array.isArray(wPending) && wPending.length) await chrome.storage.local.remove(wPending);
-    await chrome.storage.local.set({ wPending: [], wActive: true });
+    await chrome.storage.local.set({ wPending: [], wActive: true, wTab: tab ?? null, wStarted: Date.now() });
   });
 }
+
+/** The sync stopped without finishing (Web App closed, error): nothing half-read is handed over. */
+function webAbandon() {
+  return serial(async () => {
+    const { wPending } = await chrome.storage.local.get("wPending");
+    if (Array.isArray(wPending) && wPending.length) await chrome.storage.local.remove(wPending);
+    await chrome.storage.local.set({ wPending: [], wActive: false, wTab: null });
+  });
+}
+
+/** Is a sync really running? Its tab must still be open, and a sync never takes this long. */
+async function webSyncing() {
+  const { wActive, wTab, wStarted } = await chrome.storage.local.get(["wActive", "wTab", "wStarted"]);
+  if (!wActive) return false;
+  const alive = wTab == null ? false : await chrome.tabs.get(wTab).then(() => true, () => false);
+  if (alive && Date.now() - (wStarted ?? 0) < 15 * 60 * 1000) return true;
+  await webAbandon();
+  return false;
+}
+
+// The Web App tab closed in the middle of a sync: it is over.
+chrome.tabs.onRemoved.addListener(async (tabId) => {
+  const { wActive, wTab } = await chrome.storage.local.get(["wActive", "wTab"]);
+  if (wActive && wTab === tabId) await webAbandon();
+});
 
 function webKeep(url, body, at) {
   return serial(async () => {
@@ -89,9 +114,9 @@ chrome.runtime.onMessageExternal.addListener((msg, sender, reply) => {
       case "hello": {
         // the page is open: from now on syncs are kept for it (also without the app)
         await chrome.storage.local.set({ webLinked: true });
-        const { wLast, wActive } = await chrome.storage.local.get(["wLast", "wActive"]);
+        const { wLast } = await chrome.storage.local.get("wLast");
         await showPairingHint(false);
-        return reply({ ok: true, version: chrome.runtime.getManifest().version, syncAt: wLast?.at ?? null, syncing: !!wActive });
+        return reply({ ok: true, version: chrome.runtime.getManifest().version, syncAt: wLast?.at ?? null, syncing: await webSyncing() });
       }
       case "sets":
         // which Gallery sets a sync reads (the page has the same list as the app)
@@ -276,7 +301,7 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
             return reply({ ok: false, error: "app_unreachable" });
           }
         case "syncStart":
-          if (await webLinked()) await webStart();
+          if (await webLinked()) await webStart(sender.tab?.id);
           return reply({ batch: await startBatch() });
         case "capture": {
           const at = Date.now();
@@ -316,6 +341,9 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
           await chrome.storage.local.set({ lastSyncAt: at });
           return reply({ ok: true, queued: true });
         }
+        case "syncFailed":
+          if (await webLinked()) await webAbandon();
+          return reply({ ok: true });
         case "abortSync":
           // The game entered Ultimate Team: close the Web App so the game keeps the session.
           if (sender.tab?.id) chrome.tabs.remove(sender.tab.id);

@@ -54,8 +54,9 @@ Everything below can be checked in the code; the file is named for each point.
 - Never reads, stores or sends your EA login, session or token – responses from login and token
   endpoints are dropped before anything is read (`BLOCKED`, `SECRET_KEYS` in `extension/hook.js`).
 
-**Your account.** FC-Tracker is an unofficial tool: it is not endorsed by EA, and EA's terms apply to
-your account. The app itself only looks at your screen. The sync is the part EA's servers see –
+**Your account.** The optional sync pages through your club in EA's Web App (like scrolling it
+yourself, about one page a second). It's an unofficial tool, so EA's terms apply. FC-Tracker is not
+endorsed by EA. The app itself only looks at your screen. The sync is the part EA's servers see –
 requests from your browser, like clicking through your club – which is why it is kept slow and short.
 If you would rather not use it, skip the extension: the app then works from what it sees in the game
 (it only knows the cards it has seen on your screen).
@@ -78,6 +79,26 @@ gh attestation verify FC-Tracker-setup-<version>.exe --repo fc-tracker/fc-tracke
 
 It confirms the file was built from this code, by that workflow, at that tag. The only step after the
 build is the in-app updater's signature, added by the project's key; it does not change the installer.
+
+## FC-Tracker Web
+
+A browser version at **https://www.fc-tracker.com/web** – nothing to install. You share the game
+window, an Xbox Cloud tab or a capture card (PlayStation / Xbox) with the page; it reads your Gallery
+screens in the tab with the same model as the app (`web-core/` builds the app's own Rust files for
+WebAssembly, `src/web/`). What it reads stays in your browser. It is slower than the app and has no
+overlay on top of the game. The club sync works there too, through the extension below.
+
+## Install the extension yourself
+
+While a new version waits for the Chrome Web Store review, load it from the `.zip` (the download page,
+or this repository's Releases) or from the `extension/` folder of this repository:
+
+1. Unzip it into a folder you keep.
+2. Open `chrome://extensions` and switch on **Developer mode** (top right).
+3. Turn off an older FC-Tracker extension, if you have one.
+4. **Load unpacked** → choose the folder.
+5. Click the FC-Tracker icon: **Open FC-Tracker Web** – or connect it to the app with the code the
+   app shows.
 
 ## Build it yourself
 
