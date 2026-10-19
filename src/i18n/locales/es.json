@@ -29,7 +29,7 @@
   "error.game_running_setup": "Cierra FC 27 primero: el juego sobrescribe fcsetup.ini mientras se ejecuta.",
   "error.game_running_sync": "FC 27 está en ejecución: sincronizar con la Web App cerraría tu sesión en Ultimate Team.",
   "error.game_already_running": "FC 27 ya está en ejecución.",
-  "error.game_not_found": "No se encontró FC 27: {{detail}}",
+  "error.game_not_found": "No se encontró FC 27 en este PC. Ábrelo una vez tú (Steam, la app de EA o Epic) – FC-Tracker recordará dónde está y lo abrirá a partir de entonces.",
   "error.launch_failed": "No se pudo iniciar FC 27: {{detail}}",
   "error.browser_failed": "No se pudo abrir el navegador: {{detail}}",
   "error.open_folder_failed": "No se pudo abrir la carpeta: {{detail}}",

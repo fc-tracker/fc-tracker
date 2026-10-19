@@ -698,6 +698,10 @@ pub fn set_session(app: &AppHandle, next: GameSession) {
         return;
     }
     log(&state.data_dir, &format!("session: {previous:?} → {next:?}"));
+    // the game started: remember where it runs from, for the launcher's next start
+    if previous == GameSession::Closed && next != GameSession::Closed {
+        crate::remember_game_exe(app);
+    }
     // A match starts: step aside (no window of ours over the game – Windows can then present
     // it like fullscreen). After it: the missing list comes back if it was open.
     if next == GameSession::InMatch {

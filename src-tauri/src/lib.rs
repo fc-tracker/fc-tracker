@@ -423,8 +423,41 @@ fn open_help(app: AppHandle, topic: Option<String>) {
 }
 
 #[tauri::command]
-fn launch_game() -> Result<(), String> {
-    game::launch()
+fn launch_game(state: State<AppState>) -> Result<(), String> {
+    launch_installed_game(&state)
+}
+
+/// Starts FC 27 from where it was last seen running (any store), else wherever it is installed.
+fn launch_installed_game(state: &AppState) -> Result<(), String> {
+    let remembered = state.ui.lock().unwrap().game_exe.clone();
+    game::launch(remembered.as_deref().map(std::path::Path::new))
+}
+
+/// FC 27 was seen starting: remember where its exe is, so the launcher can start it next time
+/// wherever it is installed (Steam, EA app, Epic, another drive).
+pub(crate) fn remember_game_exe(app: &AppHandle) {
+    let app = app.clone();
+    std::thread::spawn(move || {
+        // the process exists a moment before its window – look for a few seconds
+        for _ in 0..10 {
+            if let Some(exe) = game::running_exe() {
+                let path = exe.to_string_lossy().to_string();
+                let state = app.state::<AppState>();
+                let changed = {
+                    let mut p = state.ui.lock().unwrap();
+                    let changed = p.game_exe.as_deref() != Some(path.as_str());
+                    p.game_exe = Some(path.clone());
+                    changed
+                };
+                if changed {
+                    save_ui(&app);
+                    tracking::log(&state.data_dir, &format!("game: FC 27 runs from {path} – remembered for the launcher"));
+                }
+                return;
+            }
+            std::thread::sleep(std::time::Duration::from_secs(1));
+        }
+    });
 }
 
 #[tauri::command]
@@ -868,7 +901,7 @@ fn watch_sync_answer(app: &AppHandle) {
 fn sync_and_launch(app: AppHandle, state: State<AppState>) -> Result<Summary, String> {
     let summary = start_sync(app.clone(), state)?;
     if !game::is_running() {
-        game::launch()?;
+        launch_installed_game(&app.state::<AppState>())?;
     }
     Ok(summary)
 }

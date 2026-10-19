@@ -29,7 +29,7 @@
   "error.game_running_setup": "Ferme d'abord FC 27 – le jeu réécrit fcsetup.ini pendant qu'il tourne.",
   "error.game_running_sync": "FC 27 est lancé – synchroniser via la Web App te déconnecterait d'Ultimate Team.",
   "error.game_already_running": "FC 27 est déjà lancé.",
-  "error.game_not_found": "FC 27 introuvable : {{detail}}",
+  "error.game_not_found": "FC 27 est introuvable sur ce PC. Lance-le une fois toi-même (Steam, l’app EA ou Epic) – FC-Tracker retient alors où il se trouve et le lance ensuite.",
   "error.launch_failed": "Impossible de lancer FC 27 : {{detail}}",
   "error.browser_failed": "Impossible d'ouvrir le navigateur : {{detail}}",
   "error.open_folder_failed": "Impossible d'ouvrir le dossier : {{detail}}",

@@ -22,6 +22,9 @@ pub struct UiPrefs {
     /// own after closing the game is annoying.)
     #[serde(default = "remind")]
     pub after_play: String,
+    /// Where FC 27 was last seen running from (any store) – the launcher starts it from there.
+    #[serde(default)]
+    pub game_exe: Option<String>,
     /// Tracking speed (Settings → Tracking speed).
     #[serde(default)]
     pub tracking: crate::speed::TrackingPrefs,
@@ -37,7 +40,7 @@ fn default_side() -> String {
 
 impl Default for UiPrefs {
     fn default() -> Self {
-        Self { mode: "panel".into(), panel: None, missing_side: default_side(), after_play: remind(), tracking: Default::default() }
+        Self { mode: "panel".into(), panel: None, missing_side: default_side(), after_play: remind(), game_exe: None, tracking: Default::default() }
     }
 }
 

@@ -2,9 +2,11 @@
 // Two modes:
 // 1. Passive: listens to responses the Web App fetches itself (used to map endpoints).
 // 2. Active club sync: on command from relay.js, pages through the club using the Web App's
-//    own services (services.Club.search) – the same calls the Club screen makes, at a calm pace.
-// Prices: never searched actively (ban risk). EA's own `marketAverage` arrives with the club
-// items and with any market search the user does – both are captured passively.
+//    own services (services.Club.search) – the same calls the Club screen makes – and reads the
+//    Gallery card list per league set (services.Item.searchConceptItems). One page at a time,
+//    about one a second, to keep the load on EA's servers low.
+// The transfer market is never searched, and nothing is bought, sold or listed. Prices come only
+// from EA's own `marketAverage` in the club items and from market searches the user does.
 // Never reads or forwards EA's session token; only item data leaves the page.
 (() => {
   const SOURCE = "fc-tracker-hook";
@@ -15,7 +17,7 @@
   const SECRET_KEYS = /^(sid|token|authcode|access_token|refresh_token|phishingtoken)$/i;
 
   const PAGE_SIZE = 90;
-  const PAGE_DELAY_MS = 900; // human-like pace between pages
+  const PAGE_DELAY_MS = 900; // about one page a second – a light load on EA's servers
   const MAX_PAGES = 40; // safety cap: 40 × 90 = 3,600 players
   const READY_TIMEOUT_MS = 180_000; // user may need to sign in first
   const FIRST_PAGE_ATTEMPTS = 20; // × 3 s = up to 1 minute for the club to load

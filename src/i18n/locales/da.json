@@ -29,7 +29,7 @@
   "error.game_running_setup": "Luk FC 27 først – spillet overskriver fcsetup.ini, mens det kører.",
   "error.game_running_sync": "FC 27 kører – synk via Web App'en ville smide dig ud af Ultimate Team.",
   "error.game_already_running": "FC 27 kører allerede.",
-  "error.game_not_found": "Fandt ikke FC 27: {{detail}}",
+  "error.game_not_found": "FC 27 blev ikke fundet på denne pc. Start det selv én gang (Steam, EA-appen eller Epic) – så husker FC-Tracker, hvor det ligger, og starter det fremover.",
   "error.launch_failed": "Kunne ikke starte FC 27: {{detail}}",
   "error.browser_failed": "Kunne ikke åbne browseren: {{detail}}",
   "error.open_folder_failed": "Kunne ikke åbne mappen: {{detail}}",

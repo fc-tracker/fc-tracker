@@ -37,14 +37,25 @@ Everything below can be checked in the code; the file is named for each point.
     (`src-tauri/src/bridge.rs`). It never listens on the network.
   - Links you click (the EA Web App, fc-tracker.com, the support page) open in your normal browser.
 
-**The Chrome extension (optional)**
+**The Chrome extension (optional, for the club sync)**
 
-- Runs only on the EA Web App page (`extension/manifest.json`) and reads the club and Gallery data the
-  Web App itself loads (`extension/hook.js`).
+- Runs only on the EA Web App page (`extension/manifest.json`).
+- **During a sync it is active:** it pages through your club with the Web App's own club search – the
+  same requests the Club screen makes when you scroll through it – and reads the Gallery card list for
+  each league set the same way. One page at a time, about one a second, and it stops when nothing new
+  comes (`extension/hook.js`). Outside a sync it only reads what the Web App loads anyway.
+- Never searches the transfer market, and never buys, sells, bids or lists anything. Prices come only
+  from EA's own market average in your club data.
 - Sends that data only to the FC-Tracker app on your own PC, `127.0.0.1` (`extension/background.js`,
   `extension/relay.js`). It never sends anything to any other server.
-- Never reads, stores or sends your EA login, session or token.
-- Never buys, sells, bids or searches the market.
+- Never reads, stores or sends your EA login, session or token – responses from login and token
+  endpoints are dropped before anything is read (`BLOCKED`, `SECRET_KEYS` in `extension/hook.js`).
+
+**Your account.** FC-Tracker is an unofficial tool: it is not endorsed by EA, and EA's terms apply to
+your account. The app itself only looks at your screen. The sync is the part EA's servers see –
+requests from your browser, like clicking through your club – which is why it is kept slow and short.
+If you would rather not use it, skip the extension: the app then works from what it sees in the game
+(it only knows the cards it has seen on your screen).
 
 If you find anything in the code that contradicts this list, please open an issue – see
 [SECURITY.md](SECURITY.md).

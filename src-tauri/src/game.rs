@@ -8,8 +8,167 @@ const DEFAULT_INSTALL_DIR: &str = r"C:\Program Files\EA Games\EA SPORTS FC 27";
 
 pub const WEB_APP_URL: &str = "https://www.ea.com/ea-sports-fc/ultimate-team/web-app/";
 
-pub fn exe_path() -> PathBuf {
-    PathBuf::from(DEFAULT_INSTALL_DIR).join(EXE_NAME)
+/// Where FC 27 is installed and how it is started: through its store (Steam, Epic) when it came
+/// from one – the store then handles sign-in and anti-cheat – or straight from the exe (EA app).
+#[derive(Debug, Clone, PartialEq)]
+pub enum Install {
+    Steam { appid: String, exe: PathBuf },
+    Epic { app: String, exe: PathBuf },
+    Exe(PathBuf),
+}
+
+impl Install {
+    pub fn exe(&self) -> &PathBuf {
+        match self {
+            Install::Steam { exe, .. } | Install::Epic { exe, .. } | Install::Exe(exe) => exe,
+        }
+    }
+}
+
+/// Finds FC 27: the place it was last seen running from (`remembered`), then Steam's libraries, the
+/// EA app's registry entry, Epic's manifests and the EA app's default folder. Read-only: registry
+/// values and store manifests only.
+pub fn find(remembered: Option<&std::path::Path>) -> Option<Install> {
+    let steam = steam_installs();
+    let epic = epic_installs();
+    // a remembered exe keeps its store, so Steam/Epic copies still start through their store
+    if let Some(exe) = remembered.filter(|p| p.is_file()) {
+        let same = |p: &PathBuf| p.as_path().eq(exe);
+        if let Some(s) = steam.iter().chain(epic.iter()).find(|i| same(i.exe())) {
+            return Some(s.clone());
+        }
+        return Some(Install::Exe(exe.to_path_buf()));
+    }
+    if let Some(s) = steam.into_iter().next() {
+        return Some(s);
+    }
+    for dir in ea_install_dirs() {
+        let exe = PathBuf::from(dir).join(EXE_NAME);
+        if exe.is_file() {
+            return Some(Install::Exe(exe));
+        }
+    }
+    if let Some(e) = epic.into_iter().next() {
+        return Some(e);
+    }
+    let exe = PathBuf::from(DEFAULT_INSTALL_DIR).join(EXE_NAME);
+    exe.is_file().then_some(Install::Exe(exe))
+}
+
+/// A folder name that is FC 27's (Steam and Epic name it "EA SPORTS FC 27" or similar).
+fn is_fc27_dir(name: &str) -> bool {
+    let n = name.to_ascii_lowercase().replace([' ', '_', '-'], "");
+    n.contains("fc27")
+}
+
+/// FC 27 in every Steam library: `libraryfolders.vdf` lists the libraries, each game's
+/// `appmanifest_<appid>.acf` names its folder under `steamapps/common`.
+fn steam_installs() -> Vec<Install> {
+    let Some(root) = reg_string_cu(r"Software\Valve\Steam", "SteamPath") else { return Vec::new() };
+    let root = PathBuf::from(root.replace('/', "\\"));
+    let mut libraries = vec![root.clone()];
+    if let Ok(vdf) = std::fs::read_to_string(root.join("steamapps").join("libraryfolders.vdf")) {
+        libraries.extend(vdf_values(&vdf, "path").into_iter().map(|p| PathBuf::from(p.replace("\\\\", "\\"))));
+    }
+    libraries.dedup();
+    let mut out = Vec::new();
+    for lib in libraries {
+        let apps = lib.join("steamapps");
+        let Ok(entries) = std::fs::read_dir(&apps) else { continue };
+        for e in entries.flatten() {
+            let name = e.file_name().to_string_lossy().to_string();
+            let Some(appid) = name.strip_prefix("appmanifest_").and_then(|s| s.strip_suffix(".acf")) else { continue };
+            let Ok(acf) = std::fs::read_to_string(e.path()) else { continue };
+            let Some(dir) = vdf_values(&acf, "installdir").into_iter().next() else { continue };
+            if !is_fc27_dir(&dir) {
+                continue;
+            }
+            let exe = apps.join("common").join(&dir).join(EXE_NAME);
+            if exe.is_file() {
+                out.push(Install::Steam { appid: appid.to_string(), exe });
+            }
+        }
+    }
+    out
+}
+
+/// The values of every `"key"  "value"` line of a Valve KeyValues file (libraryfolders.vdf, *.acf).
+fn vdf_values(text: &str, key: &str) -> Vec<String> {
+    let want = format!("\"{key}\"");
+    text.lines()
+        .filter_map(|l| {
+            let l = l.trim();
+            let rest = l.strip_prefix(&want)?.trim();
+            Some(rest.trim_matches('"').to_string())
+        })
+        .filter(|v| !v.is_empty())
+        .collect()
+}
+
+/// FC 27 from Epic: each installed game has a JSON manifest with its folder and launch exe.
+fn epic_installs() -> Vec<Install> {
+    let dir = PathBuf::from(r"C:\ProgramData\Epic\EpicGamesLauncher\Data\Manifests");
+    let Ok(entries) = std::fs::read_dir(dir) else { return Vec::new() };
+    let mut out = Vec::new();
+    for e in entries.flatten() {
+        if e.path().extension().is_none_or(|x| x != "item") {
+            continue;
+        }
+        let Ok(text) = std::fs::read_to_string(e.path()) else { continue };
+        let Ok(m) = serde_json::from_str::<serde_json::Value>(&text) else { continue };
+        let (Some(loc), Some(launch), Some(app)) = (m["InstallLocation"].as_str(), m["LaunchExecutable"].as_str(), m["AppName"].as_str()) else { continue };
+        if !launch.to_ascii_lowercase().ends_with(&EXE_NAME.to_ascii_lowercase()) {
+            continue;
+        }
+        let exe = PathBuf::from(loc).join(launch);
+        if exe.is_file() {
+            out.push(Install::Epic { app: app.to_string(), exe });
+        }
+    }
+    out
+}
+
+/// The EA app's own record of the install folder (64- and 32-bit registry views).
+fn ea_install_dirs() -> Vec<String> {
+    let mut out = Vec::new();
+    for key in [r"SOFTWARE\EA Games\EA SPORTS FC 27", r"SOFTWARE\WOW6432Node\EA Games\EA SPORTS FC 27"] {
+        if let Some(v) = reg_string_lm(key, "Install Dir") {
+            out.push(v);
+        }
+    }
+    out
+}
+
+/// The full path of the running FC 27 exe – asked once when the game is seen starting, so the
+/// launcher knows where it is next time (a process image name, nothing inside the game).
+pub fn running_exe() -> Option<PathBuf> {
+    use windows::core::PWSTR;
+    use windows::Win32::Foundation::CloseHandle;
+    use windows::Win32::System::Diagnostics::ToolHelp::{CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W, TH32CS_SNAPPROCESS};
+    use windows::Win32::System::Threading::{OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION};
+    // SAFETY: read-only process list and one image-name query; both handles are closed below.
+    unsafe {
+        let snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0).ok()?;
+        let mut entry = PROCESSENTRY32W { dwSize: std::mem::size_of::<PROCESSENTRY32W>() as u32, ..Default::default() };
+        let mut pid = None;
+        let mut ok = Process32FirstW(snap, &mut entry).is_ok();
+        while ok {
+            let len = entry.szExeFile.iter().position(|&c| c == 0).unwrap_or(entry.szExeFile.len());
+            let name = String::from_utf16_lossy(&entry.szExeFile[..len]).to_ascii_lowercase();
+            if name == EXE_NAME.to_ascii_lowercase() {
+                pid = Some(entry.th32ProcessID);
+                break;
+            }
+            ok = Process32NextW(snap, &mut entry).is_ok();
+        }
+        let _ = CloseHandle(snap);
+        let process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid?).ok()?;
+        let mut buf = [0u16; 520];
+        let mut len = buf.len() as u32;
+        let ok = QueryFullProcessImageNameW(process, PROCESS_NAME_WIN32, PWSTR(buf.as_mut_ptr()), &mut len).is_ok();
+        let _ = CloseHandle(process);
+        ok.then(|| PathBuf::from(String::from_utf16_lossy(&buf[..len as usize])))
+    }
 }
 
 /// Is an FC27*.exe process running? A process snapshot (microseconds, no child process – the
@@ -184,6 +343,27 @@ fn reg_set(subkey: &str, name: Option<&str>, value: &str) -> Result<(), String> 
     }
 }
 
+fn reg_string(root: windows::Win32::System::Registry::HKEY, subkey: &str, name: &str) -> Option<String> {
+    use windows::core::HSTRING;
+    use windows::Win32::System::Registry::{RegGetValueW, RRF_RT_REG_SZ};
+    let mut buf = [0u16; 1024];
+    let mut size = (buf.len() * 2) as u32;
+    // SAFETY: the buffer outlives the call and its size in bytes is passed.
+    unsafe { RegGetValueW(root, &HSTRING::from(subkey), &HSTRING::from(name), RRF_RT_REG_SZ, None, Some(buf.as_mut_ptr() as *mut _), Some(&mut size)) }
+        .ok()
+        .ok()?;
+    let chars = (size as usize / 2).saturating_sub(1);
+    Some(String::from_utf16_lossy(&buf[..chars])).filter(|s| !s.is_empty())
+}
+
+fn reg_string_cu(subkey: &str, name: &str) -> Option<String> {
+    reg_string(windows::Win32::System::Registry::HKEY_CURRENT_USER, subkey, name)
+}
+
+fn reg_string_lm(subkey: &str, name: &str) -> Option<String> {
+    reg_string(windows::Win32::System::Registry::HKEY_LOCAL_MACHINE, subkey, name)
+}
+
 fn reg_exists(subkey: &str, name: &str) -> bool {
     use windows::core::HSTRING;
     use windows::Win32::System::Registry::{RegGetValueW, HKEY_CURRENT_USER, RRF_RT_REG_SZ};
@@ -238,24 +418,41 @@ pub fn open_web_app() -> Result<(), String> {
     shell_open(WEB_APP_URL)
 }
 
-/// Launches the game via its exe; the EA app takes over sign-in and anti-cheat startup.
-pub fn launch() -> Result<(), String> {
+/// Launches the game where it is installed: Steam and Epic copies through their store's own
+/// launch link (the store handles sign-in, the EA app and anti-cheat), others via the exe.
+pub fn launch(remembered: Option<&std::path::Path>) -> Result<(), String> {
     if is_running() {
         return Err("game_already_running".into());
     }
-    let exe = exe_path();
-    if !exe.exists() {
-        return Err(format!("game_not_found:{}", exe.display()));
+    match find(remembered).ok_or_else(|| "game_not_found".to_string())? {
+        Install::Steam { appid, .. } => shell_open(&format!("steam://rungameid/{appid}")),
+        Install::Epic { app, .. } => shell_open(&format!("com.epicgames.launcher://apps/{app}?action=launch&silent=true")),
+        Install::Exe(exe) => Command::new(&exe)
+            .current_dir(exe.parent().unwrap())
+            .spawn()
+            .map(|_| ())
+            .map_err(|e| format!("launch_failed:{e}")),
     }
-    Command::new(&exe)
-        .current_dir(exe.parent().unwrap())
-        .spawn()
-        .map(|_| ())
-        .map_err(|e| format!("launch_failed:{e}"))
 }
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn reads_steam_library_files() {
+        let vdf = "\"libraryfolders\"\n{\n\t\"0\"\n\t{\n\t\t\"path\"\t\t\"C:\\\\Program Files (x86)\\\\Steam\"\n\t}\n\t\"1\"\n\t{\n\t\t\"path\"\t\t\"D:\\\\SteamLibrary\"\n\t}\n}";
+        assert_eq!(super::vdf_values(vdf, "path"), vec![r"C:\\Program Files (x86)\\Steam", r"D:\\SteamLibrary"]);
+        let acf = "\"AppState\"\n{\n\t\"appid\"\t\t\"3405690\"\n\t\"installdir\"\t\t\"EA SPORTS FC 27\"\n}";
+        assert_eq!(super::vdf_values(acf, "installdir"), vec!["EA SPORTS FC 27"]);
+        assert!(super::is_fc27_dir("EA SPORTS FC 27") && super::is_fc27_dir("EASportsFC27") && !super::is_fc27_dir("EA SPORTS FC 26"));
+    }
+
+    /// Where FC 27 is on this PC: `cargo test --lib find_game_now -- --ignored --nocapture`
+    #[test]
+    #[ignore]
+    fn find_game_now() {
+        println!("FC 27: {:?} · running from {:?}", super::find(None), super::running_exe());
+    }
+
     /// Which recorder shows a window right now: `cargo test --lib recorder_now -- --ignored --nocapture`
     #[test]
     #[ignore]
