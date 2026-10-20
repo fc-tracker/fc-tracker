@@ -173,6 +173,8 @@ html[data-view="launcher"] body {
 .ln-row p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
 .ln-seg { display: flex; gap: 6px; flex-shrink: 0; }
 .ln-top-right { display: inline-flex; align-items: center; gap: 12px; }
+html[data-view="launcher"] .ln-online { display: inline-flex; align-items: center; gap: 6px; margin-right: auto; margin-left: 4px; font-size: 13px; font-weight: 600; color: var(--muted); }
+html[data-view="launcher"] .ln-online-dot { width: 7px; height: 7px; border-radius: 0; transform: rotate(45deg); background: var(--accent-2); box-shadow: 0 0 8px var(--accent-2); }
 
 html[data-view="launcher"] :focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
 

@@ -5,7 +5,7 @@ import Help from "./Help";
 import { SupportButton } from "./Support";
 import Speed from "./Speed";
 import { THEMES, useTheme, type Theme } from "./theme";
-import { initUsage, setUsageEnabled, track, trackOnce, usageEnabled } from "./usage";
+import { initUsage, onlineNow, setUsageEnabled, startPresence, track, trackOnce, usageEnabled } from "./usage";
 
 // Usage statistics run in the real app only (the launcher window lives as long as the app does).
 const inApp = "__TAURI_INTERNALS__" in window;
@@ -45,6 +45,15 @@ export default function Launcher() {
   const [missingSide, setMissingSide] = useState<"left" | "right">("left");
   const [autostart, setAutostart] = useState<boolean | null>(null);
   const [usageOn, setUsageOn] = useState(usageEnabled);
+  // "N online now" (our own counter) – shown once enough people are online
+  const [online, setOnline] = useState<number | null>(null);
+  useEffect(() => {
+    if (!inApp) return;
+    const load = () => onlineNow().then(setOnline);
+    load();
+    const id = setInterval(load, 60_000);
+    return () => clearInterval(id);
+  }, []);
   useEffect(() => {
     api.autostart().then(setAutostart).catch(() => {});
   }, []);
@@ -113,6 +122,7 @@ export default function Launcher() {
       track("app-start", { existing });
       trackOnce("first-start", { existing });
       active = setInterval(() => track("app-active"), 2 * 60 * 60 * 1000);
+      startPresence("app");
     })();
     const unlisten = [
       events.onPaired(() => trackOnce("extension-connected")),
@@ -209,6 +219,12 @@ export default function Launcher() {
       <main className="ln-main">
         <header className="ln-top">
           <span className="ln-brand">FC-Tracker</span>
+          {online != null && (
+            <span className="ln-online" title={t("online.hint")}>
+              <span className="ln-online-dot" aria-hidden="true" />
+              {t("online.now", { count: online })}
+            </span>
+          )}
           <span className="ln-top-right">
             <SupportButton />
             <span className={`ln-pill ${running ? "on" : ""}`}>

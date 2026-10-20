@@ -38,6 +38,10 @@ Everything below can be checked in the code; the file is named for each point.
     (extension connected, first sync, first set read), with the app version and a random number
     made on your PC so one installation counts once. Never your club, players or EA account.
     Off in *Settings → Anonymous usage statistics*.
+  - `https://www.fc-tracker.com/api/beat` – while the app runs, every 5 minutes: the same random
+    number, the app version and "app". It gives the "online now" count and how many installations
+    are in use; what is kept is listed in `site/api/_presence.mjs` on the website (ids only, no IP).
+    The same setting turns it off.
   - `127.0.0.1` (your own PC only) – the bridge the Chrome extension talks to
     (`src-tauri/src/bridge.rs`). It never listens on the network.
   - Links you click (the EA Web App, fc-tracker.com, the support page) open in your normal browser.

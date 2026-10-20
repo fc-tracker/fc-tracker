@@ -484,5 +484,7 @@
   "web.sync.reading": "Leyendo la sincronización de tu club…",
   "web.sync.done": "Club sincronizado {{age}} · {{cards}} cartas",
   "settings.usage": "Estadísticas de uso anónimas",
-  "settings.usageText": "Cuenta que FC-Tracker se inició y hasta dónde llegó la configuración – nunca tu club, tus jugadores ni tu cuenta de EA. Un número aleatorio evita que un PC cuente dos veces."
+  "settings.usageText": "Cuenta que FC-Tracker está en marcha (para el número en línea) y hasta dónde llegó la configuración – nunca tu club, tus jugadores ni tu cuenta de EA. Un número aleatorio evita que un PC cuente dos veces.",
+  "online.now": "{{count}} en línea ahora",
+  "online.hint": "Apps y pestañas de FC-Tracker en uso ahora mismo"
 }

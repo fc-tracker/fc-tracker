@@ -69,3 +69,41 @@ export function trackOnce(name: string, data: Record<string, string | number | b
   set(ONCE_KEY, [...done].join(","));
   track(name, data);
 }
+
+// ---------------------------------------------------------------- presence (our own counter)
+// A heartbeat every 5 minutes while the app runs (or FC-Tracker Web is open) to
+// fc-tracker.com/api/beat: the same random id, the kind and the version – nothing else. It gives
+// "online now" and exact active/installation counts (site/api/_presence.mjs). Off with the same
+// setting as the usage counts.
+const BEAT = "https://www.fc-tracker.com/api/beat";
+const ONLINE = "https://www.fc-tracker.com/api/online";
+const DAY_KEY = "fct.presence.day";
+let beating: ReturnType<typeof setInterval> | null = null;
+
+function beat(kind: "app" | "web") {
+  if (!usageEnabled()) return;
+  const today = new Date().toISOString().slice(0, 10);
+  const daily = get(DAY_KEY) !== today;
+  if (daily) set(DAY_KEY, today);
+  // text/plain: no preflight; the server reads it as JSON
+  fetch(BEAT, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ id: installId(), kind, v: version, day: daily }), keepalive: true }).catch(() => {
+    if (daily) set(DAY_KEY, null); // the daily facts go with the next beat
+  });
+}
+
+export function startPresence(kind: "app" | "web") {
+  if (beating) return;
+  beat(kind);
+  beating = setInterval(() => beat(kind), 5 * 60 * 1000);
+}
+
+/** "N online now" – null while fewer than the public threshold are online. */
+export async function onlineNow(): Promise<number | null> {
+  try {
+    const r = await fetch(ONLINE);
+    const j = (await r.json()) as { shown: number | null };
+    return typeof j.shown === "number" ? j.shown : null;
+  } catch {
+    return null;
+  }
+}

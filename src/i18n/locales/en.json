@@ -484,5 +484,7 @@
   "web.sync.reading": "Reading your club sync…",
   "web.sync.done": "Club synced {{age}} · {{cards}} cards",
   "settings.usage": "Anonymous usage statistics",
-  "settings.usageText": "Counts that FC-Tracker was started and how far setup got – never your club, players or EA account. A random number keeps one PC from counting twice."
+  "settings.usageText": "Counts that FC-Tracker runs (for the online count) and how far setup got – never your club, players or EA account. A random number keeps one PC from counting twice.",
+  "online.now": "{{count}} online now",
+  "online.hint": "FC-Tracker apps and browser tabs in use right now"
 }
