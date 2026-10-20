@@ -467,7 +467,7 @@
   "web.intro.step1": "Share FC 27 – your screen, an Xbox Cloud tab or a capture card.",
   "web.intro.step2": "Open a Gallery set. FC-Tracker reads it and works out your best selection and the cards to buy next.",
   "web.intro.step3": "Add the Chrome extension to sync your whole club – or open Swap Player to show your cards for a set.",
-  "web.intro.private": "Nothing leaves your browser – no account, no upload. What it reads stays in this browser.",
+  "web.intro.private": "Your game and club never leave your browser – no account, no upload. Only anonymous usage counts are sent.",
   "web.intro.app": "Get the Windows app",
   "web.console": "On PlayStation or Xbox? Use a capture card or Xbox Cloud. On PC the app does all of this live on top of the game.",
   "web.nudge.title": "Read in {{ms}} ms – in a browser tab",
@@ -482,5 +482,7 @@
   "web.sync.now": "Sync my club",
   "web.sync.running": "Syncing your club in the Web App…",
   "web.sync.reading": "Reading your club sync…",
-  "web.sync.done": "Club synced {{age}} · {{cards}} cards"
+  "web.sync.done": "Club synced {{age}} · {{cards}} cards",
+  "settings.usage": "Anonymous usage statistics",
+  "settings.usageText": "Counts that FC-Tracker was started and how far setup got – never your club, players or EA account. A random number keeps one PC from counting twice."
 }

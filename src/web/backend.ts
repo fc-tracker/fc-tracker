@@ -4,6 +4,7 @@
 // browser; what it learns is kept in this browser only (localStorage).
 import type { CurrentPage, GalleryCategory, GalleryStatus, ShoppingList } from "../api";
 import { call, core, validPoints } from "./core";
+import { trackOnce } from "../usage";
 import { classify, Frame, pageKey, readSet, readSwap, textReader, type Box } from "./reader";
 
 export type Source = "window" | "tab" | "card";
@@ -308,6 +309,7 @@ async function readOnce(now: Uint8ClampedArray, f: Frame) {
     emit("page", p);
     emit("focus", p.set_key);
     emit("missing", p.set_key);
+    trackOnce("web-first-set-read");
     setStatus({ phase: "read", set: p.set_name, cards: p.cards_read, verified: read.complete && p.verified, ms: Math.round(performance.now() - t0), reads: status.reads + 1 });
     return;
   }
@@ -400,6 +402,7 @@ async function checkClub() {
         await persist();
         changed();
         setClub({ readAt: r.synced_at, cards: r.collected });
+        trackOnce("web-first-sync");
       }
     } finally {
       setClub({ reading: false });

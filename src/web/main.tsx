@@ -14,6 +14,7 @@ import WebApp from "./WebApp";
 import { browserPad } from "../browserPad";
 import * as backend from "./backend";
 import { setWebBackend } from "../api";
+import { initUsage, track } from "../usage";
 import * as reader from "./reader";
 import "../overlay.css";
 import "./web.css";
@@ -24,6 +25,9 @@ document.documentElement.dataset.view = "overlay";
 document.documentElement.classList.add("web");
 document.title = t("web.title");
 setWebBackend(backend);
+initUsage("web", "web");
+track(null);
+track("web-start");
 browserPad.requireFocus(true);
 // local testing only: feed a picture instead of a shared screen
 if (location.hostname === "localhost") Object.assign(window, { __fctWeb: { attach: backend.attach, reader } });

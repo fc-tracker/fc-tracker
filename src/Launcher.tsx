@@ -5,6 +5,10 @@ import Help from "./Help";
 import { SupportButton } from "./Support";
 import Speed from "./Speed";
 import { THEMES, useTheme, type Theme } from "./theme";
+import { initUsage, setUsageEnabled, track, trackOnce, usageEnabled } from "./usage";
+
+// Usage statistics run in the real app only (the launcher window lives as long as the app does).
+const inApp = "__TAURI_INTERNALS__" in window;
 
 // Messages are stored as functions so they re-translate when the language changes.
 type Message = { kind: "ok" | "error"; text: () => string } | null;
@@ -40,6 +44,7 @@ export default function Launcher() {
   const [settingsTab, setSettingsTab] = useState<"general" | "speed">("general");
   const [missingSide, setMissingSide] = useState<"left" | "right">("left");
   const [autostart, setAutostart] = useState<boolean | null>(null);
+  const [usageOn, setUsageOn] = useState(usageEnabled);
   useEffect(() => {
     api.autostart().then(setAutostart).catch(() => {});
   }, []);
@@ -92,6 +97,37 @@ export default function Launcher() {
     } catch (e) {
       setBridgeError(String(e));
     }
+  }, []);
+
+  // Anonymous usage counts (src/usage.ts): a start, the first time each step is reached, and
+  // "still in use" every two hours while the app runs.
+  useEffect(() => {
+    if (!inApp) return;
+    let active: ReturnType<typeof setInterval> | undefined;
+    (async () => {
+      const v = await api.appVersion().catch(() => "");
+      initUsage("app", v);
+      // an installation that already had a club or Gallery data before this version
+      const existing = await api.galleryStatus().then((g) => g.collected > 0).catch(() => false);
+      track(null);
+      track("app-start", { existing });
+      trackOnce("first-start", { existing });
+      active = setInterval(() => track("app-active"), 2 * 60 * 60 * 1000);
+    })();
+    const unlisten = [
+      events.onPaired(() => trackOnce("extension-connected")),
+      events.onSyncDone((s) => {
+        if (s.player_count > 0) trackOnce("first-sync", { players: s.player_count });
+        track("sync");
+      }),
+      events.onPageChanged((p) => {
+        if (p.kind === "set" && p.verified) trackOnce("first-set-read");
+      }),
+    ];
+    return () => {
+      clearInterval(active);
+      unlisten.forEach((p) => p.then((u) => u()));
+    };
   }, []);
 
   useEffect(() => {
@@ -399,6 +435,22 @@ export default function Launcher() {
                   onClick={() => api.setAutostart(!autostart).then(setAutostart).catch(() => {})}
                 >
                   {autostart ? t("settings.on") : t("settings.off")}
+                </button>
+              </div>
+              <div className="ln-row">
+                <div>
+                  <b>{t("settings.usage")}</b>
+                  <p>{t("settings.usageText")}</p>
+                </div>
+                <button
+                  className={`ln-btn small ${usageOn ? "" : "ghost"}`}
+                  aria-pressed={usageOn}
+                  onClick={() => {
+                    setUsageEnabled(!usageOn);
+                    setUsageOn(!usageOn);
+                  }}
+                >
+                  {usageOn ? t("settings.on") : t("settings.off")}
                 </button>
               </div>
               <div className="ln-row">

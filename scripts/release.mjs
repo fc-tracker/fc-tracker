@@ -11,7 +11,8 @@
 //    are removed) and writes downloads/latest.json (version, size, sha256) for the website. These
 //    are the files the in-app updater fetches – the download button never changes with a release:
 //    it gives the fixed site/public/installer/FC-Tracker-Installer.exe (scripts/pin-installer.mjs).
-// 3. Writes updates/latest.json – the feed installed apps check (tauri-plugin-updater).
+// 3. Writes updates/feed.json – the feed installed apps check (tauri-plugin-updater) at
+//    updates/latest.json, which site/api/update-feed.mjs serves and counts.
 // 4. Writes the stable links /download/windows (the fixed installer) and /download/extension.
 // 5. Scans both files on VirusTotal when an API key is set (scripts/virustotal.mjs) – the
 //    website shows the result and links the report. Without a key the release goes out unscanned.
@@ -125,7 +126,7 @@ const feed = {
     "windows-x86_64": { signature, url: `${SITE}/downloads/${appFile}` },
   },
 };
-fs.writeFileSync(path.join(pub, "updates", "latest.json"), JSON.stringify(feed, null, 2) + "\n");
+fs.writeFileSync(path.join(pub, "updates", "feed.json"), JSON.stringify(feed, null, 2) + "\n");
 
 // Stable links that always give the newest files.
 const vercelFile = path.join(root, "site", "vercel.json");
@@ -140,6 +141,8 @@ vercel.redirects = [
   { source: "/source", destination: "https://github.com/fc-tracker/fc-tracker", permanent: false },
   // the fixed installer Chrome already knows – never the new release file (see pin-installer.mjs)
   { source: "/download/windows", destination: "/installer/FC-Tracker-Installer.exe", permanent: false },
+  // the extension .zip as GitHub built it from the public tag (attested)
+  { source: "/download/extension-zip", destination: `https://github.com/fc-tracker/fc-tracker/releases/download/v${conf.version}/${extFile}`, permanent: false },
   // the extension lives in the Chrome Web Store (the zip stays in /downloads for Edge-only setups)
   { source: "/download/extension", destination: "https://chromewebstore.google.com/detail/fc-tracker/bpinmgkhbofecfagbehkmpmcnnehclem", permanent: false },
   // analytics.fc-tracker.com → the Umami dashboard (Umami's own login keeps it private)

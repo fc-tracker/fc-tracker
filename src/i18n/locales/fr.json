@@ -467,7 +467,7 @@
   "web.intro.step1": "Partage FC 27 – ton écran, un onglet Xbox Cloud ou une carte d'acquisition.",
   "web.intro.step2": "Ouvre un set de la Galerie. FC-Tracker le lit et calcule ta meilleure sélection et les cartes à acheter.",
   "web.intro.step3": "Ajoute l'extension Chrome pour synchroniser tout ton club – ou ouvre Échanger un joueur pour montrer tes cartes d'un set.",
-  "web.intro.private": "Rien ne quitte ton navigateur – pas de compte, pas d'envoi. Ce qui est lu reste dans ce navigateur.",
+  "web.intro.private": "Ton jeu et ton club ne quittent jamais ton navigateur – pas de compte, pas d’envoi. Seules des statistiques d’utilisation anonymes sont envoyées.",
   "web.intro.app": "Obtenir l'app Windows",
   "web.console": "Sur PlayStation ou Xbox ? Utilise une carte d'acquisition ou Xbox Cloud. Sur PC, l'app fait tout cela en direct par-dessus le jeu.",
   "web.nudge.title": "Lu en {{ms}} ms – dans un onglet",
@@ -482,5 +482,7 @@
   "web.sync.now": "Synchroniser mon club",
   "web.sync.running": "Synchronisation de ton club dans la Web App…",
   "web.sync.reading": "Lecture de la synchronisation de ton club…",
-  "web.sync.done": "Club synchronisé {{age}} · {{cards}} cartes"
+  "web.sync.done": "Club synchronisé {{age}} · {{cards}} cartes",
+  "settings.usage": "Statistiques d'utilisation anonymes",
+  "settings.usageText": "Compte que FC-Tracker a été lancé et jusqu'où la configuration est allée – jamais ton club, tes joueurs ni ton compte EA. Un numéro aléatoire évite qu'un PC compte deux fois."
 }

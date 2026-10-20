@@ -33,6 +33,11 @@ Everything below can be checked in the code; the file is named for each point.
   - `https://www.fc-tracker.com/updates/latest.json` – the update check, and the update download from
     fc-tracker.com when you accept one. Updates are signed; the app only installs files signed with the
     project's key (`src-tauri/tauri.conf.json`, `plugins.updater`).
+  - `https://cloud.umami.is/api/send` – anonymous usage counts (`src/usage.ts`): that the app was
+    started, that it is still in use (every two hours) and the first time setup steps are reached
+    (extension connected, first sync, first set read), with the app version and a random number
+    made on your PC so one installation counts once. Never your club, players or EA account.
+    Off in *Settings → Anonymous usage statistics*.
   - `127.0.0.1` (your own PC only) – the bridge the Chrome extension talks to
     (`src-tauri/src/bridge.rs`). It never listens on the network.
   - Links you click (the EA Web App, fc-tracker.com, the support page) open in your normal browser.

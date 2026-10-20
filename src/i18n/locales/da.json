@@ -467,7 +467,7 @@
   "web.intro.step1": "Del FC 27 – din skærm, en Xbox Cloud-fane eller et capture card.",
   "web.intro.step2": "Åbn et Gallery-sæt. FC-Tracker læser det og finder dit bedste udvalg og de kort, du skal købe.",
   "web.intro.step3": "Tilføj Chrome-udvidelsen for at synkronisere hele din klub – eller åbn Swap Player for at vise dine kort til et sæt.",
-  "web.intro.private": "Intet forlader din browser – ingen konto, intet upload. Det læste bliver i denne browser.",
+  "web.intro.private": "Dit spil og din klub forlader aldrig din browser – ingen konto, intet upload. Kun anonym brugsstatistik sendes.",
   "web.intro.app": "Hent Windows-appen",
   "web.console": "På PlayStation eller Xbox? Brug et capture card eller Xbox Cloud. På PC gør appen alt dette live oven på spillet.",
   "web.nudge.title": "Læst på {{ms}} ms – i en browserfane",
@@ -482,5 +482,7 @@
   "web.sync.now": "Synkronisér min klub",
   "web.sync.running": "Synkroniserer din klub i Web App'en…",
   "web.sync.reading": "Læser din klubsynkronisering…",
-  "web.sync.done": "Klub synkroniseret {{age}} · {{cards}} kort"
+  "web.sync.done": "Klub synkroniseret {{age}} · {{cards}} kort",
+  "settings.usage": "Anonym brugsstatistik",
+  "settings.usageText": "Tæller at FC-Tracker blev startet, og hvor langt opsætningen kom – aldrig din klub, dine spillere eller din EA-konto. Et tilfældigt nummer sørger for, at én PC ikke tæller dobbelt."
 }
