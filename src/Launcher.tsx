@@ -6,6 +6,7 @@ import { SupportButton } from "./Support";
 import Speed from "./Speed";
 import { THEMES, useTheme, type Theme } from "./theme";
 import { initUsage, onlineNow, setUsageEnabled, startPresence, track, trackOnce, usageEnabled } from "./usage";
+import { startPrices } from "./prices";
 
 // Usage statistics run in the real app only (the launcher window lives as long as the app does).
 const inApp = "__TAURI_INTERNALS__" in window;
@@ -123,6 +124,7 @@ export default function Launcher() {
       trackOnce("first-start", { existing });
       active = setInterval(() => track("app-active"), 2 * 60 * 60 * 1000);
       startPresence("app");
+      startPrices();
     })();
     const unlisten = [
       events.onPaired(() => trackOnce("extension-connected")),

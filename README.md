@@ -42,6 +42,12 @@ Everything below can be checked in the code; the file is named for each point.
     number, the app version and "app". It gives the "online now" count and how many installations
     are in use; what is kept is listed in `site/api/_presence.mjs` on the website (ids only, no IP).
     The same setting turns it off.
+  - `https://www.fc-tracker.com/api/prices` – the shared price pool. EA sends its own market
+    average with your club cards and your own market searches, but never with the Gallery card
+    lists, so a card you lack has no price until someone has seen it. Every 30 minutes the app sends
+    the averages it saw – card id, price, when, and whether you're on the PC or the console market –
+    and downloads the pool of your market back (`src/prices.ts`, `site/api/prices.mjs`). No id,
+    no club, no account. Sending follows the same setting; the download is always on.
   - `127.0.0.1` (your own PC only) – the bridge the Chrome extension talks to
     (`src-tauri/src/bridge.rs`). It never listens on the network.
   - Links you click (the EA Web App, fc-tracker.com, the support page) open in your normal browser.

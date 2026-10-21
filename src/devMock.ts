@@ -15,7 +15,17 @@ const previewSet = typeof location !== "undefined" ? new URLSearchParams(locatio
 const findShopping = (key?: string): ShoppingList | null =>
   shopping.find((s) => (key ? s.key === key : previewSet ? s.name === previewSet : s.key === premierLeague.key)) ?? null;
 // ?swaps: the best selection shows two precise swaps made from the set's own cards (design only)
-export const mockShoppingFor = (key?: string): ShoppingList | null => {
+// ?prices: EA's market averages as read on the PC market on 2026-10-21 (Web App search results) –
+// shows the price column of Buy next (design only)
+const EA_AVG_2026_10_21: Record<number, number> = { 239085: 46_750, 158023: 19_500, 277643: 192_666, 50415142: 2_200_000, 50600784: 4_200_000, 67378000: 3_897_000 };
+const withPrices = (list: ShoppingList | null): ShoppingList | null => {
+  if (!list || !new URLSearchParams(location.search).has("prices")) return list;
+  const at = Date.now() - 40 * 60_000;
+  const priced = (c: ShoppingList["entries"][number]["card"]) => (EA_AVG_2026_10_21[c.def_id] ? { ...c, price: EA_AVG_2026_10_21[c.def_id], price_at: at } : c);
+  return { ...list, entries: list.entries.map((e) => ({ ...e, card: priced(e.card) })) };
+};
+export const mockShoppingFor = (key?: string): ShoppingList | null => withPrices(rawShoppingFor(key));
+const rawShoppingFor = (key?: string): ShoppingList | null => {
   const list = findShopping(key);
   if (!list?.best || !new URLSearchParams(location.search).has("swaps")) return list;
   const c = list.best.cards.map((b) => b.card);

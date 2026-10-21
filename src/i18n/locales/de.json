@@ -484,7 +484,9 @@
   "web.sync.reading": "Lese deine Club-Synchronisierung …",
   "web.sync.done": "Club synchronisiert {{age}} · {{cards}} Karten",
   "settings.usage": "Anonyme Nutzungsstatistik",
-  "settings.usageText": "Zählt, dass FC-Tracker läuft (für die Online-Zahl) und wie weit die Einrichtung kam – nie deinen Club, deine Spieler oder dein EA-Konto. Eine Zufallszahl verhindert, dass ein PC doppelt zählt.",
+  "settings.usageText": "Zählt, dass FC-Tracker läuft (für die Online-Zahl) und wie weit die Einrichtung kam, und teilt die EA-Marktdurchschnitte, die du siehst, mit anderen Nutzern auf deinem Markt – nie deinen Club, deine Spieler oder dein EA-Konto. Eine Zufallszahl verhindert, dass ein PC doppelt zählt.",
   "online.now": "{{count}} gerade online",
-  "online.hint": "FC-Tracker-Apps und Browser-Tabs, die gerade genutzt werden"
+  "online.hint": "FC-Tracker-Apps und Browser-Tabs, die gerade genutzt werden",
+  "missing.priceTitle": "EA-Marktdurchschnitt auf deinem Markt · {{age}}",
+  "missing.priceNote": "≈ Münzen = EAs eigener Marktdurchschnitt – deiner oder der eines anderen FC-Tracker-Nutzers auf demselben Markt."
 }

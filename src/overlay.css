@@ -685,6 +685,9 @@ html[data-view="toast"] #root {
   display: inline-flex; align-items: center; justify-content: flex-end; gap: 4px; min-width: 52px;
   font-weight: 800; font-size: 12px; font-variant-numeric: tabular-nums;
 }
+.ml-coins { display: inline-flex; align-items: center; gap: 4px; color: var(--text); white-space: nowrap; }
+.ml-coins.old { color: var(--muted); }
+.ml-coin { width: 8px; height: 8px; border-radius: 50%; background: var(--tag-gold); box-shadow: inset 0 0 0 1.5px rgba(0, 0, 0, 0.25); flex: none; }
 .ml-noprice { font-weight: 600; font-size: 10px; color: var(--muted); }
 .ml-foot { display: grid; gap: 2px; font-size: 10.5px; color: var(--muted); line-height: 1.35; }
 .ml-empty { margin: 0; align-self: center; color: var(--muted); }

@@ -484,7 +484,9 @@
   "web.sync.reading": "Lecture de la synchronisation de ton club…",
   "web.sync.done": "Club synchronisé {{age}} · {{cards}} cartes",
   "settings.usage": "Statistiques d'utilisation anonymes",
-  "settings.usageText": "Compte que FC-Tracker tourne (pour le nombre en ligne) et jusqu'où la configuration est allée – jamais ton club, tes joueurs ni ton compte EA. Un numéro aléatoire évite qu'un PC compte deux fois.",
+  "settings.usageText": "Compte que FC-Tracker tourne (pour le nombre en ligne) et jusqu'où la configuration est allée, et partage les moyennes du marché d'EA que tu vois avec les autres utilisateurs de ton marché – jamais ton club, tes joueurs ni ton compte EA. Un numéro aléatoire évite qu'un PC compte deux fois.",
   "online.now": "{{count}} en ligne",
-  "online.hint": "Apps et onglets FC-Tracker utilisés en ce moment"
+  "online.hint": "Apps et onglets FC-Tracker utilisés en ce moment",
+  "missing.priceTitle": "Moyenne du marché d'EA sur ton marché · {{age}}",
+  "missing.priceNote": "≈ crédits = la moyenne du marché d'EA – la tienne, ou celle d'un autre utilisateur de FC-Tracker sur le même marché."
 }

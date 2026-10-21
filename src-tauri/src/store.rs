@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub use crate::types::{Acquired, GalleryCard, Item, ListObs, Price, SetObs};
-use crate::sync_data::{collect_items, endpoint_key, is_card_database_search, parse_gallery_card, raw_concept_cards, strip_query, CLUB_READ_PREFIX, GALLERY_PREFIX};
+use crate::sync_data::{account_platform, collect_items, endpoint_key, is_card_database_search, market_averages, parse_gallery_card, raw_concept_cards, strip_query, CLUB_READ_PREFIX, GALLERY_PREFIX};
 
 const MAX_RAW_CAPTURES: usize = 200;
 
@@ -65,6 +65,10 @@ pub struct Snapshot {
     /// so a PC account sees PC prices.
     #[serde(default)]
     pub prices: BTreeMap<u64, Price>,
+    /// The market this account trades on: "pc" or "console" (from EA's account info) – the
+    /// shared price pool is kept per platform.
+    #[serde(default)]
+    pub platform: Option<String>,
     /// What the in-game category pages show per set (score, or filled/slots) – every set's real
     /// score without opening it.
     #[serde(default)]
@@ -111,6 +115,8 @@ pub struct SummaryObs {
 
 /// Observations of the same card within this window are one price check (narrowing searches).
 const PRICE_SESSION_MS: u64 = 15 * 60 * 1000;
+/// At most this many prices go to the shared pool at a time (newest first).
+const POOL_MAX: usize = 1500;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Summary {
@@ -306,39 +312,46 @@ impl Store {
             let price = match self.snapshot.prices.get(&id) {
                 // A narrowing search in the same price check can only find cheaper listings.
                 Some(old) if now.saturating_sub(old.at) < PRICE_SESSION_MS && old.bin > 0 => {
-                    Price { bin: old.bin.min(bin), listings: old.listings.max(listings), at: now, avg: old.avg }
+                    Price { bin: old.bin.min(bin), listings: old.listings.max(listings), at: now, ..*old }
                 }
-                Some(old) => Price { bin, listings, at: now, avg: old.avg },
-                None => Price { bin, listings, at: now, avg: None },
+                Some(old) => Price { bin, listings, at: now, ..*old },
+                None => Price { bin, listings, at: now, avg: None, shared: false },
             };
             self.snapshot.prices.insert(id, price);
         }
         seen.len()
     }
 
-    /// EA's `marketAverage` from any item in a response (club items, market results).
+    /// EA's `marketAverage` from any item in a response (club items, market results, transfer
+    /// list, watchlist, pack previews).
     fn merge_market_averages(&mut self, body: &Value, now: u64) {
-        fn walk(v: &Value, out: &mut Vec<(u64, u64)>) {
-            match v {
-                Value::Object(map) => {
-                    let avg = map.get("marketAverage").and_then(Value::as_u64).filter(|&a| a > 0);
-                    let id = map.get("resourceId").and_then(Value::as_u64).filter(|&d| d > 0);
-                    if let (Some(avg), Some(id)) = (avg, id) {
-                        out.push((id, avg));
-                    }
-                    map.values().for_each(|c| walk(c, out));
-                }
-                Value::Array(a) => a.iter().for_each(|c| walk(c, out)),
-                _ => {}
-            }
+        for (id, avg) in market_averages(body) {
+            let p = Price::seen(self.snapshot.prices.get(&id), avg, now);
+            self.snapshot.prices.insert(id, p);
         }
-        let mut found = Vec::new();
-        walk(body, &mut found);
-        for (id, avg) in found {
-            let p = self.snapshot.prices.entry(id).or_insert(Price { bin: 0, listings: 0, at: now, avg: None });
-            p.avg = Some(avg);
-            p.at = now;
+    }
+
+    /// The market this account trades on ("pc" / "console"), once EA's account info was seen.
+    pub fn platform(&self) -> Option<String> {
+        self.snapshot.platform.clone()
+    }
+
+    /// What goes to the shared price pool: the EA averages this user saw after `since`.
+    pub fn own_prices_since(&self, since: u64) -> Vec<[u64; 3]> {
+        crate::types::own_prices_since(&self.snapshot.prices, since, POOL_MAX)
+    }
+
+    /// Prices other users on the same platform saw (the shared pool); a price only replaces an older one.
+    pub fn apply_price_pool(&mut self, platform: &str, pool: &BTreeMap<u64, [u64; 2]>) -> usize {
+        if self.snapshot.platform.as_deref() != Some(platform) {
+            return 0;
         }
+        let n = crate::types::apply_pool(&mut self.snapshot.prices, pool);
+        if n > 0 {
+            self.bump();
+            self.save();
+        }
+        n
     }
 
     /// The user's explicit choice from a card's menu. It replaces an earlier in-game read of
@@ -603,6 +616,16 @@ impl Store {
             let concept = name.ends_with("_defid.json");
             // Club and market responses carry EA's market average (prices, no extra requests).
             let priced = name.ends_with("_club.json") || name.ends_with("_transfermarket.json");
+            // The account's platform, from EA's account info saved before it was read.
+            if self.snapshot.platform.is_none() && name.ends_with("_accountinfo.json") {
+                if let Some(record) = fs::read_to_string(&path).ok().and_then(|s| serde_json::from_str::<Value>(&s).ok()) {
+                    let url = record.get("url").and_then(Value::as_str).unwrap_or_default();
+                    if let Some(p) = account_platform(url, record.get("body").unwrap_or(&Value::Null)) {
+                        self.snapshot.platform = Some(p.to_string());
+                    }
+                }
+                continue;
+            }
             if !concept && !priced {
                 continue;
             }
@@ -683,6 +706,12 @@ impl Store {
         self.bump();
         if !url.starts_with("fct://") {
             self.merge_market_averages(body, now);
+            if let Some(p) = account_platform(url, body) {
+                if self.snapshot.platform.as_deref() != Some(p) {
+                    self.snapshot.platform = Some(p.to_string());
+                    self.dirty = true;
+                }
+            }
         }
         // Other people's listings: prices only, never club items (their `owners` would
         // otherwise look like our own first-owner cards).

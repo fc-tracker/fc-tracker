@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { IS_WEB, api, events, type BestSelection, type GalleryCardView, type ShoppingList } from "./api";
+import { IS_WEB, api, events, formatAge, type BestSelection, type GalleryCardView, type ShoppingList } from "./api";
 import { cardTier, compact, num } from "./format";
 import { rarity } from "./rarities";
 import { t, useLocale, type MessageKey } from "./i18n";
@@ -237,6 +237,17 @@ function Best({ list, best }: { list: ShoppingList; best: BestSelection }) {
   );
 }
 
+/** EA's market average for a card (≈, its age on hover); older than 3 days is dimmed. */
+function Coins({ card }: { card: GalleryCardView }) {
+  if (!card.price) return null;
+  const old = card.price_at != null && Date.now() - card.price_at > 3 * 86400 * 1000;
+  return (
+    <span className={`ml-coins ${old ? "old" : ""}`} title={t("missing.priceTitle", { age: formatAge(card.price_at) })}>
+      <span className="ml-coin" aria-hidden="true" />≈{compact(card.price)}
+    </span>
+  );
+}
+
 function BuyNext({ list }: { list: ShoppingList }) {
   const rows = list.entries.slice(0, SHOWN);
   return (
@@ -275,10 +286,12 @@ function BuyNext({ list }: { list: ShoppingList }) {
                 )}
               </span>
               <span className="ml-price">
-                {e.got && (
+                {e.got ? (
                   <span className="ml-got">
                     ✓ {t(e.got_source === "pack" ? "missing.gotPack" : "missing.got")}
                   </span>
+                ) : (
+                  <Coins card={e.card} />
                 )}
               </span>
             </li>
@@ -288,6 +301,7 @@ function BuyNext({ list }: { list: ShoppingList }) {
 
       <footer className="ml-foot">
         {list.entries.some((e) => e.got) && <span className="ml-got-hint">✓ {t("missing.gotHint")}</span>}
+        {rows.some((e) => !e.got && e.card.price) && <span>{t("missing.priceNote")}</span>}
         <span>{t("missing.note")}</span>
       </footer>
     </div>

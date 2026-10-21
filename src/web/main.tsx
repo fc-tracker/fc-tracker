@@ -15,6 +15,7 @@ import { browserPad } from "../browserPad";
 import * as backend from "./backend";
 import { setWebBackend } from "../api";
 import { initUsage, startPresence, track } from "../usage";
+import { startPrices } from "../prices";
 import * as reader from "./reader";
 import "../overlay.css";
 import "./web.css";
@@ -29,6 +30,7 @@ initUsage("web", "web");
 track(null);
 track("web-start");
 startPresence("web");
+startPrices();
 browserPad.requireFocus(true);
 // local testing only: feed a picture instead of a shared screen
 if (location.hostname === "localhost") Object.assign(window, { __fctWeb: { attach: backend.attach, reader } });

@@ -87,6 +87,10 @@ struct Web {
     base_ids: BTreeSet<u64>,
     /// When the last club sync was read (ms).
     synced_at: Option<u64>,
+    /// EA's market average per card: from the sync (club items) and the shared price pool.
+    prices: BTreeMap<u64, Price>,
+    /// The market the account trades on ("pc" / "console"), from the sync.
+    platform: Option<String>,
 }
 
 thread_local! {
@@ -95,7 +99,6 @@ thread_local! {
 
 static EMPTY_IDS: BTreeSet<u64> = BTreeSet::new();
 static EMPTY_FLAGS: BTreeMap<u64, bool> = BTreeMap::new();
-static EMPTY_PRICES: BTreeMap<u64, Price> = BTreeMap::new();
 
 #[derive(Deserialize)]
 struct Catalog {
@@ -285,7 +288,17 @@ struct SyncData {
 fn ingest_sync(w: &mut Web, sync: SyncData) -> Value {
     let mut cards: Vec<GalleryCard> = Vec::new();
     let mut owners: Vec<(u64, u64)> = Vec::new();
+    let at = sync.at.unwrap_or_else(clock::ms);
     for e in &sync.entries {
+        if !e.url.starts_with("fct://") {
+            for (id, avg) in sync_data::market_averages(&e.body) {
+                let p = Price::seen(w.prices.get(&id), avg, at);
+                w.prices.insert(id, p);
+            }
+            if let Some(p) = sync_data::account_platform(&e.url, &e.body) {
+                w.platform = Some(p.to_string());
+            }
+        }
         if e.url.starts_with(sync_data::GALLERY_PREFIX) {
             cards.extend(e.body.get("cards").and_then(Value::as_array).into_iter().flatten().filter_map(sync_data::parse_gallery_card));
         } else if sync_data::is_card_database_search(&e.url) {
@@ -351,6 +364,8 @@ fn dispatch(req: Value) -> Result<Value, String> {
                 w.known = serde_json::from_value(s.get("known").cloned().unwrap_or(json!([]))).unwrap_or_default();
                 w.club_no = serde_json::from_value(s.get("club_no").cloned().unwrap_or(json!([]))).unwrap_or_default();
                 w.synced_at = s.get("synced_at").and_then(Value::as_u64);
+                w.prices = serde_json::from_value(s.get("prices").cloned().unwrap_or(json!({}))).unwrap_or_default();
+                w.platform = s.get("platform").and_then(Value::as_str).map(str::to_string);
                 let extra: Vec<GalleryCard> = serde_json::from_value(s.get("extra").cloned().unwrap_or(json!([]))).unwrap_or_default();
                 for c in extra {
                     w.gallery.entry(c.def_id).or_insert(c);
@@ -370,7 +385,7 @@ fn dispatch(req: Value) -> Result<Value, String> {
                 let collected: Vec<u64> = w.gallery.values().filter(|c| c.collected).map(|c| c.def_id).collect();
                 let extra: Vec<&GalleryCard> = w.gallery.values().filter(|c| !w.base_ids.contains(&c.def_id)).collect();
                 Ok(json!({ "collected": collected, "observed": w.observed, "listed": w.listed, "scanned": w.scanned, "manual": w.manual,
-                    "known": w.known, "club_no": w.club_no, "synced_at": w.synced_at, "extra": extra }))
+                    "known": w.known, "club_no": w.club_no, "synced_at": w.synced_at, "extra": extra, "prices": w.prices, "platform": w.platform }))
             }
             "reset" => {
                 w.observed.clear();
@@ -380,6 +395,8 @@ fn dispatch(req: Value) -> Result<Value, String> {
                 w.known.clear();
                 w.club_no.clear();
                 w.synced_at = None;
+                w.prices.clear();
+                w.platform = None;
                 let base = w.base_ids.clone();
                 w.gallery.retain(|id, _| base.contains(id));
                 for c in w.gallery.values_mut() {
@@ -399,6 +416,18 @@ fn dispatch(req: Value) -> Result<Value, String> {
                 };
                 Ok(json!(true))
             }
+            "price_share" => {
+                let since = arg("since").as_u64().unwrap_or(0);
+                Ok(json!({ "platform": w.platform, "prices": types::own_prices_since(&w.prices, since, 1500) }))
+            }
+            "price_pool" => {
+                let platform = arg("platform").as_str().unwrap_or_default().to_string();
+                let pool: BTreeMap<u64, [u64; 2]> = serde_json::from_value(arg("prices")).map_err(|e| e.to_string())?;
+                if w.platform.as_deref() != Some(platform.as_str()) {
+                    return Ok(json!(0));
+                }
+                Ok(json!(types::apply_pool(&mut w.prices, &pool)))
+            }
             "ingest_sync" => Ok(ingest_sync(&mut w, serde_json::from_value(arg("sync")).map_err(|e| e.to_string())?)),
             "sync_filters" => Ok(json!(gallery_sets::sync_filters().into_iter().map(|(key, filter)| json!({ "key": key, "filter": filter })).collect::<Vec<_>>())),
             "observe_set" => Ok(observe_set(&mut w, serde_json::from_value(arg("read")).map_err(|e| e.to_string())?)),
@@ -408,7 +437,7 @@ fn dispatch(req: Value) -> Result<Value, String> {
                 let (scanned, manual) = fo(&w);
                 let (known, club_no) = (w.known.clone(), w.club_no.clone());
                 let info = FirstOwnerInfo { known: &known, manual: &manual, scanned: &scanned, club_no: &club_no };
-                let out = gallery_sets::overview(&w.gallery, &info, &w.links, &w.observed, &EMPTY_PRICES, &w.listed);
+                let out = gallery_sets::overview(&w.gallery, &info, &w.links, &w.observed, &w.prices, &w.listed);
                 serde_json::to_value(out).map_err(|e| e.to_string())
             }
             "shopping" => {
@@ -416,7 +445,7 @@ fn dispatch(req: Value) -> Result<Value, String> {
                 let (scanned, manual) = fo(&w);
                 let (known, club_no) = (w.known.clone(), w.club_no.clone());
                 let info = FirstOwnerInfo { known: &known, manual: &manual, scanned: &scanned, club_no: &club_no };
-                let out = gallery_sets::shopping_list(&key, &w.gallery, &info, &w.links, &w.observed, &EMPTY_PRICES, &BTreeMap::new());
+                let out = gallery_sets::shopping_list(&key, &w.gallery, &info, &w.links, &w.observed, &w.prices, &BTreeMap::new());
                 serde_json::to_value(out).map_err(|e| e.to_string())
             }
             other => Err(format!("unknown fn {other}")),

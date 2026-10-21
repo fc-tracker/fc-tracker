@@ -609,6 +609,26 @@ fn set_first_owner(state: State<AppState>, def_id: u64, value: Option<bool>) {
     state.store.lock().unwrap().set_first_owner(def_id, value);
 }
 
+/// What this user's app gives the shared price pool: the platform and the EA market averages
+/// seen after `since` (ms) – [definition id, average, seen at].
+#[derive(serde::Serialize)]
+struct PriceShare {
+    platform: Option<String>,
+    prices: Vec<[u64; 3]>,
+}
+
+#[tauri::command]
+fn price_share(state: State<AppState>, since: u64) -> PriceShare {
+    let store = state.store.lock().unwrap();
+    PriceShare { platform: store.platform(), prices: store.own_prices_since(since) }
+}
+
+/// The shared price pool of the user's platform ({definition id: [average, seen at]}).
+#[tauri::command]
+fn price_pool(state: State<AppState>, platform: String, prices: std::collections::BTreeMap<u64, [u64; 2]>) -> usize {
+    state.store.lock().unwrap().apply_price_pool(&platform, &prices)
+}
+
 #[tauri::command]
 fn current_page(state: State<AppState>) -> Option<tracking::CurrentPage> {
     state.current_page.lock().unwrap().clone()
@@ -1246,6 +1266,8 @@ pub fn run() {
             set_locale,
             gallery_overview,
             set_first_owner,
+            price_share,
+            price_pool,
             mark_swap_done,
             current_page,
             auto_scan,

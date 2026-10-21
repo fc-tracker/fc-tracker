@@ -484,7 +484,9 @@
   "web.sync.reading": "Leyendo la sincronización de tu club…",
   "web.sync.done": "Club sincronizado {{age}} · {{cards}} cartas",
   "settings.usage": "Estadísticas de uso anónimas",
-  "settings.usageText": "Cuenta que FC-Tracker está en marcha (para el número en línea) y hasta dónde llegó la configuración – nunca tu club, tus jugadores ni tu cuenta de EA. Un número aleatorio evita que un PC cuente dos veces.",
+  "settings.usageText": "Cuenta que FC-Tracker está en marcha (para el número en línea) y hasta dónde llegó la configuración, y comparte las medias de mercado de EA que ves con otros usuarios de tu mercado – nunca tu club, tus jugadores ni tu cuenta de EA. Un número aleatorio evita que un PC cuente dos veces.",
   "online.now": "{{count}} en línea ahora",
-  "online.hint": "Apps y pestañas de FC-Tracker en uso ahora mismo"
+  "online.hint": "Apps y pestañas de FC-Tracker en uso ahora mismo",
+  "missing.priceTitle": "Media de mercado de EA en tu mercado · {{age}}",
+  "missing.priceNote": "≈ monedas = la media de mercado de EA: la tuya o la de otro usuario de FC-Tracker en el mismo mercado."
 }

@@ -27,6 +27,10 @@ pub struct Price {
     /// EA's own market average (the in-game "market average" on a card's info page).
     #[serde(default)]
     pub avg: Option<u64>,
+    /// From the shared price pool (another user's EA market average on the same platform), not
+    /// seen by this user – never shared back.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub shared: bool,
 }
 
 impl Price {
@@ -34,6 +38,51 @@ impl Price {
     pub fn value(&self) -> Option<u64> {
         self.avg.or((self.bin > 0).then_some(self.bin))
     }
+
+    /// EA's average as this user sees it now (club item, market result …).
+    pub fn seen(old: Option<&Price>, avg: u64, at: u64) -> Price {
+        match old {
+            Some(p) => Price { avg: Some(avg), at, shared: false, ..*p },
+            None => Price { bin: 0, listings: 0, at, avg: Some(avg), shared: false },
+        }
+    }
+
+    /// A price from the shared pool – taken only when it is newer than the one we have.
+    pub fn from_pool(old: Option<&Price>, avg: u64, at: u64) -> Option<Price> {
+        match old {
+            Some(p) if p.at >= at => None,
+            Some(p) => Some(Price { avg: Some(avg), at, shared: true, ..*p }),
+            None => Some(Price { bin: 0, listings: 0, at, avg: Some(avg), shared: true }),
+        }
+    }
+}
+
+/// The EA market averages this user saw themselves after `since` (ms), newest first – what the
+/// shared pool gets: [definition id, average, seen at].
+pub fn own_prices_since(prices: &BTreeMap<u64, Price>, since: u64, max: usize) -> Vec<[u64; 3]> {
+    let mut v: Vec<[u64; 3]> = prices
+        .iter()
+        .filter(|(_, p)| !p.shared && p.at > since)
+        .filter_map(|(&id, p)| p.avg.map(|a| [id, a, p.at]))
+        .collect();
+    v.sort_by(|a, b| b[2].cmp(&a[2]));
+    v.truncate(max);
+    v
+}
+
+/// Applies the shared pool ({definition id: [average, seen at]}); returns how many changed.
+pub fn apply_pool(prices: &mut BTreeMap<u64, Price>, pool: &BTreeMap<u64, [u64; 2]>) -> usize {
+    let mut n = 0;
+    for (&id, &[avg, at]) in pool {
+        if avg == 0 {
+            continue;
+        }
+        if let Some(p) = Price::from_pool(prices.get(&id), avg, at) {
+            prices.insert(id, p);
+            n += 1;
+        }
+    }
+    n
 }
 
 /// The user's in-game lineup of one set, read from the set page and its swap pages.

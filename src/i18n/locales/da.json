@@ -484,7 +484,9 @@
   "web.sync.reading": "Læser din klubsynkronisering…",
   "web.sync.done": "Klub synkroniseret {{age}} · {{cards}} kort",
   "settings.usage": "Anonym brugsstatistik",
-  "settings.usageText": "Tæller at FC-Tracker kører (til online-tallet), og hvor langt opsætningen kom – aldrig din klub, dine spillere eller din EA-konto. Et tilfældigt nummer sørger for, at én PC ikke tæller dobbelt.",
+  "settings.usageText": "Tæller at FC-Tracker kører (til online-tallet) og hvor langt opsætningen kom, og deler de EA-markedsgennemsnit, du ser, med andre brugere på dit marked – aldrig din klub, dine spillere eller din EA-konto. Et tilfældigt nummer sørger for, at én PC ikke tæller dobbelt.",
   "online.now": "{{count}} online nu",
-  "online.hint": "FC-Tracker-apps og browserfaner i brug lige nu"
+  "online.hint": "FC-Tracker-apps og browserfaner i brug lige nu",
+  "missing.priceTitle": "EA's markedsgennemsnit på dit marked · {{age}}",
+  "missing.priceNote": "≈ coins = EA's eget markedsgennemsnit – dit eget, eller en anden FC-Tracker-brugers på samme marked."
 }

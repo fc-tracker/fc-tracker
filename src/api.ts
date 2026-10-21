@@ -74,6 +74,12 @@ export interface GalleryCardView {
   price_at: number | null;
 }
 
+/** For the shared price pool: the account's market and the EA averages seen ([def id, average, at]). */
+export interface PriceShare {
+  platform: "pc" | "console" | null;
+  prices: [number, number, number][];
+}
+
 /** The user's lineup as read from the in-game set page (and its Swap Player pages). */
 export interface InGame {
   total: number | null;
@@ -387,6 +393,11 @@ const appApi = {
     browserDev
       ? Promise.resolve(true)
       : invoke<boolean>("mark_swap_done", { setKey, outDefId: sw.out.def_id, outSlot: sw.out.slot ?? null, intoDefId: sw.into.def_id }),
+  /** The shared price pool (src/prices.ts): what this PC saw, and the pool coming back. */
+  priceShare: (since: number) =>
+    browserDev ? Promise.resolve<PriceShare>({ platform: null, prices: [] }) : invoke<PriceShare>("price_share", { since }),
+  pricePool: (platform: string, prices: Record<string, [number, number]>) =>
+    browserDev ? Promise.resolve(0) : invoke<number>("price_pool", { platform, prices }),
   /** The card menu's choice: true = first owner, false = purchased, null = automatic. */
   setFirstOwner: (defId: number, value: boolean | null) =>
     browserDev ? Promise.resolve() : invoke<void>("set_first_owner", { defId, value }),
@@ -436,6 +447,8 @@ function withWeb(a: typeof appApi): typeof appApi {
     toggleMissingList: () => wb((b) => b.webApi.toggleMissingList()),
     missingListVisible: () => wb((b) => b.webApi.missingListVisible()),
     setFirstOwner: (defId: number, value: boolean | null) => wb((b) => b.webApi.setFirstOwner(defId, value)),
+    priceShare: (since: number) => wb((b) => b.webApi.priceShare(since)),
+    pricePool: (platform: string, prices: Record<string, [number, number]>) => wb((b) => b.webApi.pricePool(platform, prices)),
     gameSession: () => wb((b) => (b.webStream() ? "in_ultimate_team" : "closed") as GameSession),
     autoScan: () => wb((b) => b.webStream() != null),
     setAutoScan: (enabled: boolean) => wb((b) => (enabled ? undefined : b.stopCapture())),
