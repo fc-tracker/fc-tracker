@@ -583,5 +583,9 @@
   "value.needsAtOnce": "demande {{coins}} d'un coup",
   "value.zeroTokens": "Termine le set à la note {{grade}} – pas de jetons, mais le set le moins cher qui reste dans tes crédits.",
   "value.showAll": "Voir les {{count}}",
-  "value.topGrade": "Le plus haut dans tes crédits : {{grade}} · demande ≈{{coins}} d'un coup · {{tokens}} jetons au total"
+  "value.topGrade": "Le plus haut dans tes crédits : {{grade}} · demande ≈{{coins}} d'un coup · {{tokens}} jetons au total",
+  "value.otherPlaceholder": "ex. 100 000",
+  "value.hintGoal": "objectif",
+  "value.hintScroll": "défiler",
+  "value.howTitle": "Comment ça marche – 3 étapes"
 }

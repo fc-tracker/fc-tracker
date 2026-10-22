@@ -583,5 +583,9 @@
   "value.needsAtOnce": "needs {{coins}} at once",
   "value.zeroTokens": "Completes the set at grade {{grade}} – no tokens, but the cheapest set left within your coins.",
   "value.showAll": "Show all {{count}}",
-  "value.topGrade": "Highest within your coins: {{grade}} · needs ≈{{coins}} at once · {{tokens}} tokens in total"
+  "value.topGrade": "Highest within your coins: {{grade}} · needs ≈{{coins}} at once · {{tokens}} tokens in total",
+  "value.otherPlaceholder": "e.g. 100,000",
+  "value.hintGoal": "goal",
+  "value.hintScroll": "scroll",
+  "value.howTitle": "How it works – 3 steps"
 }

@@ -583,5 +583,9 @@
   "value.needsAtOnce": "braucht {{coins}} auf einmal",
   "value.zeroTokens": "Schließt das Set mit Note {{grade}} ab – keine Tokens, aber das billigste Set, das deine Münzen noch erlauben.",
   "value.showAll": "Alle {{count}} zeigen",
-  "value.topGrade": "Höchste mit deinen Münzen: {{grade}} · braucht ≈{{coins}} auf einmal · {{tokens}} Tokens insgesamt"
+  "value.topGrade": "Höchste mit deinen Münzen: {{grade}} · braucht ≈{{coins}} auf einmal · {{tokens}} Tokens insgesamt",
+  "value.otherPlaceholder": "z. B. 100.000",
+  "value.hintGoal": "Ziel",
+  "value.hintScroll": "scrollen",
+  "value.howTitle": "So funktioniert's – 3 Schritte"
 }

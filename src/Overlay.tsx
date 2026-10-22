@@ -810,7 +810,10 @@ export default function Overlay() {
         return;
       }
       if (section === "planner") {
-        if (action === "back") api.hideOverlay();
+        // L1/R1 (Q/E) switch the goal, up/down scroll the plan
+        if (action === "prev_category" || action === "next_category") window.dispatchEvent(new CustomEvent("fct:planner-goal", { detail: action === "next_category" ? 1 : -1 }));
+        else if (action === "up" || action === "down") document.querySelector(".planner-body .detail-wrap")?.scrollBy({ top: action === "down" ? 240 : -240, behavior: "smooth" });
+        else if (action === "back") api.hideOverlay();
         return;
       }
       if (action === "prev_category") return moveCategory(-1);
@@ -1087,7 +1090,7 @@ export default function Overlay() {
                         </div>
                         <GradeCosts value={valueSelected} />
                         <button
-                          className="theme-btn"
+                          className="theme-btn bv-open"
                           onClick={() => {
                             const cat = visible.find((c) => c.sets.some((s) => s.key === valueSelected.key));
                             if (cat) {
@@ -1109,7 +1112,12 @@ export default function Overlay() {
         ) : section === "planner" ? (
           <div className="ov-body zone-list planner-body">
             <main className="detail-wrap">
-              <Planner data={best.data} busy={best.busy} onChange={(b, tg, st) => best.load(b, tg, st)} />
+              <Planner
+                data={best.data}
+                busy={best.busy}
+                onChange={(b, tg, st) => best.load(b, tg, st)}
+                goalKeys={pad ? <><PadButton id="l1" layout={pad} size={18} /><PadButton id="r1" layout={pad} size={18} /></> : <><kbd className="key-hint">Q</kbd><kbd className="key-hint">E</kbd></>}
+              />
             </main>
           </div>
         ) : visible.length === 0 ? (
@@ -1195,23 +1203,23 @@ export default function Overlay() {
           {pad ? (
             <>
               <span><PadButton id="l2" layout={pad} size={20} /><PadButton id="r2" layout={pad} size={20} /> {t("overlay.hintSection")}</span>
-              <span><PadButton id="l1" layout={pad} size={20} /><PadButton id="r1" layout={pad} size={20} /> {t("overlay.hintCategory")}</span>
-              <span><PadButton id="up" layout={pad} size={20} /><PadButton id="down" layout={pad} size={20} /> {t("overlay.hintSet")}</span>
-              <span><PadButton id="south" layout={pad} size={20} /> {t("overlay.hintOpen")}</span>
+              <span><PadButton id="l1" layout={pad} size={20} /><PadButton id="r1" layout={pad} size={20} /> {t(section === "planner" ? "value.hintGoal" : "overlay.hintCategory")}</span>
+              <span><PadButton id="up" layout={pad} size={20} /><PadButton id="down" layout={pad} size={20} /> {t(section === "planner" ? "value.hintScroll" : "overlay.hintSet")}</span>
+              {section !== "planner" && <span><PadButton id="south" layout={pad} size={20} /> {t("overlay.hintOpen")}</span>}
               <span><PadButton id="east" layout={pad} size={20} /> {t("overlay.hintBack")}</span>
-              <span><PadButton id="west" layout={pad} size={20} /> {t("overlay.hintInfo")}</span>
+              {section !== "planner" && <span><PadButton id="west" layout={pad} size={20} /> {t("overlay.hintInfo")}</span>}
               {!IS_WEB && <span>{t("pad.hold")} <PadButton id="view" layout={pad} size={20} /> {t("overlay.hintToggle")}</span>}
               {!IS_WEB && <span>{t("pad.doubleTap")} <PadButton id="view" layout={pad} size={20} /> {t("overlay.hintMissing")}</span>}
             </>
           ) : (
             <>
               <span><kbd>Tab</kbd> {t("overlay.hintSection")}</span>
-              <span><kbd>Q</kbd> <kbd>E</kbd> {t("overlay.hintCategory")}</span>
+              <span><kbd>Q</kbd> <kbd>E</kbd> {t(section === "planner" ? "value.hintGoal" : "overlay.hintCategory")}</span>
               <span><kbd>Ctrl</kbd>+<kbd>scroll</kbd> {t("overlay.zoom")}</span>
-              <span><kbd>↑</kbd> <kbd>↓</kbd> {t("overlay.hintSet")}</span>
-              <span><kbd>Enter</kbd> {t("overlay.hintOpen")}</span>
+              <span><kbd>↑</kbd> <kbd>↓</kbd> {t(section === "planner" ? "value.hintScroll" : "overlay.hintSet")}</span>
+              {section !== "planner" && <span><kbd>Enter</kbd> {t("overlay.hintOpen")}</span>}
               <span><kbd>Esc</kbd> {t("overlay.hintBack")}</span>
-              <span><kbd>I</kbd> {t("overlay.hintInfo")}</span>
+              {section !== "planner" && <span><kbd>I</kbd> {t("overlay.hintInfo")}</span>}
               {!IS_WEB && <span><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> {t("overlay.hintToggle")}</span>}
               {!IS_WEB && <span><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd> {t("overlay.hintMissing")}</span>}
             </>

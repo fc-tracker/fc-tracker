@@ -276,7 +276,21 @@ type Goal = "all" | "5" | "10" | "tokens";
 /** The token planner (DESIGN 9r): a narrow control column – the coins (EA's balance, or another
  * amount), the goal and the result – beside the plan as one card per set. Every change recalculates
  * at once (a named wait); the plan follows the club, so nothing is ticked by hand. */
-export function Planner({ data, onChange, busy }: { data: BestValue | null; onChange: (budget: number | null, target: number | null, steps: number | null) => void; busy: boolean }) {
+/** The goals L1/R1 (Q/E) cycle through – "Tokens" needs a number typed, so it is mouse/keyboard only. */
+const PAD_GOALS: Goal[] = ["all", "5", "10"];
+
+export function Planner({
+  data,
+  onChange,
+  busy,
+  goalKeys,
+}: {
+  data: BestValue | null;
+  onChange: (budget: number | null, target: number | null, steps: number | null) => void;
+  busy: boolean;
+  /** The glyphs that switch the goal (L1/R1 or Q/E), shown beside it. */
+  goalKeys?: React.ReactNode;
+}) {
   const [budget, setBudget] = useState<string>("");
   const [target, setTarget] = useState<string>("");
   const [goal, setGoal] = useState<Goal>("all");
@@ -291,6 +305,22 @@ export function Planner({ data, onChange, busy }: { data: BestValue | null; onCh
     setGoal(g);
     if (g !== "tokens" || parse(target)) run(g);
   };
+  useEffect(() => {
+    const on = (e: Event) => {
+      const d = (e as CustomEvent<number>).detail;
+      const i = PAD_GOALS.indexOf(goal);
+      pickGoal(PAD_GOALS[(Math.max(0, i) + d + PAD_GOALS.length) % PAD_GOALS.length]);
+    };
+    window.addEventListener("fct:planner-goal", on);
+    return () => window.removeEventListener("fct:planner-goal", on);
+  });
+  const [howOpen, setHowOpen] = useState(() => {
+    try {
+      return localStorage.getItem("fct.howSeen") !== "1";
+    } catch {
+      return true;
+    }
+  });
   const asked = goal === "5" ? 5 : goal === "10" ? 10 : null;
   const setsByKey = useMemo(() => new Map((data?.sets ?? []).map((v) => [v.key, v])), [data]);
   const allBuys = useMemo(() => {
@@ -331,12 +361,15 @@ export function Planner({ data, onChange, busy }: { data: BestValue | null; onCh
           </p>
           <label className="pl-other">
             <span>{t("value.otherAmount")}</span>
-            {field(budget, setBudget, balance != null ? num(balance) : "", (v) => run(goal, v))}
+            {field(budget, setBudget, t("value.otherPlaceholder"), (v) => run(goal, v))}
           </label>
         </section>
 
         <section className="pl-box">
-          <h3>{t("value.goal")}</h3>
+          <h3>
+            {t("value.goal")}
+            {goalKeys && <span className="pl-keys">{goalKeys}</span>}
+          </h3>
           <div className="pl-seg" role="radiogroup" aria-label={t("value.goal")}>
             {(["all", "5", "10", "tokens"] as Goal[]).map((g) => (
               <button key={g} role="radio" aria-checked={goal === g} className={goal === g ? "on" : ""} onClick={() => pickGoal(g)}>
@@ -353,10 +386,14 @@ export function Planner({ data, onChange, busy }: { data: BestValue | null; onCh
           <p className="pl-hint">{t(goal === "all" ? "value.goalAllHint" : goal === "tokens" ? "value.goalTokensHint" : "value.goalSetsHint", { count: asked ?? 0 })}</p>
         </section>
 
+        <ExcludedBar />
+      </aside>
+
+      <div className="pl-main">
         {plan && plan.steps.length > 0 && (
           <section className="pl-result" aria-live="polite">
             <p className="pl-big">
-              <Gem size={18} />+{num(plan.tokens)}
+              <Gem size={22} />+{num(plan.tokens)}
               <small>{t("value.tokensHint")}</small>
             </p>
             <dl>
@@ -376,10 +413,18 @@ export function Planner({ data, onChange, busy }: { data: BestValue | null; onCh
             </dl>
           </section>
         )}
-        <ExcludedBar />
-      </aside>
-
-      <div className="pl-main">
+        <details
+          className="pl-howbox"
+          open={howOpen}
+          onToggle={(e) => {
+            const open = (e.target as HTMLDetailsElement).open;
+            setHowOpen(open);
+            try {
+              if (!open) localStorage.setItem("fct.howSeen", "1");
+            } catch {}
+          }}
+        >
+          <summary>{t("value.howTitle")}</summary>
         <ol className="pl-how">
           {(["1", "2", "3"] as const).map((n) => (
             <li key={n}>
@@ -391,6 +436,7 @@ export function Planner({ data, onChange, busy }: { data: BestValue | null; onCh
             </li>
           ))}
         </ol>
+        </details>
         {busy && <p className="ml-loading">{t("value.calculating")}</p>}
         {busy && !plan ? null : !plan || plan.steps.length === 0 ? (
           <>

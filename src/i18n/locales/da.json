@@ -583,5 +583,9 @@
   "value.needsAtOnce": "kræver {{coins}} på én gang",
   "value.zeroTokens": "Fuldender sættet på grade {{grade}} – ingen tokens, men det billigste sæt tilbage inden for dine coins.",
   "value.showAll": "Vis alle {{count}}",
-  "value.topGrade": "Højest inden for dine coins: {{grade}} · kræver ≈{{coins}} på én gang · {{tokens}} tokens i alt"
+  "value.topGrade": "Højest inden for dine coins: {{grade}} · kræver ≈{{coins}} på én gang · {{tokens}} tokens i alt",
+  "value.otherPlaceholder": "fx 100.000",
+  "value.hintGoal": "mål",
+  "value.hintScroll": "rul",
+  "value.howTitle": "Sådan virker det – 3 trin"
 }
