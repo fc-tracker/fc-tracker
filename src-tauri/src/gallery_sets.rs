@@ -1404,7 +1404,7 @@ pub fn shopping_list(
     let mut entries = got;
     entries.truncate(SHOPPING_SHOWN);
     let best = best_selection(key, &collected, gallery, observed, set.slots, &ctx);
-    let value = value_of(set, cat, gallery, fo, links, observed, prices, balance);
+    let value = value_of(set, cat, gallery, fo, links, observed, prices, balance, &BTreeSet::new());
     let next_grade = value.best_step().map(|(i, _, _)| value.plans[i].clone());
     Some(ShoppingList {
         key: set.key.clone(),
@@ -1534,14 +1534,16 @@ pub fn set_value(
     observed: &BTreeMap<String, SetObs>,
     prices: &BTreeMap<u64, Price>,
     balance: Option<u64>,
+    exclude: &BTreeSet<u64>,
 ) -> Option<SetValue> {
     let f = file();
     let set = f.sets.iter().find(|s| s.key == key)?;
     let cat = f.categories.iter().find(|c| c.key == set.category)?;
-    Some(value_of(set, cat, gallery, fo, links, observed, prices, balance))
+    Some(value_of(set, cat, gallery, fo, links, observed, prices, balance, exclude))
 }
 
 /// `set_value` for every set (the Best value list).
+#[allow(clippy::too_many_arguments)]
 pub fn all_values(
     gallery: &BTreeMap<u64, GalleryCard>,
     fo: &FirstOwnerInfo,
@@ -1549,13 +1551,14 @@ pub fn all_values(
     observed: &BTreeMap<String, SetObs>,
     prices: &BTreeMap<u64, Price>,
     balance: Option<u64>,
+    exclude: &BTreeSet<u64>,
 ) -> Vec<SetValue> {
     let f = file();
     f.sets
         .iter()
         .filter_map(|set| {
             let cat = f.categories.iter().find(|c| c.key == set.category)?;
-            Some(value_of(set, cat, gallery, fo, links, observed, prices, balance))
+            Some(value_of(set, cat, gallery, fo, links, observed, prices, balance, exclude))
         })
         .collect()
 }
@@ -1570,6 +1573,7 @@ fn value_of(
     observed: &BTreeMap<String, SetObs>,
     prices: &BTreeMap<u64, Price>,
     balance: Option<u64>,
+    exclude: &BTreeSet<u64>,
 ) -> SetValue {
     let ctx = Context { fo, links, prices };
     let cards: Vec<&GalleryCard> = gallery.values().filter(|c| matches(c, set, cat, &ctx)).collect();
@@ -1579,10 +1583,11 @@ fn value_of(
     let (pool, _) = build_pool(&collected, completed.as_ref().map(|(o, _)| o).or(obs));
     let owned: Vec<Card> = pool.iter().map(|e| e.to_card(&ctx)).collect();
 
-    // Buy candidates: priced missing cards (never SBC-only), best scores and the cheapest.
+    // Buy candidates: priced missing cards (never SBC-only, never one the user left out), best
+    // scores and the cheapest.
     let mut priced: Vec<Buyable> = Vec::new();
     let mut unpriced_scores: Vec<u64> = Vec::new();
-    for c in missing.iter().filter(|c| !c.rareflag.is_some_and(|r| SBC_ONLY_RARITIES.contains(&r)) && c.score > 0) {
+    for c in missing.iter().filter(|c| !c.rareflag.is_some_and(|r| SBC_ONLY_RARITIES.contains(&r)) && c.score > 0 && !exclude.contains(&c.def_id)) {
         match prices.get(&c.def_id).and_then(Price::value).filter(|&p| p > 0) {
             Some(price) => priced.push(Buyable { card: c, model: Card { first_owner: false, ..to_card(c, &ctx) }, price }),
             None => unpriced_scores.push(c.score),
@@ -2273,7 +2278,7 @@ mod value_real {
             prices.entry(c.def_id).or_insert(crate::types::Price { bin: (c.score * if c.rareflag.unwrap_or(0) > 1 { 40 } else { 12 }).max(200), listings: 1, at: 1, avg: None, shared: false });
         }
         let t = std::time::Instant::now();
-        let values = super::all_values(&snap.gallery, &fo, &snap.team_links, &snap.set_obs, &prices, Some(258_000));
+        let values = super::all_values(&snap.gallery, &fo, &snap.team_links, &snap.set_obs, &prices, Some(258_000), &std::collections::BTreeSet::new());
         println!("{} sets in {:?}", values.len(), t.elapsed());
         for v in values.iter().filter(|v| v.plans.iter().any(|p| p.state == "buy")).take(25) {
             let steps: Vec<String> = v.plans.iter().map(|p| format!("{}:{}{}", p.grade, &p.state[..2], if p.state == "buy" { format!(" {}t tax{} need{}", p.tokens_total, p.tax, p.coins_needed) } else { String::new() })).collect();
@@ -2290,7 +2295,7 @@ mod value_real {
             let list = super::shopping_list(&set.key, &snap.gallery, &fo, &snap.team_links, &snap.set_obs, &prices, &snap.acquired, Some(258_000)).unwrap();
             assert!(list.entries.iter().all(|e| e.card.price.is_none_or(|p| p <= 258_000)), "{}", set.name);
         }
-        let poor = super::all_values(&snap.gallery, &fo, &snap.team_links, &snap.set_obs, &prices, Some(20_000));
+        let poor = super::all_values(&snap.gallery, &fo, &snap.team_links, &snap.set_obs, &prices, Some(20_000), &std::collections::BTreeSet::new());
         assert!(poor.iter().flat_map(|v| v.plans.iter()).filter(|p| p.state == "buy").all(|p| p.coins_needed <= 20_000));
         let poor_plan = super::token_plan(&poor, None, Some(20_000), 200);
         println!("with 20,000 coins: {} tokens, tax {}, peak {}", poor_plan.tokens, poor_plan.tax, poor_plan.coins_needed);
@@ -2339,8 +2344,37 @@ mod budget_tests {
         let open = shopping_list(&pl.key, &g, &fo, &BTreeMap::new(), &BTreeMap::new(), &prices, &BTreeMap::new(), None).unwrap();
         assert!(open.entries.iter().any(|e| e.card.def_id == 900));
         // and Best value never plans the 2.3M card with 258K
-        let v = set_value(&pl.key, &g, &fo, &BTreeMap::new(), &BTreeMap::new(), &prices, Some(258_000)).unwrap();
+        let v = set_value(&pl.key, &g, &fo, &BTreeMap::new(), &BTreeMap::new(), &prices, Some(258_000), &BTreeSet::new()).unwrap();
         assert!(v.plans.iter().flat_map(|p| p.buys.iter()).all(|b| b.card.def_id != 900));
+    }
+
+    /// A card the user left out is never planned; the next best card takes its place.
+    #[test]
+    fn left_out_cards_are_never_planned() {
+        let f = file();
+        let pl = f.sets.iter().find(|s| s.name == "Premier League").unwrap();
+        let mk = |id: u64, score: u64, collected: bool| GalleryCard { def_id: id, league: Some(13), team: Some(1), score, collected, rating: Some(85), ..Default::default() };
+        let mut g = BTreeMap::new();
+        for i in 0..29 {
+            g.insert(i + 1, mk(i + 1, 100, true));
+        }
+        g.insert(901, mk(901, 5_000, false));
+        g.insert(902, mk(902, 4_000, false));
+        let mut prices = BTreeMap::new();
+        prices.insert(901, Price { bin: 0, listings: 0, at: 1, avg: Some(1_000), shared: false });
+        prices.insert(902, Price { bin: 0, listings: 0, at: 1, avg: Some(1_200), shared: false });
+        let e = BTreeSet::new();
+        let m = BTreeMap::new();
+        let fo = FirstOwnerInfo { known: &e, manual: &m, scanned: &m, club_no: &e };
+        let none = BTreeMap::new();
+        let first = |v: &SetValue| v.plans.iter().find(|p| p.state == "buy").map(|p| p.buys.iter().map(|b| b.card.def_id).collect::<Vec<_>>());
+        let v = set_value(&pl.key, &g, &fo, &none, &BTreeMap::new(), &prices, None, &BTreeSet::new()).unwrap();
+        assert_eq!(first(&v), Some(vec![901]));
+        let out: BTreeSet<u64> = [901].into();
+        let v = set_value(&pl.key, &g, &fo, &none, &BTreeMap::new(), &prices, None, &out).unwrap();
+        assert_eq!(first(&v), Some(vec![902]));
+        assert!(v.plans.iter().flat_map(|p| p.buys.iter()).all(|b| b.card.def_id != 901));
+        assert_eq!(v.unpriced, 0, "a left-out card is not a missing price");
     }
 }
 
@@ -2357,7 +2391,7 @@ mod value_real_prices {
         let balance = snap.coins.map(|[c, _]| c);
         assert!(balance.is_some(), "the coin balance must be known from EA's user info");
         let fo = super::FirstOwnerInfo { known: &snap.first_owner, manual: &snap.first_owner_manual, scanned: &snap.first_owner_scanned, club_no: &snap.first_owner_club_no };
-        let values = super::all_values(&snap.gallery, &fo, &snap.team_links, &snap.set_obs, &snap.prices, balance);
+        let values = super::all_values(&snap.gallery, &fo, &snap.team_links, &snap.set_obs, &snap.prices, balance, &std::collections::BTreeSet::new());
         let count = |s: &str| values.iter().flat_map(|v| v.plans.iter()).filter(|p| p.state == s).count();
         println!("grades: reached {} · buy {} · too dear {} · no prices {} · not possible {}", count("reached"), count("buy"), count("over_budget"), count("unpriced"), count("not_possible"));
         for v in &values {

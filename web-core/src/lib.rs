@@ -429,7 +429,8 @@ fn dispatch(req: Value) -> Result<Value, String> {
                 let info = FirstOwnerInfo { known: &known, manual: &manual, scanned: &scanned, club_no: &club_no };
                 let budget = arg("budget").as_u64().or(w.coins.map(|[c, _]| c));
                 let target = arg("target").as_u64();
-                let sets = gallery_sets::all_values(&w.gallery, &info, &w.links, &w.observed, &w.prices, budget);
+                let exclude: BTreeSet<u64> = serde_json::from_value(arg("exclude")).unwrap_or_default();
+                let sets = gallery_sets::all_values(&w.gallery, &info, &w.links, &w.observed, &w.prices, budget, &exclude);
                 let steps = arg("steps").as_u64().map_or(200, |s| s as usize);
                 let plan = gallery_sets::token_plan(&sets, target, budget, steps);
                 Ok(json!({ "coins": w.coins, "budget": budget, "sets": sets, "plan": plan }))
@@ -439,7 +440,8 @@ fn dispatch(req: Value) -> Result<Value, String> {
                 let (scanned, manual) = fo(&w);
                 let (known, club_no) = (w.known.clone(), w.club_no.clone());
                 let info = FirstOwnerInfo { known: &known, manual: &manual, scanned: &scanned, club_no: &club_no };
-                let out = gallery_sets::set_value(&key, &w.gallery, &info, &w.links, &w.observed, &w.prices, w.coins.map(|[c, _]| c));
+                let exclude: BTreeSet<u64> = serde_json::from_value(arg("exclude")).unwrap_or_default();
+                let out = gallery_sets::set_value(&key, &w.gallery, &info, &w.links, &w.observed, &w.prices, w.coins.map(|[c, _]| c), &exclude);
                 serde_json::to_value(out).map_err(|e| e.to_string())
             }
             "price_share" => {

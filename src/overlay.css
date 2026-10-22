@@ -1016,3 +1016,15 @@ html[data-view="toast"] #root {
 .bv-buys.ticks li.done .bv-name { text-decoration: line-through; }
 .bv-tick { display: grid; place-items: center; cursor: pointer; }
 .bv-tick input { accent-color: var(--accent); margin: 0; cursor: pointer; }
+
+/* Best value: leave a card out (✕) and bring it back */
+.bv-buys.ticks li { grid-template-columns: 20px 30px minmax(0, 1fr) auto auto auto 22px; }
+.bv-x { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; padding: 2px 4px; line-height: 1; }
+.bv-x:hover, .bv-x:focus-visible { color: var(--text); background: var(--surface-hi); }
+.bv-excluded { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin: 8px 0; font-size: 12px; color: var(--muted); }
+.bv-chip {
+  border: 0; cursor: pointer; background: var(--surface-hi); color: var(--text); font: 700 11px/1 var(--font-body); padding: 5px 8px;
+  clip-path: polygon(5px 0, 100% 0, calc(100% - 5px) 100%, 0 100%);
+}
+.bv-chip:hover { background: var(--accent); color: var(--on-accent); }
+.bv-chip.all { background: transparent; color: var(--accent-2); }

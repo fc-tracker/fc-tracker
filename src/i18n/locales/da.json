@@ -569,5 +569,9 @@
   "value.allReached": "Alle grades nået",
   "value.gradeNeeds": "Grade {{grade}} kræver en score på {{score}} og giver {{tokens}} tokens.",
   "value.calculatingSet": "Beregner {{set}}…",
-  "value.slotsLeft": "{{count}} tomme pladser – et sæt får først en grade, når alle pladser er fyldt"
+  "value.slotsLeft": "{{count}} tomme pladser – et sæt får først en grade, når alle pladser er fyldt",
+  "value.excludeTitle": "Udeluk kortet – det næstbedste tager pladsen",
+  "value.excluded": "Udelukket ({{count}}):",
+  "value.includeTitle": "Hent den tilbage",
+  "value.includeAll": "Hent alle tilbage"
 }

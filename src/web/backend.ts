@@ -3,6 +3,7 @@
 // (reader.ts) and handed to the app's own model (core.ts, WebAssembly). Nothing leaves the
 // browser; what it learns is kept in this browser only (localStorage).
 import type { BestValue, CurrentPage, GalleryCategory, GalleryStatus, PriceShare, SetValue, ShoppingList } from "../api";
+import { excludedIds } from "../excluded";
 import { call, core, validPoints } from "./core";
 import { trackOnce } from "../usage";
 import { classify, Frame, pageKey, readSet, readSwap, textReader, type Box } from "./reader";
@@ -124,11 +125,11 @@ export const webApi = {
   },
   bestValue: async (budget: number | null, target: number | null, steps: number | null): Promise<BestValue | null> => {
     await restored;
-    return call<BestValue>("best_value", { budget, target, steps });
+    return call<BestValue>("best_value", { budget, target, steps, exclude: excludedIds() });
   },
   setValue: async (key: string): Promise<SetValue | null> => {
     await restored;
-    return call<SetValue | null>("set_value", { key });
+    return call<SetValue | null>("set_value", { key, exclude: excludedIds() });
   },
   /** The shared price pool: what this browser saw (from a club sync), and the pool coming back. */
   priceShare: async (since: number): Promise<PriceShare> => {

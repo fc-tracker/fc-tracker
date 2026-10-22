@@ -1,8 +1,9 @@
 // Best value (DESIGN 9r): not the highest score, but what each grade costs. A card bought for the
 // Gallery is sold again – it costs EA's 5 % tax; cards already collected cost nothing; nothing is
 // suggested that the user's coins can't pay for. Used in the overlay (app) and FC-Tracker Web alike.
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api, type BestValue, type GradePlan, type SetValue, type TokenPlan, type ValueBuy } from "./api";
+import { excludeCard, includeCard, useExcluded } from "./excluded";
 import { compact, num } from "./format";
 import { t, type MessageKey } from "./i18n";
 import { Gem } from "./icons";
@@ -95,10 +96,34 @@ function BuyList({ buys, scope }: { buys: ValueBuy[]; scope: string }) {
           </span>
           <Coins value={b.price} approx />
           <span className="bv-tax">{t("value.taxShort", { tax: compact(b.tax) })}</span>
+          <button className="bv-x" title={t("value.excludeTitle")} aria-label={t("value.excludeTitle")} onClick={() => excludeCard(b.card)}>
+            ✕
+          </button>
         </li>
       ))}
     </ol>
     </>
+  );
+}
+
+/** The cards the user left out, each one click from coming back. */
+function ExcludedBar() {
+  const out = useExcluded();
+  if (out.length === 0) return null;
+  return (
+    <div className="bv-excluded">
+      <span>{t("value.excluded", { count: out.length })}</span>
+      {out.map((c) => (
+        <button key={c.id} className="bv-chip" title={t("value.includeTitle")} onClick={() => includeCard(c.id)}>
+          {c.rating ?? ""} {c.name ?? "?"} ↺
+        </button>
+      ))}
+      {out.length > 1 && (
+        <button className="bv-chip all" onClick={() => includeCard("all")}>
+          {t("value.includeAll")}
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -140,6 +165,7 @@ export function GradeCosts({ value, compactView = false }: { value: SetValue; co
           </button>
         ))}
       </div>
+      <ExcludedBar />
       {p && (
         <div className="bv-plan">
           <p className="bv-needs">{t("value.gradeNeeds", { grade: p.grade, score: num(p.score_needed), tokens: p.tokens })}</p>
@@ -335,9 +361,8 @@ export function Planner({ data, onChange, busy }: { data: BestValue | null; onCh
           </li>
         ))}
       </ol>
-      {busy ? (
-        <p className="ml-loading">{t("value.calculating")}</p>
-      ) : !plan || plan.steps.length === 0 ? (
+      {busy && <p className="ml-loading">{t("value.calculating")}</p>}
+      {busy && !plan ? null : !plan || plan.steps.length === 0 ? (
         <>
           <p className="bv-note">{t(data && data.sets.some((s) => s.unpriced > 0) ? "value.planEmptyPrices" : "value.planEmpty")}</p>
           {data && <MissingPrices sets={data.sets} />}
@@ -362,6 +387,7 @@ export function Planner({ data, onChange, busy }: { data: BestValue | null; onCh
             ))}
           </dl>
           <MissingPrices sets={data?.sets ?? []} />
+          <ExcludedBar />
           <section className="detail-section">
             <h2>{t("value.steps")}</h2>
             <ol className="bv-plan-steps">
@@ -416,7 +442,10 @@ export function Planner({ data, onChange, busy }: { data: BestValue | null; onCh
 export function useBestValue(active: boolean) {
   const [data, setData] = useState<BestValue | null>(null);
   const [busy, setBusy] = useState(false);
+  const last = useRef<[number | null, number | null, number | null]>([null, null, null]);
+  const excluded = useExcluded().length;
   const load = (budget: number | null = null, target: number | null = null, steps: number | null = null) => {
+    last.current = [budget, target, steps];
     setBusy(true);
     api
       .bestValue(budget, target, steps)
@@ -427,14 +456,26 @@ export function useBestValue(active: boolean) {
   useEffect(() => {
     if (active && !data && !busy) load();
   }, [active]); // eslint-disable-line react-hooks/exhaustive-deps
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    if (data) load(...last.current);
+  }, [excluded]); // eslint-disable-line react-hooks/exhaustive-deps
   return { data, busy, load };
 }
 
 /** One set's grades with their costs (the Sets view). */
 export function useSetValue(key: string | undefined) {
   const [value, setValue] = useState<SetValue | null>(null);
+  const excluded = useExcluded().length;
+  const shown = useRef<string | undefined>(undefined);
   useEffect(() => {
-    setValue(null);
+    // a new set starts empty (its wait is named); the same set keeps its grades while it recomputes
+    if (shown.current !== key) setValue(null);
+    shown.current = key;
     if (!key) return;
     let live = true;
     api
@@ -444,6 +485,6 @@ export function useSetValue(key: string | undefined) {
     return () => {
       live = false;
     };
-  }, [key]);
+  }, [key, excluded]);
   return value;
 }

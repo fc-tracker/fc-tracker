@@ -569,5 +569,9 @@
   "value.allReached": "Alle Noten erreicht",
   "value.gradeNeeds": "Note {{grade}} braucht {{score}} Punkte und gibt {{tokens}} Tokens.",
   "value.calculatingSet": "Berechne {{set}}…",
-  "value.slotsLeft": "{{count}} leere Plätze – ein Set bekommt erst eine Note, wenn alle Plätze belegt sind"
+  "value.slotsLeft": "{{count}} leere Plätze – ein Set bekommt erst eine Note, wenn alle Plätze belegt sind",
+  "value.excludeTitle": "Karte auslassen – die nächstbeste nimmt den Platz",
+  "value.excluded": "Ausgelassen ({{count}}):",
+  "value.includeTitle": "Zurückholen",
+  "value.includeAll": "Alle zurückholen"
 }

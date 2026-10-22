@@ -569,5 +569,9 @@
   "value.allReached": "Toutes les notes atteintes",
   "value.gradeNeeds": "La note {{grade}} demande un score de {{score}} et donne {{tokens}} jetons.",
   "value.calculatingSet": "Calcul de {{set}}…",
-  "value.slotsLeft": "{{count}} places vides – un set n'a une note qu'une fois toutes les places remplies"
+  "value.slotsLeft": "{{count}} places vides – un set n'a une note qu'une fois toutes les places remplies",
+  "value.excludeTitle": "Écarter cette carte – la suivante prend sa place",
+  "value.excluded": "Écartées ({{count}}) :",
+  "value.includeTitle": "La remettre",
+  "value.includeAll": "Tout remettre"
 }

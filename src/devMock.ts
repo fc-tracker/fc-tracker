@@ -84,9 +84,18 @@ const loadDevValue = () =>
     typeof location !== "undefined" && new URLSearchParams(location.search).has("value")
       ? fetch("/src/devValue.json").then((r) => (r.ok ? r.json() : null)).catch(() => null)
       : Promise.resolve(null));
-export const mockBestValue = async (_budget: number | null, _target: number | null, steps: number | null) => {
+// Left-out cards drop out of the fixture's buys (dev only – the real solver picks the next best card).
+const dropOut = (v: import("./api").SetValue, out: number[]) => ({
+  ...v,
+  plans: v.plans.map((p) => ({ ...p, buys: p.buys.filter((b) => !out.includes(b.card.def_id)) })),
+});
+export const mockBestValue = async (_budget: number | null, _target: number | null, steps: number | null, out: number[] = []) => {
   const v = await loadDevValue();
-  if (!v || !steps) return v;
-  return { ...v, plan: { ...v.plan, steps: v.plan.steps.slice(0, steps) } };
+  if (!v) return v;
+  const plan = { ...v.plan, steps: v.plan.steps.slice(0, steps ?? undefined).map((s: import("./api").PlanStep) => ({ ...s, buys: s.buys.filter((b) => !out.includes(b.card.def_id)) })) };
+  return { ...v, sets: v.sets.map((x: import("./api").SetValue) => dropOut(x, out)), plan };
 };
-export const mockSetValue = async (key: string) => (await loadDevValue())?.sets.find((s: import("./api").SetValue) => s.key === key) ?? null;
+export const mockSetValue = async (key: string, out: number[] = []) => {
+  const v = (await loadDevValue())?.sets.find((s: import("./api").SetValue) => s.key === key);
+  return v ? dropOut(v, out) : null;
+};

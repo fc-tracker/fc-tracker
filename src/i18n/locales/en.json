@@ -569,5 +569,9 @@
   "value.allReached": "Every grade reached",
   "value.gradeNeeds": "Grade {{grade}} needs a score of {{score}} and gives {{tokens}} tokens.",
   "value.calculatingSet": "Calculating {{set}}…",
-  "value.slotsLeft": "{{count}} empty slots – a set gets a grade once every slot is filled"
+  "value.slotsLeft": "{{count}} empty slots – a set gets a grade once every slot is filled",
+  "value.excludeTitle": "Leave this card out – the next best one takes its place",
+  "value.excluded": "Left out ({{count}}):",
+  "value.includeTitle": "Bring it back",
+  "value.includeAll": "Bring all back"
 }

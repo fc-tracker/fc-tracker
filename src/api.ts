@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { excludedIds } from "./excluded";
 import { getVersion } from "@tauri-apps/api/app";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { browserPad } from "./browserPad";
@@ -462,8 +463,11 @@ const appApi = {
       : invoke<boolean>("mark_swap_done", { setKey, outDefId: sw.out.def_id, outSlot: sw.out.slot ?? null, intoDefId: sw.into.def_id }),
   /** Best value: every set's grades with their cost, and the token plan (within the coins). */
   bestValue: (budget: number | null = null, target: number | null = null, steps: number | null = null) =>
-    browserDev ? import("./devMock").then((m) => m.mockBestValue(budget, target, steps)) : invoke<BestValue | null>("best_value", { budget, target, steps }),
-  setValue: (key: string) => (browserDev ? import("./devMock").then((m) => m.mockSetValue(key)) : invoke<SetValue | null>("set_value", { key })),
+    browserDev
+      ? import("./devMock").then((m) => m.mockBestValue(budget, target, steps, excludedIds()))
+      : invoke<BestValue | null>("best_value", { budget, target, steps, exclude: excludedIds() }),
+  setValue: (key: string) =>
+    browserDev ? import("./devMock").then((m) => m.mockSetValue(key, excludedIds())) : invoke<SetValue | null>("set_value", { key, exclude: excludedIds() }),
   /** The shared price pool (src/prices.ts): what this PC saw, and the pool coming back. */
   priceShare: (since: number) =>
     browserDev ? Promise.resolve<PriceShare>({ platform: null, prices: [] }) : invoke<PriceShare>("price_share", { since }),

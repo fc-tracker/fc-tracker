@@ -569,5 +569,9 @@
   "value.allReached": "Todas las notas logradas",
   "value.gradeNeeds": "La nota {{grade}} necesita {{score}} puntos y da {{tokens}} tokens.",
   "value.calculatingSet": "Calculando {{set}}…",
-  "value.slotsLeft": "{{count}} huecos vacíos: un set solo tiene nota con todos los huecos llenos"
+  "value.slotsLeft": "{{count}} huecos vacíos: un set solo tiene nota con todos los huecos llenos",
+  "value.excludeTitle": "Excluir esta carta: la siguiente mejor ocupa su lugar",
+  "value.excluded": "Excluidas ({{count}}):",
+  "value.includeTitle": "Recuperarla",
+  "value.includeAll": "Recuperar todas"
 }

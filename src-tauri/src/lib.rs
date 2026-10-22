@@ -599,7 +599,8 @@ async fn gallery_overview(app: AppHandle) -> Vec<gallery_sets::CategorySummary> 
 
 /// Best value: every set's grades and what each costs from the user's club (EA's 5 % tax on
 /// resale, cards already collected free), and the token plan over all sets – within the coins the
-/// user has (or `budget` when given) and up to `target` tokens.
+/// user has (or `budget` when given) and up to `target` tokens, never buying a card in `exclude`
+/// (the cards the user left out).
 #[derive(serde::Serialize)]
 struct BestValue {
     coins: Option<[u64; 2]>,
@@ -609,11 +610,12 @@ struct BestValue {
 }
 
 #[tauri::command]
-async fn best_value(app: AppHandle, budget: Option<u64>, target: Option<u64>, steps: Option<usize>) -> Option<BestValue> {
+async fn best_value(app: AppHandle, budget: Option<u64>, target: Option<u64>, steps: Option<usize>, exclude: Option<Vec<u64>>) -> Option<BestValue> {
     tauri::async_runtime::spawn_blocking(move || {
         let (_, input) = model::input(&app);
         let budget = budget.or(input.balance());
-        let sets = input.values(budget);
+        let exclude = exclude.unwrap_or_default().into_iter().collect();
+        let sets = input.values(budget, &exclude);
         let plan = gallery_sets::token_plan(&sets, target, budget, steps.unwrap_or(200));
         BestValue { coins: input.coins(), budget, sets, plan }
     })
@@ -623,10 +625,10 @@ async fn best_value(app: AppHandle, budget: Option<u64>, target: Option<u64>, st
 
 /// One set's grades and what each costs (the set view), within the user's coins.
 #[tauri::command]
-async fn set_value(app: AppHandle, key: String) -> Option<gallery_sets::SetValue> {
+async fn set_value(app: AppHandle, key: String, exclude: Option<Vec<u64>>) -> Option<gallery_sets::SetValue> {
     tauri::async_runtime::spawn_blocking(move || {
         let (_, input) = model::input(&app);
-        input.set_value(&key)
+        input.set_value(&key, &exclude.unwrap_or_default().into_iter().collect())
     })
     .await
     .ok()

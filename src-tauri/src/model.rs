@@ -71,13 +71,13 @@ impl ModelInput {
         self.coins
     }
 
-    pub fn set_value(&self, key: &str) -> Option<gallery_sets::SetValue> {
-        gallery_sets::set_value(key, &self.gallery, &self.fo(), &self.links, &self.observed, &self.prices, self.balance())
+    pub fn set_value(&self, key: &str, exclude: &std::collections::BTreeSet<u64>) -> Option<gallery_sets::SetValue> {
+        gallery_sets::set_value(key, &self.gallery, &self.fo(), &self.links, &self.observed, &self.prices, self.balance(), exclude)
     }
 
     /// Every set's grades and what they cost from the club, within `balance` coins.
-    pub fn values(&self, balance: Option<u64>) -> Vec<gallery_sets::SetValue> {
-        gallery_sets::all_values(&self.gallery, &self.fo(), &self.links, &self.observed, &self.prices, balance)
+    pub fn values(&self, balance: Option<u64>, exclude: &std::collections::BTreeSet<u64>) -> Vec<gallery_sets::SetValue> {
+        gallery_sets::all_values(&self.gallery, &self.fo(), &self.links, &self.observed, &self.prices, balance, exclude)
     }
 }
 
