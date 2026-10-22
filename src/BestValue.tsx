@@ -386,6 +386,9 @@ export function Planner({ data, onChange, busy }: { data: BestValue | null; onCh
               </div>
             ))}
           </dl>
+          {steps != null && plan.steps.length < steps && (
+            <p className="bv-note warn">{t("value.fewerSets", { count: plan.steps.length, asked: steps })}</p>
+          )}
           <MissingPrices sets={data?.sets ?? []} />
           <ExcludedBar />
           <section className="detail-section">

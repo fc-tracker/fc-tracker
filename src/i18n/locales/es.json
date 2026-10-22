@@ -573,5 +573,6 @@
   "value.excludeTitle": "Excluir esta carta: la siguiente mejor ocupa su lugar",
   "value.excluded": "Excluidas ({{count}}):",
   "value.includeTitle": "Recuperarla",
-  "value.includeAll": "Recuperar todas"
+  "value.includeAll": "Recuperar todas",
+  "value.fewerSets": "Solo {{count}} de {{asked}}: ningún otro set da tokens dentro de tus monedas con los precios conocidos hoy."
 }

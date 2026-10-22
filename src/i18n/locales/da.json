@@ -573,5 +573,6 @@
   "value.excludeTitle": "Udeluk kortet – det næstbedste tager pladsen",
   "value.excluded": "Udelukket ({{count}}):",
   "value.includeTitle": "Hent den tilbage",
-  "value.includeAll": "Hent alle tilbage"
+  "value.includeAll": "Hent alle tilbage",
+  "value.fewerSets": "Kun {{count}} af {{asked}}: intet andet sæt giver tokens inden for dine coins med de priser, vi kender i dag."
 }

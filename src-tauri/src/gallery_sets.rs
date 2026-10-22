@@ -2403,5 +2403,14 @@ mod value_real_prices {
         let plan = super::token_plan(&values, None, balance, 200);
         println!("plan: +{} tokens, tax {}, peak {} (balance {:?})", plan.tokens, plan.tax, plan.coins_needed, balance);
         assert!(plan.coins_needed <= balance.unwrap());
+        // "Best 5 sets": one shopping list that takes five different sets up a grade, within the coins.
+        let five = super::token_plan(&values, None, balance, 5);
+        let keys: std::collections::BTreeSet<&str> = five.steps.iter().map(|s| s.key.as_str()).collect();
+        println!("best 5: +{} tokens, tax {}, peak {}, {} players", five.tokens, five.tax, five.coins_needed, five.players);
+        for st in &five.steps {
+            println!("  {} → {}: +{} tokens, {} buys, tax {}", st.name, st.grade, st.tokens, st.buys.len(), st.tax);
+        }
+        assert!(five.steps.len() <= 5 && keys.len() == five.steps.len(), "five different sets");
+        assert!(five.coins_needed <= balance.unwrap());
     }
 }

@@ -573,5 +573,6 @@
   "value.excludeTitle": "Écarter cette carte – la suivante prend sa place",
   "value.excluded": "Écartées ({{count}}) :",
   "value.includeTitle": "La remettre",
-  "value.includeAll": "Tout remettre"
+  "value.includeAll": "Tout remettre",
+  "value.fewerSets": "Seulement {{count}} sur {{asked}} : aucun autre set ne donne de jetons dans tes crédits avec les prix connus aujourd'hui."
 }

@@ -573,5 +573,6 @@
   "value.excludeTitle": "Leave this card out – the next best one takes its place",
   "value.excluded": "Left out ({{count}}):",
   "value.includeTitle": "Bring it back",
-  "value.includeAll": "Bring all back"
+  "value.includeAll": "Bring all back",
+  "value.fewerSets": "Only {{count}} of {{asked}}: no other set gives tokens within your coins with the prices known today."
 }

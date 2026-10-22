@@ -573,5 +573,6 @@
   "value.excludeTitle": "Karte auslassen – die nächstbeste nimmt den Platz",
   "value.excluded": "Ausgelassen ({{count}}):",
   "value.includeTitle": "Zurückholen",
-  "value.includeAll": "Alle zurückholen"
+  "value.includeAll": "Alle zurückholen",
+  "value.fewerSets": "Nur {{count}} von {{asked}}: Kein anderes Set gibt mit den heute bekannten Preisen Tokens innerhalb deiner Münzen."
 }
