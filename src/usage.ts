@@ -71,7 +71,7 @@ export function trackOnce(name: string, data: Record<string, string | number | b
 }
 
 // ---------------------------------------------------------------- presence (our own counter)
-// A heartbeat every 5 minutes while the app runs (or FC-Tracker Web is open) to
+// A heartbeat every 15 minutes while the app runs (or FC-Tracker Web is open) to
 // fc-tracker.com/api/beat: the same random id, the kind and the version – nothing else. It gives
 // "online now" and exact active/installation counts (site/api/_presence.mjs). Off with the same
 // setting as the usage counts.
@@ -94,7 +94,7 @@ function beat(kind: "app" | "web") {
 export function startPresence(kind: "app" | "web") {
   if (beating) return;
   beat(kind);
-  beating = setInterval(() => beat(kind), 5 * 60 * 1000);
+  beating = setInterval(() => beat(kind), 15 * 60 * 1000);
 }
 
 /** "N online now" – null while fewer than the public threshold are online. */

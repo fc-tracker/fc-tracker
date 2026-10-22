@@ -1129,6 +1129,12 @@ pub struct ShoppingEntry {
     /// How it arrived: "pack" (first owner) or "bought".
     #[serde(default)]
     pub got_source: Option<String>,
+    /// EA's 5 % tax on reselling it (what the card really costs for the Gallery), and the points
+    /// it adds per 1,000 coins of that tax – `None` without a price.
+    #[serde(default)]
+    pub tax: Option<u64>,
+    #[serde(default)]
+    pub per_k: Option<u64>,
 }
 
 /// The missing cards of one set, best buys first (shown in the click-through side list).
@@ -1144,6 +1150,13 @@ pub struct ShoppingList {
     pub entries: Vec<ShoppingEntry>,
     /// The best selection from the user's own cards (the side panel's "Best selection" tab).
     pub best: Option<BestSelection>,
+    /// Cards left out because their price is above the user's coins, and those coins.
+    #[serde(default)]
+    pub over_budget: usize,
+    pub balance: Option<u64>,
+    /// The best value next grade of this set (cheapest tokens per tax coin within the coins).
+    pub next_grade: Option<GradePlan>,
+    pub tokens_have: u64,
 }
 
 /// The whole best selection of a set from the cards the user has – one overview instead of a list
@@ -1299,6 +1312,7 @@ pub fn shopping_list(
     observed: &BTreeMap<String, SetObs>,
     prices: &BTreeMap<u64, Price>,
     acquired: &BTreeMap<u64, Acquired>,
+    balance: Option<u64>,
 ) -> Option<ShoppingList> {
     let f = file();
     let set = f.sets.iter().find(|s| s.key == key)?;
@@ -1340,9 +1354,15 @@ pub fn shopping_list(
                     .max()
                     .unwrap_or(current)
             };
-            ShoppingEntry { card: view(c, &ctx), gain: best.saturating_sub(current), got: false, got_source: None }
+            let gain = best.saturating_sub(current);
+            let tax = prices.get(&c.def_id).and_then(Price::value).map(tax_of);
+            ShoppingEntry { card: view(c, &ctx), gain, got: false, got_source: None, tax, per_k: tax.map(|t| gain * 1000 / t.max(1)) }
         })
         .collect();
+    // Never a card the user can't pay for (a price above the coins).
+    let before = entries.len();
+    entries.retain(|e| balance.is_none_or(|b| e.card.price.is_none_or(|p| p <= b)));
+    let over_budget = before - entries.len();
     entries.sort_by(|a, b| b.gain.cmp(&a.gain).then(b.card.score.cmp(&a.card.score)));
     entries.truncate(SHOPPING_SHOWN);
 
@@ -1376,7 +1396,7 @@ pub fn shopping_list(
             let without: Vec<Card> = pool.iter().filter(|e| !matches!(e, Entry::Card(x, _) if x.def_id == c.def_id)).map(|e| e.to_card(&ctx)).collect();
             let best_without = gallery::score(&gallery::optimise_from(&without, set.slots, None).iter().map(|&i| without[i].clone()).collect::<Vec<_>>()).total;
             let gain = current.saturating_sub(best_without);
-            (gain > 0).then(|| ShoppingEntry { card: view(c, &ctx), gain, got: true, got_source: acquired.get(&c.def_id).map(|a| a.source.clone()) })
+            (gain > 0).then(|| ShoppingEntry { card: view(c, &ctx), gain, got: true, got_source: acquired.get(&c.def_id).map(|a| a.source.clone()), tax: None, per_k: None })
         })
         .collect();
     got.sort_by(|a, b| b.gain.cmp(&a.gain));
@@ -1384,6 +1404,8 @@ pub fn shopping_list(
     let mut entries = got;
     entries.truncate(SHOPPING_SHOWN);
     let best = best_selection(key, &collected, gallery, observed, set.slots, &ctx);
+    let value = value_of(set, cat, gallery, fo, links, observed, prices, balance);
+    let next_grade = value.best_step().map(|(i, _, _)| value.plans[i].clone());
     Some(ShoppingList {
         key: set.key.clone(),
         name: set.name.clone(),
@@ -1394,7 +1416,464 @@ pub fn shopping_list(
         score: current,
         entries,
         best,
+        over_budget,
+        balance,
+        next_grade,
+        tokens_have: value.tokens_have,
     })
+}
+
+// ---------------------------------------------------------------------------------------------
+// Best value: what each grade of a set costs (DESIGN 9r). A card counts once it was in the club,
+// even after it is sold again (loans never count) – so a bought card costs EA's 5 % tax on the
+// resale, not its price. Cards the user already collected cost nothing; bought cards are never
+// first owner. Prices are EA's own market average (own sightings + the shared pool); a card
+// without a price is unknown, never free. The coins the user has limit what is suggested: the
+// most coins needed at once (dearest first, sell, next) must fit the balance.
+
+/// EA's tax on a transfer market sale.
+pub const TAX_PERCENT: u64 = 5;
+/// Cards considered for buying per set (best scores + cheapest).
+const VALUE_CANDIDATES: usize = 70;
+/// Lineup cards tried as the one to replace when testing a buy (weakest first) – plus an open slot.
+const VALUE_REPLACE: usize = 8;
+const VALUE_ROUNDS: usize = 45;
+
+pub fn tax_of(price: u64) -> u64 {
+    price * TAX_PERCENT / 100
+}
+
+/// The most coins needed at once to buy, slot and resell `prices` one by one: dearest first, each
+/// buy on top of the tax already lost.
+pub fn coins_needed(prices: &[u64]) -> u64 {
+    let mut p = prices.to_vec();
+    p.sort_unstable_by(|a, b| b.cmp(a));
+    let mut lost = 0;
+    let mut peak = 0;
+    for x in p {
+        peak = peak.max(x + lost);
+        lost += tax_of(x);
+    }
+    peak
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ValueBuy {
+    pub card: CardView,
+    pub price: u64,
+    pub tax: u64,
+}
+
+/// One grade of a set and what reaching it costs from the user's club.
+#[derive(Debug, Clone, Serialize)]
+pub struct GradePlan {
+    pub grade: String,
+    pub score_needed: u64,
+    /// Tokens of this grade alone, and of all grades up to it (rewards are cumulative).
+    pub tokens: u64,
+    pub tokens_total: u64,
+    /// "reached" (already, with the club) | "buy" (reachable within the coins) | "over_budget" |
+    /// "unpriced" (cards that could do it have no price yet) | "not_possible" (not even with every card)
+    pub state: String,
+    pub score: u64,
+    pub buys: Vec<ValueBuy>,
+    pub coins_needed: u64,
+    pub total_price: u64,
+    pub tax: u64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct SetValue {
+    pub key: String,
+    pub name: String,
+    pub category: String,
+    pub slots: usize,
+    pub collected: usize,
+    /// Best score with the club alone (complete or not) and the grade it reaches.
+    pub score: u64,
+    pub grade: Option<String>,
+    pub tokens_have: u64,
+    pub tokens_max: u64,
+    pub plans: Vec<GradePlan>,
+    /// Missing cards that could matter but have no price yet.
+    pub unpriced: usize,
+    /// The coins the plans were limited to (None = unknown: not limited).
+    pub balance: Option<u64>,
+}
+
+impl SetValue {
+    /// The cheapest next step: the grade above the reached one with the best tokens per tax coin
+    /// (within the coins). (index into plans, extra tokens, tax)
+    pub fn best_step(&self) -> Option<(usize, u64, u64)> {
+        self.plans
+            .iter()
+            .enumerate()
+            .filter(|(_, p)| p.state == "buy" && p.tokens_total > self.tokens_have)
+            .map(|(i, p)| (i, p.tokens_total - self.tokens_have, p.tax))
+            .max_by(|a, b| (a.1 as f64 / a.2.max(1) as f64).total_cmp(&(b.1 as f64 / b.2.max(1) as f64)))
+    }
+}
+
+struct Buyable<'a> {
+    card: &'a GalleryCard,
+    model: Card,
+    price: u64,
+}
+
+fn lineup_total(cards: &[&Card]) -> u64 {
+    gallery::score_refs(cards).total
+}
+
+/// What each grade of a set costs from the user's club (see the section comment).
+#[allow(clippy::too_many_arguments)]
+pub fn set_value(
+    key: &str,
+    gallery: &BTreeMap<u64, GalleryCard>,
+    fo: &FirstOwnerInfo,
+    links: &BTreeMap<u64, Vec<u64>>,
+    observed: &BTreeMap<String, SetObs>,
+    prices: &BTreeMap<u64, Price>,
+    balance: Option<u64>,
+) -> Option<SetValue> {
+    let f = file();
+    let set = f.sets.iter().find(|s| s.key == key)?;
+    let cat = f.categories.iter().find(|c| c.key == set.category)?;
+    Some(value_of(set, cat, gallery, fo, links, observed, prices, balance))
+}
+
+/// `set_value` for every set (the Best value list).
+pub fn all_values(
+    gallery: &BTreeMap<u64, GalleryCard>,
+    fo: &FirstOwnerInfo,
+    links: &BTreeMap<u64, Vec<u64>>,
+    observed: &BTreeMap<String, SetObs>,
+    prices: &BTreeMap<u64, Price>,
+    balance: Option<u64>,
+) -> Vec<SetValue> {
+    let f = file();
+    f.sets
+        .iter()
+        .filter_map(|set| {
+            let cat = f.categories.iter().find(|c| c.key == set.category)?;
+            Some(value_of(set, cat, gallery, fo, links, observed, prices, balance))
+        })
+        .collect()
+}
+
+#[allow(clippy::too_many_arguments)]
+fn value_of(
+    set: &SetDef,
+    cat: &CategoryDef,
+    gallery: &BTreeMap<u64, GalleryCard>,
+    fo: &FirstOwnerInfo,
+    links: &BTreeMap<u64, Vec<u64>>,
+    observed: &BTreeMap<String, SetObs>,
+    prices: &BTreeMap<u64, Price>,
+    balance: Option<u64>,
+) -> SetValue {
+    let ctx = Context { fo, links, prices };
+    let cards: Vec<&GalleryCard> = gallery.values().filter(|c| matches(c, set, cat, &ctx)).collect();
+    let (collected, missing): (Vec<&GalleryCard>, Vec<&GalleryCard>) = cards.iter().partition(|c| c.collected);
+    let obs = observed.get(&set.key);
+    let completed = completed_obs(&collected, obs, &ctx);
+    let (pool, _) = build_pool(&collected, completed.as_ref().map(|(o, _)| o).or(obs));
+    let owned: Vec<Card> = pool.iter().map(|e| e.to_card(&ctx)).collect();
+
+    // Buy candidates: priced missing cards (never SBC-only), best scores and the cheapest.
+    let mut priced: Vec<Buyable> = Vec::new();
+    let mut unpriced_scores: Vec<u64> = Vec::new();
+    for c in missing.iter().filter(|c| !c.rareflag.is_some_and(|r| SBC_ONLY_RARITIES.contains(&r)) && c.score > 0) {
+        match prices.get(&c.def_id).and_then(Price::value).filter(|&p| p > 0) {
+            Some(price) => priced.push(Buyable { card: c, model: Card { first_owner: false, ..to_card(c, &ctx) }, price }),
+            None => unpriced_scores.push(c.score),
+        }
+    }
+    let mut by_score: Vec<usize> = (0..priced.len()).collect();
+    by_score.sort_by(|&a, &b| priced[b].model.score.cmp(&priced[a].model.score));
+    let mut by_price: Vec<usize> = (0..priced.len()).collect();
+    by_price.sort_by_key(|&i| priced[i].price);
+    let mut chosen: Vec<usize> = Vec::new();
+    for i in by_score.iter().take(VALUE_CANDIDATES / 2).chain(by_price.iter().take(VALUE_CANDIDATES / 2)) {
+        if !chosen.contains(i) {
+            chosen.push(*i);
+        }
+    }
+    let buyable: Vec<&Buyable> = chosen.iter().map(|&i| &priced[i]).collect();
+
+    // The club's own best lineup.
+    let own_pick = gallery::optimise_from(&owned, set.slots, None);
+    let own_lineup: Vec<&Card> = own_pick.iter().map(|&i| &owned[i]).collect();
+    let own_total = lineup_total(&own_lineup);
+    let complete_owned = own_pick.len() >= set.slots;
+    let mut ladder = set.grades.clone();
+    ladder.sort_by_key(|g| g.score);
+    let reached_owned = |total: u64| ladder.iter().filter(|g| g.score <= total).last().map(|g| g.grade.clone());
+    let grade = complete_owned.then(|| reached_owned(own_total)).flatten();
+    let tokens_have = if complete_owned { ladder.iter().filter(|g| g.score <= own_total).map(|g| g.tokens).sum() } else { 0 };
+    // Unpriced cards that could matter: better than the weakest card of the club's lineup.
+    let weakest = if complete_owned { own_lineup.iter().map(|c| c.score).min().unwrap_or(0) } else { 0 };
+    let unpriced = unpriced_scores.iter().filter(|&&s| s > weakest).count();
+
+    // Greedy, grade by grade (each builds on the buys of the one below): the lineup holds owned
+    // cards (index < owned.len()) and buys (owned.len() + index into `buyable`).
+    let n_owned = owned.len();
+    let model = |i: usize| -> &Card { if i < n_owned { &owned[i] } else { &buyable[i - n_owned].model } };
+    let price_of = |i: usize| -> u64 { if i < n_owned { 0 } else { buyable[i - n_owned].price } };
+    let total_of = |l: &[usize]| lineup_total(&l.iter().map(|&i| model(i)).collect::<Vec<_>>());
+    let buys_of = |l: &[usize]| -> Vec<u64> { l.iter().filter(|&&i| i >= n_owned).map(|&i| price_of(i)).collect() };
+    let fits = |l: &[usize]| balance.is_none_or(|b| coins_needed(&buys_of(l)) <= b);
+
+    let mut lineup: Vec<usize> = own_pick.clone();
+    let mut tokens_total = 0;
+    let mut plans = Vec::new();
+    let mut blocked_by_budget = false;
+    for step in &ladder {
+        tokens_total += step.tokens;
+        let need = step.score;
+        let done = |l: &[usize], t: u64| l.len() >= set.slots && t >= need;
+        let mut total = total_of(&lineup);
+        let mut rounds = 0;
+        while !done(&lineup, total) && rounds < VALUE_ROUNDS {
+            rounds += 1;
+            // Where a buy could go: an open slot, or replacing one of the weakest lineup cards.
+            let mut spots: Vec<Option<usize>> = Vec::new();
+            if lineup.len() < set.slots {
+                spots.push(None);
+            } else {
+                let mut idx: Vec<usize> = (0..lineup.len()).collect();
+                idx.sort_by_key(|&k| model(lineup[k]).score);
+                spots.extend(idx.into_iter().take(VALUE_REPLACE).map(Some));
+            }
+            // Best by gain per tax coin; one that reaches the grade alone wins when it is cheaper.
+            let mut best: Option<(f64, Vec<usize>, u64)> = None;
+            let mut finisher: Option<(u64, Vec<usize>, u64)> = None;
+            for b in 0..buyable.len() {
+                let id = n_owned + b;
+                if lineup.contains(&id) {
+                    continue;
+                }
+                let tax = tax_of(buyable[b].price).max(1);
+                for spot in &spots {
+                    let mut l = lineup.clone();
+                    match spot {
+                        None => l.push(id),
+                        Some(k) => l[*k] = id,
+                    }
+                    if !fits(&l) {
+                        blocked_by_budget = true;
+                        continue;
+                    }
+                    let t = total_of(&l);
+                    let filled = spot.is_none();
+                    if t <= total && !filled {
+                        continue;
+                    }
+                    // the tax already spent on a card that is replaced comes back as nothing – count the new tax only
+                    if done(&l, t) && finisher.as_ref().is_none_or(|f| tax < f.0) {
+                        finisher = Some((tax, l.clone(), t));
+                    }
+                    let gain = t.saturating_sub(total).max(if filled { 1 } else { 0 }) as f64;
+                    let ratio = gain / tax as f64;
+                    if best.as_ref().is_none_or(|bst| ratio > bst.0) {
+                        best = Some((ratio, l, t));
+                    }
+                }
+            }
+            match (finisher, best) {
+                (Some((_, l, t)), _) => {
+                    lineup = l;
+                    total = t;
+                }
+                (None, Some((_, l, t))) => {
+                    lineup = l;
+                    total = t;
+                }
+                (None, None) => break,
+            }
+        }
+        if done(&lineup, total) {
+            // Polish: the best arrangement of these cards, then drop buys that aren't needed.
+            let mut pool_ids: Vec<usize> = (0..n_owned).collect();
+            pool_ids.extend(lineup.iter().copied().filter(|&i| i >= n_owned));
+            let pool_cards: Vec<Card> = pool_ids.iter().map(|&i| model(i).clone()).collect();
+            let start: Vec<usize> = lineup.iter().filter_map(|i| pool_ids.iter().position(|p| p == i)).collect();
+            let polished: Vec<usize> = gallery::optimise_from(&pool_cards, set.slots, Some(&start)).into_iter().map(|k| pool_ids[k]).collect();
+            if polished.len() >= set.slots && total_of(&polished) >= total {
+                lineup = polished;
+            }
+            let mut by_tax: Vec<usize> = lineup.iter().copied().filter(|&i| i >= n_owned).collect();
+            by_tax.sort_by_key(|&i| std::cmp::Reverse(price_of(i)));
+            for b in by_tax {
+                let pos = lineup.iter().position(|&i| i == b).unwrap();
+                // the best owned card not in the lineup takes its place (or none, when the set would be incomplete)
+                let mut best_alt: Option<Vec<usize>> = None;
+                for o in 0..n_owned {
+                    if lineup.contains(&o) {
+                        continue;
+                    }
+                    let mut l = lineup.clone();
+                    l[pos] = o;
+                    let t = total_of(&l);
+                    if t >= need && best_alt.as_ref().is_none_or(|a| t > total_of(a)) {
+                        best_alt = Some(l);
+                    }
+                }
+                if let Some(l) = best_alt {
+                    lineup = l;
+                }
+            }
+            total = total_of(&lineup);
+        }
+        let reached = done(&lineup, total);
+        let buys: Vec<usize> = if reached { lineup.iter().copied().filter(|&i| i >= n_owned).collect() } else { Vec::new() };
+        let prices_list: Vec<u64> = buys.iter().map(|&i| price_of(i)).collect();
+        let state = if reached {
+            if buys.is_empty() && complete_owned && own_total >= need { "reached" } else { "buy" }
+        } else if blocked_by_budget {
+            "over_budget"
+        } else if unpriced > 0 {
+            "unpriced"
+        } else {
+            "not_possible"
+        };
+        plans.push(GradePlan {
+            grade: step.grade.clone(),
+            score_needed: need,
+            tokens: step.tokens,
+            tokens_total,
+            state: state.to_string(),
+            score: if reached { total } else { 0 },
+            buys: buys
+                .iter()
+                .map(|&i| {
+                    let b = buyable[i - n_owned];
+                    ValueBuy { card: view(b.card, &ctx), price: b.price, tax: tax_of(b.price) }
+                })
+                .collect(),
+            coins_needed: coins_needed(&prices_list),
+            total_price: prices_list.iter().sum(),
+            tax: prices_list.iter().map(|&p| tax_of(p)).sum(),
+        });
+        if !reached {
+            // the higher grades can't be reached either – say why the same way
+            for rest in ladder.iter().skip(plans.len()) {
+                tokens_total += rest.tokens;
+                plans.push(GradePlan {
+                    grade: rest.grade.clone(),
+                    score_needed: rest.score,
+                    tokens: rest.tokens,
+                    tokens_total,
+                    state: state.to_string(),
+                    score: 0,
+                    buys: Vec::new(),
+                    coins_needed: 0,
+                    total_price: 0,
+                    tax: 0,
+                });
+            }
+            break;
+        }
+    }
+    SetValue {
+        key: set.key.clone(),
+        name: set.name.clone(),
+        category: set.category.clone(),
+        slots: set.slots,
+        collected: collected.len(),
+        score: own_total,
+        grade,
+        tokens_have,
+        tokens_max: ladder.iter().map(|g| g.tokens).sum(),
+        plans,
+        unpriced,
+        balance,
+    }
+}
+
+/// One step of the token plan: a set taken to a grade.
+#[derive(Debug, Clone, Serialize)]
+pub struct PlanStep {
+    pub key: String,
+    pub name: String,
+    pub grade: String,
+    pub tokens: u64,
+    pub tax: u64,
+    pub coins_needed: u64,
+    pub buys: Vec<ValueBuy>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TokenPlan {
+    pub steps: Vec<PlanStep>,
+    pub tokens: u64,
+    pub tax: u64,
+    pub total_price: u64,
+    /// The most coins needed at once over the whole plan (the steps one after another).
+    pub coins_needed: u64,
+    pub players: usize,
+    pub balance: Option<u64>,
+}
+
+/// The best value plan over all sets: grades bought by tokens per tax coin, until `target` tokens
+/// are reached or the coins run out (each step's coins needed must fit what is left after the tax
+/// already spent). One buy per card even when it serves several sets (it counts in all of them).
+pub fn token_plan(values: &[SetValue], target: Option<u64>, balance: Option<u64>, max_steps: usize) -> TokenPlan {
+    // per set: the grade it is at (index into plans, None = below the first) and the tax spent so far
+    let mut at: Vec<Option<usize>> = values.iter().map(|v| v.plans.iter().rposition(|p| p.state == "reached")).collect();
+    let mut spent: Vec<u64> = vec![0; values.len()];
+    let mut steps: Vec<PlanStep> = Vec::new();
+    let (mut tokens, mut tax, mut total_price, mut coins_peak) = (0u64, 0u64, 0u64, 0u64);
+    let mut bought: BTreeSet<u64> = BTreeSet::new();
+    while steps.len() < max_steps && target.is_none_or(|t| tokens < t) {
+        let left = balance.map(|b| b.saturating_sub(tax));
+        let mut best: Option<(f64, usize, usize, u64, u64)> = None;
+        for (si, v) in values.iter().enumerate() {
+            let have = at[si].map_or(0, |i| v.plans[i].tokens_total);
+            for (pi, p) in v.plans.iter().enumerate() {
+                if p.state != "buy" || at[si].is_some_and(|a| pi <= a) || p.tokens_total <= have {
+                    continue;
+                }
+                // tax of cards not bought already for another step
+                let extra: u64 = p.buys.iter().filter(|b| !bought.contains(&b.card.def_id)).map(|b| b.tax).sum::<u64>().saturating_sub(spent[si].min(p.tax));
+                if left.is_some_and(|l| p.coins_needed > l) {
+                    continue;
+                }
+                let gain = p.tokens_total - have;
+                let ratio = gain as f64 / extra.max(1) as f64;
+                if best.as_ref().is_none_or(|b| ratio > b.0) {
+                    best = Some((ratio, si, pi, gain, extra));
+                }
+            }
+        }
+        let Some((_, si, pi, gain, extra)) = best else { break };
+        let v = &values[si];
+        let p = &v.plans[pi];
+        let new_buys: Vec<ValueBuy> = p.buys.iter().filter(|b| !bought.contains(&b.card.def_id)).cloned().collect();
+        for b in &new_buys {
+            bought.insert(b.card.def_id);
+            total_price += b.price;
+        }
+        coins_peak = coins_peak.max(p.coins_needed + tax);
+        tokens += gain;
+        tax += extra;
+        spent[si] = p.tax;
+        at[si] = Some(pi);
+        steps.push(PlanStep { key: v.key.clone(), name: v.name.clone(), grade: p.grade.clone(), tokens: gain, tax: extra, coins_needed: p.coins_needed, buys: new_buys });
+    }
+    TokenPlan { players: bought.len(), steps, tokens, tax, total_price, coins_needed: coins_peak, balance }
+}
+
+#[cfg(test)]
+mod value_tests {
+    use super::*;
+
+    #[test]
+    fn coins_needed_is_dearest_first_plus_tax_lost() {
+        // Heroes, grade A: 330K, 315K, 272K, 240K, 69.5K → 331,500
+        assert_eq!(coins_needed(&[240_000, 330_000, 315_000, 272_000, 69_500]), 331_500);
+        assert_eq!(coins_needed(&[]), 0);
+        assert_eq!(tax_of(1_226_500), 61_325);
+    }
 }
 
 #[cfg(test)]
@@ -1550,7 +2029,7 @@ mod tests {
         let fo = FirstOwnerInfo { known: &snap.first_owner, manual: &snap.first_owner_manual, scanned: &snap.first_owner_scanned, club_no: &snap.first_owner_club_no };
         for set in file().sets.iter().filter(|s| snap.set_obs.get(&s.key).is_some_and(|o| o.verified)) {
             let t = std::time::Instant::now();
-            let Some(list) = shopping_list(&set.key, &snap.gallery, &fo, &snap.team_links, &snap.set_obs, &snap.prices, &snap.acquired) else { continue };
+            let Some(list) = shopping_list(&set.key, &snap.gallery, &fo, &snap.team_links, &snap.set_obs, &snap.prices, &snap.acquired, None) else { continue };
             let Some(b) = list.best else { continue };
             let new: Vec<String> = b.cards.iter().filter(|c| c.in_selection == Some(false)).map(|c| format!("{} {}", c.card.name.clone().unwrap_or_default(), c.card.score)).collect();
             let o = &snap.set_obs[&set.key];
@@ -1577,7 +2056,7 @@ mod tests {
         println!("collected cards: {collected}, first owner: {}", store.snapshot.first_owner.len());
         let t = std::time::Instant::now();
         let pl_key = file().sets.iter().find(|s| s.name == "Premier League").unwrap().key.clone();
-        let list = shopping_list(&pl_key, &snap.gallery, &fo, &snap.team_links, &snap.set_obs, &snap.prices, &snap.acquired).unwrap();
+        let list = shopping_list(&pl_key, &snap.gallery, &fo, &snap.team_links, &snap.set_obs, &snap.prices, &snap.acquired, None).unwrap();
         println!("PL shopping list in {:?}: {:?}", t.elapsed(), list.entries.iter().take(6).map(|e| (e.card.name.clone(), e.card.score, e.gain)).collect::<Vec<_>>());
         let pl = find(&cats, "Premier League");
         println!("PL best {} in-game {:?}", pl.best_model, pl.ingame.as_ref().and_then(|g| g.total));
@@ -1604,7 +2083,7 @@ mod tests {
         g.insert(101, gc(101, league, 10, 50, false));
         let (k, mut m) = (BTreeSet::new(), BTreeMap::new());
         m.insert(100, true); // a manual mark must not make a bought card first owner
-        let list = shopping_list(&pl.key, &g, &FirstOwnerInfo { known: &k, manual: &m, scanned: &m, club_no: &EMPTY_SET }, &BTreeMap::new(), &BTreeMap::new(), &BTreeMap::new(), &BTreeMap::new()).unwrap();
+        let list = shopping_list(&pl.key, &g, &FirstOwnerInfo { known: &k, manual: &m, scanned: &m, club_no: &EMPTY_SET }, &BTreeMap::new(), &BTreeMap::new(), &BTreeMap::new(), &BTreeMap::new(), None).unwrap();
         assert_eq!(list.entries[0].card.def_id, 100);
         // 4,900 base (replaces a 100) plus the tag bonus on it – but no first-owner bonus.
         let gain = list.entries[0].gain;
@@ -1625,7 +2104,7 @@ mod tests {
         g.insert(101, gc(101, league, 10, 5000, false));
         let (k, m) = (BTreeSet::new(), BTreeMap::new());
         let fo = FirstOwnerInfo { known: &k, manual: &m, scanned: &m, club_no: &EMPTY_SET };
-        let list = shopping_list(&pl.key, &g, &fo, &BTreeMap::new(), &BTreeMap::new(), &BTreeMap::new(), &BTreeMap::new()).unwrap();
+        let list = shopping_list(&pl.key, &g, &fo, &BTreeMap::new(), &BTreeMap::new(), &BTreeMap::new(), &BTreeMap::new(), None).unwrap();
         assert!(!list.entries.iter().any(|e| e.card.def_id == 100));
         assert_eq!(list.entries[0].card.def_id, 101);
     }
@@ -1645,7 +2124,7 @@ mod tests {
         let mut acquired = BTreeMap::new();
         acquired.insert(100, Acquired { source: "bought".into(), at: 2_000 });
         let list = |obs: &BTreeMap<String, SetObs>, acq: &BTreeMap<u64, Acquired>| {
-            shopping_list(&pl.key, &g, &fo, &BTreeMap::new(), obs, &BTreeMap::new(), acq).unwrap()
+            shopping_list(&pl.key, &g, &fo, &BTreeMap::new(), obs, &BTreeMap::new(), acq, None).unwrap()
         };
         let first = list(&BTreeMap::new(), &acquired);
         assert!(first.entries[0].got && first.entries[0].card.def_id == 100, "{:?}", first.entries[0]);
@@ -1776,5 +2255,91 @@ mod tests {
         let cats = overview(&BTreeMap::new(), &FirstOwnerInfo { known: &k, manual: &m, scanned: &m, club_no: &EMPTY_SET }, &BTreeMap::new(), &BTreeMap::new(), &BTreeMap::new(), &BTreeMap::new());
         assert!(cats.iter().flat_map(|c| &c.sets).all(|s| s.tracked)); // all 128 sets tracked
         assert!(!filters.iter().any(|(_, f)| f["rarity"] == 0 || f["rarity"] == 1)); // no base-card search
+    }
+}
+
+#[cfg(test)]
+mod value_real {
+    /// On the user's real data: `cargo test --lib value_on_user_data -- --ignored --nocapture`
+    #[test]
+    #[ignore]
+    fn value_on_user_data() {
+        let store = crate::store::Store::copy_of_user_data();
+        let snap = &store.snapshot;
+        let fo = super::FirstOwnerInfo { known: &snap.first_owner, manual: &snap.first_owner_manual, scanned: &snap.first_owner_scanned, club_no: &snap.first_owner_club_no };
+        // test only: a made-up price for every card without one (score x 12, x 40 for specials) – checks the solver, not real prices
+        let mut prices = snap.prices.clone();
+        for c in snap.gallery.values() {
+            prices.entry(c.def_id).or_insert(crate::types::Price { bin: (c.score * if c.rareflag.unwrap_or(0) > 1 { 40 } else { 12 }).max(200), listings: 1, at: 1, avg: None, shared: false });
+        }
+        let t = std::time::Instant::now();
+        let values = super::all_values(&snap.gallery, &fo, &snap.team_links, &snap.set_obs, &prices, Some(258_000));
+        println!("{} sets in {:?}", values.len(), t.elapsed());
+        for v in values.iter().filter(|v| v.plans.iter().any(|p| p.state == "buy")).take(25) {
+            let steps: Vec<String> = v.plans.iter().map(|p| format!("{}:{}{}", p.grade, &p.state[..2], if p.state == "buy" { format!(" {}t tax{} need{}", p.tokens_total, p.tax, p.coins_needed) } else { String::new() })).collect();
+            println!("{:28} have {:>3}/{:<3} unpriced {:>3} | {}", v.name, v.tokens_have, v.tokens_max, v.unpriced, steps.join(" · "));
+        }
+        // The budget rule: nothing suggested may need more coins than the user has.
+        for v in &values {
+            for p in v.plans.iter().filter(|p| p.state == "buy") {
+                assert!(p.coins_needed <= 258_000, "{} {} needs {}", v.name, p.grade, p.coins_needed);
+                assert!(p.buys.iter().all(|b| b.price <= 258_000));
+            }
+        }
+        for set in super::file().sets.iter() {
+            let list = super::shopping_list(&set.key, &snap.gallery, &fo, &snap.team_links, &snap.set_obs, &prices, &snap.acquired, Some(258_000)).unwrap();
+            assert!(list.entries.iter().all(|e| e.card.price.is_none_or(|p| p <= 258_000)), "{}", set.name);
+        }
+        let poor = super::all_values(&snap.gallery, &fo, &snap.team_links, &snap.set_obs, &prices, Some(20_000));
+        assert!(poor.iter().flat_map(|v| v.plans.iter()).filter(|p| p.state == "buy").all(|p| p.coins_needed <= 20_000));
+        let poor_plan = super::token_plan(&poor, None, Some(20_000), 200);
+        println!("with 20,000 coins: {} tokens, tax {}, peak {}", poor_plan.tokens, poor_plan.tax, poor_plan.coins_needed);
+        assert!(poor_plan.coins_needed <= 20_000 && poor_plan.tax <= 20_000);
+        let plan = super::token_plan(&values, None, Some(258_000), 60);
+        assert!(plan.coins_needed <= 258_000);
+        // design fixture for the dev server (?value) – the solver on real sets with the made-up prices above
+        if let Ok(out) = std::env::var("FCT_VALUE_FIXTURE") {
+            let full = super::token_plan(&values, None, Some(258_000), 200);
+            std::fs::write(out, serde_json::to_string(&serde_json::json!({ "coins": [258_000u64, 0u64], "budget": 258_000u64, "sets": values, "plan": full })).unwrap()).unwrap();
+        }
+        println!("plan: {} tokens, tax {}, total price {}, peak {}, {} steps, {} players", plan.tokens, plan.tax, plan.total_price, plan.coins_needed, plan.steps.len(), plan.players);
+        for s in plan.steps.iter().take(12) {
+            println!("  {} → {}  +{} tokens  tax {}  ({} buys)", s.name, s.grade, s.tokens, s.tax, s.buys.len());
+        }
+    }
+}
+
+#[cfg(test)]
+mod budget_tests {
+    use super::*;
+
+    /// Buy next never shows a card the user can't pay for, and says how many it left out.
+    #[test]
+    fn buy_next_leaves_out_cards_above_the_coins() {
+        let f = file();
+        let pl = f.sets.iter().find(|s| s.name == "Premier League").unwrap();
+        let mk = |id: u64, score: u64, collected: bool| GalleryCard { def_id: id, league: Some(13), team: Some(1), score, collected, rating: Some(85), ..Default::default() };
+        let mut g = BTreeMap::new();
+        for i in 0..30 {
+            g.insert(i + 1, mk(i + 1, 100, true));
+        }
+        g.insert(900, mk(900, 20_000, false)); // a star: 2.3M
+        g.insert(901, mk(901, 5_000, false)); // affordable: 40K
+        let mut prices = BTreeMap::new();
+        prices.insert(900, Price { bin: 0, listings: 0, at: 1, avg: Some(2_300_000), shared: false });
+        prices.insert(901, Price { bin: 0, listings: 0, at: 1, avg: Some(40_000), shared: false });
+        let e = BTreeSet::new();
+        let m = BTreeMap::new();
+        let fo = FirstOwnerInfo { known: &e, manual: &m, scanned: &m, club_no: &e };
+        let list = shopping_list(&pl.key, &g, &fo, &BTreeMap::new(), &BTreeMap::new(), &prices, &BTreeMap::new(), Some(258_000)).unwrap();
+        assert!(list.entries.iter().all(|e| e.card.def_id != 900));
+        assert!(list.entries.iter().any(|e| e.card.def_id == 901 && e.tax == Some(2_000)));
+        assert_eq!(list.over_budget, 1);
+        // without a known balance nothing is left out
+        let open = shopping_list(&pl.key, &g, &fo, &BTreeMap::new(), &BTreeMap::new(), &prices, &BTreeMap::new(), None).unwrap();
+        assert!(open.entries.iter().any(|e| e.card.def_id == 900));
+        // and Best value never plans the 2.3M card with 258K
+        let v = set_value(&pl.key, &g, &fo, &BTreeMap::new(), &BTreeMap::new(), &prices, Some(258_000)).unwrap();
+        assert!(v.plans.iter().flat_map(|p| p.buys.iter()).all(|b| b.card.def_id != 900));
     }
 }

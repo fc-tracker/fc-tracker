@@ -29,6 +29,8 @@ pub struct ModelInput {
     prices: BTreeMap<u64, Price>,
     listed: BTreeMap<String, ListObs>,
     acquired: BTreeMap<u64, Acquired>,
+    /// The coin balance last seen ([coins, at]) – Best value never suggests what it can't pay.
+    coins: Option<[u64; 2]>,
 }
 
 impl ModelInput {
@@ -45,6 +47,7 @@ impl ModelInput {
             prices: snap.prices.clone(),
             listed: snap.set_list.clone(),
             acquired: snap.acquired.clone(),
+            coins: snap.coins,
         }
     }
 
@@ -57,7 +60,24 @@ impl ModelInput {
     }
 
     pub fn shopping_list(&self, key: &str) -> Option<ShoppingList> {
-        gallery_sets::shopping_list(key, &self.gallery, &self.fo(), &self.links, &self.observed, &self.prices, &self.acquired)
+        gallery_sets::shopping_list(key, &self.gallery, &self.fo(), &self.links, &self.observed, &self.prices, &self.acquired, self.balance())
+    }
+
+    pub fn balance(&self) -> Option<u64> {
+        self.coins.map(|[c, _]| c)
+    }
+
+    pub fn coins(&self) -> Option<[u64; 2]> {
+        self.coins
+    }
+
+    pub fn set_value(&self, key: &str) -> Option<gallery_sets::SetValue> {
+        gallery_sets::set_value(key, &self.gallery, &self.fo(), &self.links, &self.observed, &self.prices, self.balance())
+    }
+
+    /// Every set's grades and what they cost from the club, within `balance` coins.
+    pub fn values(&self, balance: Option<u64>) -> Vec<gallery_sets::SetValue> {
+        gallery_sets::all_values(&self.gallery, &self.fo(), &self.links, &self.observed, &self.prices, balance)
     }
 }
 

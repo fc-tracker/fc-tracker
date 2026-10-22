@@ -74,6 +74,64 @@ export interface GalleryCardView {
   price_at: number | null;
 }
 
+/** Best value (DESIGN 9r): a card bought for the Gallery is resold – it costs EA's 5 % tax. */
+export interface ValueBuy {
+  card: GalleryCardView;
+  price: number;
+  tax: number;
+}
+export type PlanState = "reached" | "buy" | "over_budget" | "unpriced" | "not_possible";
+export interface GradePlan {
+  grade: string;
+  score_needed: number;
+  tokens: number;
+  tokens_total: number;
+  state: PlanState;
+  score: number;
+  buys: ValueBuy[];
+  coins_needed: number;
+  total_price: number;
+  tax: number;
+}
+export interface SetValue {
+  key: string;
+  name: string;
+  category: string;
+  slots: number;
+  collected: number;
+  score: number;
+  grade: string | null;
+  tokens_have: number;
+  tokens_max: number;
+  plans: GradePlan[];
+  unpriced: number;
+  balance: number | null;
+}
+export interface PlanStep {
+  key: string;
+  name: string;
+  grade: string;
+  tokens: number;
+  tax: number;
+  coins_needed: number;
+  buys: ValueBuy[];
+}
+export interface TokenPlan {
+  steps: PlanStep[];
+  tokens: number;
+  tax: number;
+  total_price: number;
+  coins_needed: number;
+  players: number;
+  balance: number | null;
+}
+export interface BestValue {
+  coins: [number, number] | null;
+  budget: number | null;
+  sets: SetValue[];
+  plan: TokenPlan;
+}
+
 /** For the shared price pool: the account's market and the EA averages seen ([def id, average, at]). */
 export interface PriceShare {
   platform: "pc" | "console" | null;
@@ -124,6 +182,9 @@ export interface ShoppingEntry {
   got: boolean;
   /** "pack" = packed (first owner), "bought" = bought. */
   got_source?: string | null;
+  /** EA's 5 % tax on reselling it (what it really costs for the Gallery), and points per 1,000 of it. */
+  tax?: number | null;
+  per_k?: number | null;
 }
 
 export interface ShoppingList {
@@ -136,6 +197,12 @@ export interface ShoppingList {
   entries: ShoppingEntry[];
   /** The whole best selection from the user's own cards (side panel tab "Best selection"). */
   best: BestSelection | null;
+  /** Cards left out because they cost more than the user's coins, and those coins. */
+  over_budget?: number;
+  balance?: number | null;
+  /** The best value next grade of this set (within the coins). */
+  next_grade?: GradePlan | null;
+  tokens_have?: number;
 }
 
 /** The best selection of a set from the cards the user has – one overview instead of swaps. */
@@ -393,6 +460,10 @@ const appApi = {
     browserDev
       ? Promise.resolve(true)
       : invoke<boolean>("mark_swap_done", { setKey, outDefId: sw.out.def_id, outSlot: sw.out.slot ?? null, intoDefId: sw.into.def_id }),
+  /** Best value: every set's grades with their cost, and the token plan (within the coins). */
+  bestValue: (budget: number | null = null, target: number | null = null, steps: number | null = null) =>
+    browserDev ? import("./devMock").then((m) => m.mockBestValue(budget, target, steps)) : invoke<BestValue | null>("best_value", { budget, target, steps }),
+  setValue: (key: string) => (browserDev ? import("./devMock").then((m) => m.mockSetValue(key)) : invoke<SetValue | null>("set_value", { key })),
   /** The shared price pool (src/prices.ts): what this PC saw, and the pool coming back. */
   priceShare: (since: number) =>
     browserDev ? Promise.resolve<PriceShare>({ platform: null, prices: [] }) : invoke<PriceShare>("price_share", { since }),
@@ -448,6 +519,8 @@ function withWeb(a: typeof appApi): typeof appApi {
     missingListVisible: () => wb((b) => b.webApi.missingListVisible()),
     setFirstOwner: (defId: number, value: boolean | null) => wb((b) => b.webApi.setFirstOwner(defId, value)),
     priceShare: (since: number) => wb((b) => b.webApi.priceShare(since)),
+    bestValue: (budget: number | null = null, target: number | null = null, steps: number | null = null) => wb((b) => b.webApi.bestValue(budget, target, steps)),
+    setValue: (key: string) => wb((b) => b.webApi.setValue(key)),
     pricePool: (platform: string, prices: Record<string, [number, number]>) => wb((b) => b.webApi.pricePool(platform, prices)),
     gameSession: () => wb((b) => (b.webStream() ? "in_ultimate_team" : "closed") as GameSession),
     autoScan: () => wb((b) => b.webStream() != null),

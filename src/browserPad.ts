@@ -5,13 +5,15 @@
 
 type Listener<T> = (v: T) => void;
 
-// standard mapping: 0 ✕/A, 1 ○/B, 2 ▢/X, 4 L1/LB, 5 R1/RB, 12–15 D-pad ↑ ↓ ← →
+// standard mapping: 0 ✕/A, 1 ○/B, 2 ▢/X, 4 L1/LB, 5 R1/RB, 6 L2/LT, 7 R2/RT, 12–15 D-pad ↑ ↓ ← →
 const NAV: Record<number, string> = {
   0: "select",
   1: "back",
   2: "info",
   4: "prev_category",
   5: "next_category",
+  6: "prev_section",
+  7: "next_section",
   12: "up",
   13: "down",
   14: "left",

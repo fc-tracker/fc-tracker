@@ -257,3 +257,12 @@ mod price_tests {
         assert_eq!(market_averages(&body), vec![(239085, 46750)]);
     }
 }
+
+/// The coin balance EA sends with the user's own data (user info, transfer list, watchlist).
+pub(crate) fn credits(url: &str, body: &Value) -> Option<u64> {
+    let key = endpoint_key(url);
+    if !(key.ends_with("/usermassinfo") || key.ends_with("/tradepile") || key.ends_with("/watchlist") || key.ends_with("/user/credits")) {
+        return None;
+    }
+    body.get("credits").or_else(|| body.pointer("/userInfo/credits")).and_then(Value::as_u64)
+}

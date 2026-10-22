@@ -74,3 +74,19 @@ export const mockPackToast: ToastPayload = {
     { def_id: 1, name: "Kroupi", rating: 80, new: true, set: "Bournemouth", gain: 180, first_owner: true, upgraded: false, new_first_owner: true },
   ],
 };
+
+// ?value: Best value from the real solver on real sets – with made-up prices (src-tauri test
+// value_on_user_data, FCT_VALUE_FIXTURE=../src/devValue.json). Design only: fetched from the dev
+// server, never bundled (not in git, never in the site demo).
+let devValue: Promise<import("./api").BestValue | null> | null = null;
+const loadDevValue = () =>
+  (devValue ??=
+    typeof location !== "undefined" && new URLSearchParams(location.search).has("value")
+      ? fetch("/src/devValue.json").then((r) => (r.ok ? r.json() : null)).catch(() => null)
+      : Promise.resolve(null));
+export const mockBestValue = async (_budget: number | null, _target: number | null, steps: number | null) => {
+  const v = await loadDevValue();
+  if (!v || !steps) return v;
+  return { ...v, plan: { ...v.plan, steps: v.plan.steps.slice(0, steps) } };
+};
+export const mockSetValue = async (key: string) => (await loadDevValue())?.sets.find((s: import("./api").SetValue) => s.key === key) ?? null;

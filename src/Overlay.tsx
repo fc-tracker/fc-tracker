@@ -22,11 +22,12 @@ import { Gem } from "./icons";
 import { THEMES, useTheme } from "./theme";
 import { SupportButton } from "./Support";
 import MissingList from "./MissingList";
+import { GradeCosts, Planner, ValueList, rankByValue, useBestValue, useSetValue } from "./BestValue";
 import { PadButton, useInputMode } from "./padGlyphs";
 import "./overlay.css";
 
 /** Angular grade badge (D/C/B/A/S). Unknown grade renders as an empty outline. */
-function GradeDiamond({ grade, size = 44 }: { grade: string | null | undefined; size?: number }) {
+export function GradeDiamond({ grade, size = 44 }: { grade: string | null | undefined; size?: number }) {
   const g = grade ?? "";
   return (
     <span className={`diamond grade-${g ? g.toLowerCase() : "none"}`} style={{ width: size, height: size }}>
@@ -383,6 +384,33 @@ function Ladder({ set }: { set: GallerySet }) {
   );
 }
 
+/** What each grade of the set costs from the club (Best value) – shown once it is computed. */
+function SetCosts({ setKey }: { setKey: string }) {
+  const value = useSetValue(setKey);
+  return value ? <GradeCosts value={value} /> : null;
+}
+
+// Main menu → tabs → categories. Today the main menu has one entry (Gallery); its tabs are the
+// sets, Best value (sets ranked by what the next grade costs) and the token Planner.
+const SECTIONS = ["sets", "value", "planner"] as const;
+type Section = (typeof SECTIONS)[number];
+const SECTION_LABEL: Record<Section, MessageKey> = { sets: "section.sets", value: "section.value", planner: "section.planner" };
+const readPref = (k: string, d: string) => {
+  try {
+    return localStorage.getItem(k) ?? d;
+  } catch {
+    return d;
+  }
+};
+const writePref = (k: string, v: string) => {
+  try {
+    localStorage.setItem(k, v);
+  } catch {}
+};
+// Zoom of the main view (Ctrl + scroll, Ctrl + / – / 0, or the − 100 % + buttons), for small
+// screens and for anyone who wants it bigger.
+const ZOOMS = [0.7, 0.8, 0.9, 1, 1.1, 1.25, 1.4];
+
 export function SetDetail({ set, ui }: { set: GallerySet; ui: CardUi }) {
   const filled = Math.min(set.collected, set.slots);
   const empty = Math.max(0, set.slots - set.lineup.length);
@@ -445,6 +473,7 @@ export function SetDetail({ set, ui }: { set: GallerySet; ui: CardUi }) {
       <Regrade set={set} />
       <InGamePanel set={set} />
       <BestSelection set={set} ui={ui} />
+      <SetCosts setKey={set.key} />
 
       {set.ladder.length > 0 && (
         <section className="detail-section">
@@ -529,6 +558,25 @@ export default function Overlay() {
     });
   const [status, setStatus] = useState<GalleryStatus | null>(null);
   const [session, setSession] = useState<GameSession>("unknown");
+  const [section, setSectionState] = useState<Section>(() => (SECTIONS as readonly string[]).includes(readPref("fct.section", "sets")) ? (readPref("fct.section", "sets") as Section) : "sets");
+  const setSection = (s: Section) => {
+    setSectionState(s);
+    writePref("fct.section", s);
+  };
+  const best = useBestValue(section !== "sets");
+  const [valueCat, setValueCat] = useState<string>("all");
+  const [valueKey, setValueKey] = useState<string | null>(null);
+  const [zoom, setZoomState] = useState<number>(() => {
+    const z = Number(readPref("fct.zoom", "1"));
+    return ZOOMS.includes(z) ? z : 1;
+  });
+  const setZoom = (dir: number) =>
+    setZoomState((z) => {
+      const i = ZOOMS.indexOf(z);
+      const next = dir === 0 ? 1 : ZOOMS[Math.max(0, Math.min(ZOOMS.length - 1, (i < 0 ? 3 : i) + dir))];
+      writePref("fct.zoom", String(next));
+      return next;
+    });
   // Set to show after Ctrl+Shift+G, applied once the overview contains it.
   const [focusKey, setFocusKey] = useState<string | null>(null);
 
@@ -714,9 +762,57 @@ export default function Overlay() {
     [focused, enterCards],
   );
 
+  // Best value: sets ranked by the value of their next grade, filtered by category (Q / E, L1 / R1).
+  const valueCats = useMemo(() => ["all", ...visible.map((c) => c.key)], [visible]);
+  const valueSets = useMemo(() => {
+    const all = best.data?.sets ?? [];
+    const keys = valueCat === "all" ? null : new Set(visible.find((c) => c.key === valueCat)?.sets.map((s) => s.key) ?? []);
+    return rankByValue(keys ? all.filter((s) => keys.has(s.key)) : all);
+  }, [best.data, valueCat, visible]);
+  const valueSelected = valueSets.find((s) => s.key === valueKey) ?? valueSets[0];
+
+  const moveSection = useCallback(
+    (dir: number) => {
+      const next = SECTIONS[(SECTIONS.indexOf(section) + dir + SECTIONS.length) % SECTIONS.length];
+      setSection(next);
+      setZone("list");
+      setMenu(null);
+    },
+    [section], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
   // One handler for keyboard and controller.
   const nav = useCallback(
     (action: string) => {
+      if (action === "prev_section") return moveSection(-1);
+      if (action === "next_section") return moveSection(1);
+      if (section === "value") {
+        if (action === "prev_category" || action === "next_category") {
+          const i = valueCats.indexOf(valueCat);
+          setValueCat(valueCats[(i + (action === "next_category" ? 1 : -1) + valueCats.length) % valueCats.length]);
+          setValueKey(null);
+        } else if (action === "up" || action === "down") {
+          const i = Math.max(0, valueSets.findIndex((s) => s.key === valueSelected?.key));
+          const next = valueSets[Math.max(0, Math.min(valueSets.length - 1, i + (action === "down" ? 1 : -1)))];
+          if (next) {
+            setValueKey(next.key);
+            document.querySelector(`.bv-list [data-set="${next.key}"]`)?.scrollIntoView({ block: "nearest" });
+          }
+        } else if (action === "select" && valueSelected) {
+          // open the set in the Sets tab
+          const cat = visible.find((c) => c.sets.some((s) => s.key === valueSelected.key));
+          if (cat) {
+            setCatKey(cat.key);
+            setSetKey(valueSelected.key);
+            setSection("sets");
+          }
+        } else if (action === "back") api.hideOverlay();
+        return;
+      }
+      if (section === "planner") {
+        if (action === "back") api.hideOverlay();
+        return;
+      }
       if (action === "prev_category") return moveCategory(-1);
       if (action === "next_category") return moveCategory(1);
       if (menu) {
@@ -744,7 +840,7 @@ export default function Overlay() {
       else if (action === "select" || action === "right") enterCards();
       else if (action === "back") api.hideOverlay();
     },
-    [menu, info, zone, focused, moveCategory, moveSet, moveCard, enterCards, choose],
+    [menu, info, zone, focused, moveCategory, moveSet, moveCard, enterCards, choose, moveSection, section, valueCats, valueCat, valueSets, valueSelected, visible],
   );
 
   // An opened menu is fully visible (the detail panel scrolls).
@@ -806,9 +902,24 @@ export default function Overlay() {
       q: "prev_category", e: "next_category",
       arrowup: "up", arrowdown: "down", arrowleft: "left", arrowright: "right",
       enter: "select", " ": "select", escape: "back", backspace: "back", i: "info",
+      "1": "section_sets", "2": "section_value", "3": "section_planner",
     };
     const onKey = (e: KeyboardEvent) => {
+      // typing in a field (the planner's budget) is not navigation
+      if (e.target instanceof HTMLInputElement) return;
+      if (e.ctrlKey && (e.key === "+" || e.key === "=" || e.key === "-" || e.key === "0")) {
+        e.preventDefault();
+        return setZoom(e.key === "0" ? 0 : e.key === "-" ? -1 : 1);
+      }
+      if (e.key === "Tab") {
+        e.preventDefault();
+        return nav(e.shiftKey ? "prev_section" : "next_section");
+      }
       const action = keys[e.key.toLowerCase()];
+      if (action?.startsWith("section_")) {
+        e.preventDefault();
+        return setSection(action.slice(8) as Section);
+      }
       if (!action) return;
       e.preventDefault();
       nav(action);
@@ -822,7 +933,15 @@ export default function Overlay() {
       const speed = Math.sign(v) * v * v * 30;
       document.querySelector(".detail-wrap")?.scrollBy({ top: -speed, behavior: "instant" as ScrollBehavior });
     });
+    // Ctrl + scroll: zoom the main view (not the page)
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      setZoom(e.deltaY < 0 ? 1 : -1);
+    };
+    window.addEventListener("wheel", onWheel, { passive: false });
     return () => {
+      window.removeEventListener("wheel", onWheel);
       window.removeEventListener("keydown", onKey);
       unlistenPad.then((u) => u());
       unlistenScroll.then((u) => u());
@@ -837,13 +956,22 @@ export default function Overlay() {
 
   return (
     <div className="ov">
-      <div className="ov-frame">
+      <div className="ov-frame" style={zoom !== 1 ? ({ zoom } as React.CSSProperties) : undefined}>
         <header className={`ov-header mode-${mode}`} data-tauri-drag-region={mode === "panel" ? true : undefined}>
           <div className="brand" data-tauri-drag-region={mode === "panel" ? true : undefined} title={mode === "panel" ? t("overlay.dragHint") : undefined}>
             <span className="brand-mark" aria-hidden="true" />
             <span className="brand-name" data-tauri-drag-region={mode === "panel" ? true : undefined}>FC-Tracker</span>
-            <span className="brand-section" data-tauri-drag-region={mode === "panel" ? true : undefined}>{t("overlay.gallery")}</span>
+            <span className="brand-section main-menu" data-tauri-drag-region={mode === "panel" ? true : undefined} aria-current="page">{t("overlay.gallery")}</span>
           </div>
+          <nav className="sec-tabs" aria-label={t("overlay.gallery")}>
+            {pad ? <PadButton id="l2" layout={pad} size={18} /> : <kbd className="key-hint">Tab</kbd>}
+            {SECTIONS.map((s) => (
+              <button key={s} className={`sec-tab ${section === s ? "active" : ""}`} aria-pressed={section === s} onClick={() => setSection(s)}>
+                {t(SECTION_LABEL[s])}
+              </button>
+            ))}
+            {pad ? <PadButton id="r2" layout={pad} size={18} /> : null}
+          </nav>
           <div className="ov-status">
             <button
               className={`pill track-pill ${tracking ? "on" : "off"}`}
@@ -883,6 +1011,11 @@ export default function Overlay() {
               <span className="help-q" aria-hidden="true">?</span>
               {t("overlay.help")}
             </button>
+            <span className="zoom-ctl" role="group" aria-label={t("overlay.zoom")}>
+              <button className="theme-btn" onClick={() => setZoom(-1)} title={t("overlay.zoomOut")} aria-label={t("overlay.zoomOut")}>−</button>
+              <button className="theme-btn zoom-val" onClick={() => setZoom(0)} title={t("overlay.zoomReset")}>{Math.round(zoom * 100)}%</button>
+              <button className="theme-btn" onClick={() => setZoom(1)} title={t("overlay.zoomIn")} aria-label={t("overlay.zoomIn")}>+</button>
+            </span>
             <SupportButton />
             {!IS_WEB && (
             <button className="close-btn" onClick={() => api.hideOverlay()} title={t("overlay.closeHint")}>
@@ -913,7 +1046,73 @@ export default function Overlay() {
           </div>
         </header>
 
-        {visible.length === 0 ? (
+        {section === "value" ? (
+          <>
+            <div className="cat-bar">
+              <nav className="cat-tabs" aria-label={t("section.value")}>
+                {pad ? <PadButton id="l1" layout={pad} size={20} /> : <kbd className="key-hint">Q</kbd>}
+                {valueCats.map((k) => (
+                  <button key={k} className={`cat-tab ${k === valueCat ? "active" : ""}`} onClick={() => { setValueCat(k); setValueKey(null); }}>
+                    {k === "all" ? t("value.all") : k === "leagues" ? t("overlay.leagues") : k === "rarities" ? t("overlay.rarities") : visible.find((c) => c.key === k)?.name ?? k}
+                  </button>
+                ))}
+                {pad ? <PadButton id="r1" layout={pad} size={20} /> : <kbd className="key-hint">E</kbd>}
+              </nav>
+              <span className="tabs-info">
+                {best.data?.coins && <span className="pill">{t("value.yourCoins", { coins: num(best.data.coins[0]) })}</span>}
+              </span>
+            </div>
+            <div className="ov-body zone-list">
+              {best.busy && !best.data ? (
+                <div className="ov-empty"><p className="ml-loading">{t("value.calculating")}</p></div>
+              ) : valueSets.length === 0 ? (
+                <div className="ov-empty"><p>{t("value.empty")}</p></div>
+              ) : (
+                <>
+                  <ValueList sets={valueSets} selected={valueSelected?.key ?? null} onSelect={setValueKey} />
+                  <main className="detail-wrap">
+                    {valueSelected && (
+                      <div className="detail" key={valueSelected.key}>
+                        <div className="detail-head">
+                          <div>
+                            <p className="eyebrow">{t("overlay.tokensOf", { count: valueSelected.tokens_have, max: valueSelected.tokens_max })}</p>
+                            <h1 className="detail-title">{valueSelected.name}</h1>
+                            <p className="detail-sub">
+                              <Gem size={11} /> {num(valueSelected.score)} · {t("value.fromClub", { collected: num(valueSelected.collected), slots: valueSelected.slots })}
+                            </p>
+                          </div>
+                          <div className="detail-grade">
+                            <GradeDiamond grade={valueSelected.grade} size={72} />
+                          </div>
+                        </div>
+                        <GradeCosts value={valueSelected} />
+                        <button
+                          className="theme-btn"
+                          onClick={() => {
+                            const cat = visible.find((c) => c.sets.some((s) => s.key === valueSelected.key));
+                            if (cat) {
+                              setCatKey(cat.key);
+                              setSetKey(valueSelected.key);
+                            }
+                            setSection("sets");
+                          }}
+                        >
+                          {t("value.openSet")}
+                        </button>
+                      </div>
+                    )}
+                  </main>
+                </>
+              )}
+            </div>
+          </>
+        ) : section === "planner" ? (
+          <div className="ov-body zone-list planner-body">
+            <main className="detail-wrap">
+              <Planner data={best.data} busy={best.busy} onChange={(b, tg, st) => best.load(b, tg, st)} />
+            </main>
+          </div>
+        ) : visible.length === 0 ? (
           <div className="ov-empty">
             <GradeDiamond grade={null} size={72} />
             <p className={loadingGallery ? "ml-loading" : ""}>{t(loadingGallery ? "progress.calculating" : "overlay.galleryEmpty")}</p>
@@ -995,6 +1194,7 @@ export default function Overlay() {
         <footer className={`ov-footer input-${input}`}>
           {pad ? (
             <>
+              <span><PadButton id="l2" layout={pad} size={20} /><PadButton id="r2" layout={pad} size={20} /> {t("overlay.hintSection")}</span>
               <span><PadButton id="l1" layout={pad} size={20} /><PadButton id="r1" layout={pad} size={20} /> {t("overlay.hintCategory")}</span>
               <span><PadButton id="up" layout={pad} size={20} /><PadButton id="down" layout={pad} size={20} /> {t("overlay.hintSet")}</span>
               <span><PadButton id="south" layout={pad} size={20} /> {t("overlay.hintOpen")}</span>
@@ -1005,7 +1205,9 @@ export default function Overlay() {
             </>
           ) : (
             <>
+              <span><kbd>Tab</kbd> {t("overlay.hintSection")}</span>
               <span><kbd>Q</kbd> <kbd>E</kbd> {t("overlay.hintCategory")}</span>
+              <span><kbd>Ctrl</kbd>+<kbd>scroll</kbd> {t("overlay.zoom")}</span>
               <span><kbd>↑</kbd> <kbd>↓</kbd> {t("overlay.hintSet")}</span>
               <span><kbd>Enter</kbd> {t("overlay.hintOpen")}</span>
               <span><kbd>Esc</kbd> {t("overlay.hintBack")}</span>

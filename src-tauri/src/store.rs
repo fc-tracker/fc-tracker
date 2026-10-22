@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub use crate::types::{Acquired, GalleryCard, Item, ListObs, Price, SetObs};
-use crate::sync_data::{account_platform, collect_items, endpoint_key, is_card_database_search, market_averages, parse_gallery_card, raw_concept_cards, strip_query, CLUB_READ_PREFIX, GALLERY_PREFIX};
+use crate::sync_data::{account_platform, collect_items, credits, endpoint_key, is_card_database_search, market_averages, parse_gallery_card, raw_concept_cards, strip_query, CLUB_READ_PREFIX, GALLERY_PREFIX};
 
 const MAX_RAW_CAPTURES: usize = 200;
 
@@ -69,6 +69,9 @@ pub struct Snapshot {
     /// shared price pool is kept per platform.
     #[serde(default)]
     pub platform: Option<String>,
+    /// The coin balance last seen ([coins, seen at ms]): EA's user data, or read on screen.
+    #[serde(default)]
+    pub coins: Option<[u64; 2]>,
     /// What the in-game category pages show per set (score, or filled/slots) – every set's real
     /// score without opening it.
     #[serde(default)]
@@ -328,6 +331,14 @@ impl Store {
         for (id, avg) in market_averages(body) {
             let p = Price::seen(self.snapshot.prices.get(&id), avg, now);
             self.snapshot.prices.insert(id, p);
+        }
+    }
+
+    /// The coin balance seen (EA's data or the screen) – what Best value plans may spend.
+    pub fn note_coins(&mut self, coins: u64, at: u64) {
+        if self.snapshot.coins.is_none_or(|[c, t]| c != coins || at > t + 60_000) {
+            self.snapshot.coins = Some([coins, at]);
+            self.dirty = true;
         }
     }
 
@@ -626,6 +637,19 @@ impl Store {
                 }
                 continue;
             }
+            // The coin balance, from EA's user info saved before it was read (seen at the file's time).
+            if self.snapshot.coins.is_none() && name.ends_with("_usermassinfo.json") {
+                let at = path.file_name().and_then(|n| n.to_str()).and_then(|n| n.split("__").next()).and_then(|t| t.parse::<u64>().ok()).unwrap_or(0);
+                if let Some(record) = fs::read_to_string(&path).ok().and_then(|s| serde_json::from_str::<Value>(&s).ok()) {
+                    let url = record.get("url").and_then(Value::as_str).unwrap_or_default();
+                    if let Some(c) = credits(url, record.get("body").unwrap_or(&Value::Null)) {
+                        if self.snapshot.coins.is_none_or(|[_, t]| at > t) {
+                            self.snapshot.coins = Some([c, at]);
+                        }
+                    }
+                }
+                continue;
+            }
             if !concept && !priced {
                 continue;
             }
@@ -706,6 +730,9 @@ impl Store {
         self.bump();
         if !url.starts_with("fct://") {
             self.merge_market_averages(body, now);
+            if let Some(c) = credits(url, body) {
+                self.note_coins(c, now);
+            }
             if let Some(p) = account_platform(url, body) {
                 if self.snapshot.platform.as_deref() != Some(p) {
                     self.snapshot.platform = Some(p.to_string());

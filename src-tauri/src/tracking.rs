@@ -811,6 +811,9 @@ pub fn process(app: &AppHandle, page: Page, coins: Option<u32>) -> Option<Curren
         // shows the new balance and the next card).
         let bought = coins.and_then(|c| confirm_by_coins(&mut store, c));
         store.last_coins = coins.or(store.last_coins);
+        if let Some(c) = coins {
+            store.note_coins(c as u64, crate::store::now_ms());
+        }
         let result = process_page(&mut store, page);
         (result, bought)
     };

@@ -238,11 +238,12 @@ function Best({ list, best }: { list: ShoppingList; best: BestSelection }) {
 }
 
 /** EA's market average for a card (≈, its age on hover); older than 3 days is dimmed. */
-function Coins({ card }: { card: GalleryCardView }) {
+function Coins({ card, perK = null }: { card: GalleryCardView; perK?: number | null }) {
   if (!card.price) return null;
   const old = card.price_at != null && Date.now() - card.price_at > 3 * 86400 * 1000;
+  const title = [t("missing.priceTitle", { age: formatAge(card.price_at) }), perK != null ? t("missing.perK", { n: num(perK) }) : null].filter(Boolean).join(" · ");
   return (
-    <span className={`ml-coins ${old ? "old" : ""}`} title={t("missing.priceTitle", { age: formatAge(card.price_at) })}>
+    <span className={`ml-coins ${old ? "old" : ""}`} title={title}>
       <span className="ml-coin" aria-hidden="true" />≈{compact(card.price)}
     </span>
   );
@@ -259,6 +260,16 @@ function BuyNext({ list }: { list: ShoppingList }) {
           {t("missing.sub", { collected: Math.min(list.collected, list.slots), slots: list.slots, missing: num(list.missing) })}
         </p>
         {list.best?.gain === 0 && <p className="ml-sub ml-ok">{t("best.isBest")}</p>}
+        {list.next_grade && (
+          <p className="ml-sub ml-next">
+            {t("missing.nextGrade", {
+              grade: list.next_grade.grade,
+              tokens: list.next_grade.tokens_total - (list.tokens_have ?? 0),
+              tax: compact(list.next_grade.tax),
+              buys: list.next_grade.buys.length,
+            })}
+          </p>
+        )}
       </header>
 
       {rows.length === 0 ? (
@@ -291,7 +302,7 @@ function BuyNext({ list }: { list: ShoppingList }) {
                     ✓ {t(e.got_source === "pack" ? "missing.gotPack" : "missing.got")}
                   </span>
                 ) : (
-                  <Coins card={e.card} />
+                  <Coins card={e.card} perK={e.per_k ?? null} />
                 )}
               </span>
             </li>
@@ -301,6 +312,7 @@ function BuyNext({ list }: { list: ShoppingList }) {
 
       <footer className="ml-foot">
         {list.entries.some((e) => e.got) && <span className="ml-got-hint">✓ {t("missing.gotHint")}</span>}
+        {(list.over_budget ?? 0) > 0 && list.balance != null && <span>{t("missing.overBudget", { count: list.over_budget ?? 0, coins: num(list.balance) })}</span>}
         {rows.some((e) => !e.got && e.card.price) && <span>{t("missing.priceNote")}</span>}
         <span>{t("missing.note")}</span>
       </footer>

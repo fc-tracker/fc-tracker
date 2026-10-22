@@ -2,7 +2,7 @@
 // is shared by the user (a window, a tab or a capture card), every changed Gallery page is read
 // (reader.ts) and handed to the app's own model (core.ts, WebAssembly). Nothing leaves the
 // browser; what it learns is kept in this browser only (localStorage).
-import type { CurrentPage, GalleryCategory, GalleryStatus, PriceShare, ShoppingList } from "../api";
+import type { BestValue, CurrentPage, GalleryCategory, GalleryStatus, PriceShare, SetValue, ShoppingList } from "../api";
 import { call, core, validPoints } from "./core";
 import { trackOnce } from "../usage";
 import { classify, Frame, pageKey, readSet, readSwap, textReader, type Box } from "./reader";
@@ -121,6 +121,14 @@ export const webApi = {
     await call("set_first_owner", { def_id: defId, value });
     await persist();
     changed();
+  },
+  bestValue: async (budget: number | null, target: number | null, steps: number | null): Promise<BestValue | null> => {
+    await restored;
+    return call<BestValue>("best_value", { budget, target, steps });
+  },
+  setValue: async (key: string): Promise<SetValue | null> => {
+    await restored;
+    return call<SetValue | null>("set_value", { key });
   },
   /** The shared price pool: what this browser saw (from a club sync), and the pool coming back. */
   priceShare: async (since: number): Promise<PriceShare> => {

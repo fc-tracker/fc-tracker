@@ -91,6 +91,8 @@ struct Web {
     prices: BTreeMap<u64, Price>,
     /// The market the account trades on ("pc" / "console"), from the sync.
     platform: Option<String>,
+    /// The coin balance from the sync ([coins, at]).
+    coins: Option<[u64; 2]>,
 }
 
 thread_local! {
@@ -295,6 +297,9 @@ fn ingest_sync(w: &mut Web, sync: SyncData) -> Value {
                 let p = Price::seen(w.prices.get(&id), avg, at);
                 w.prices.insert(id, p);
             }
+            if let Some(c) = sync_data::credits(&e.url, &e.body) {
+                w.coins = Some([c, at]);
+            }
             if let Some(p) = sync_data::account_platform(&e.url, &e.body) {
                 w.platform = Some(p.to_string());
             }
@@ -366,6 +371,7 @@ fn dispatch(req: Value) -> Result<Value, String> {
                 w.synced_at = s.get("synced_at").and_then(Value::as_u64);
                 w.prices = serde_json::from_value(s.get("prices").cloned().unwrap_or(json!({}))).unwrap_or_default();
                 w.platform = s.get("platform").and_then(Value::as_str).map(str::to_string);
+                w.coins = serde_json::from_value(s.get("coins").cloned().unwrap_or(Value::Null)).unwrap_or(None);
                 let extra: Vec<GalleryCard> = serde_json::from_value(s.get("extra").cloned().unwrap_or(json!([]))).unwrap_or_default();
                 for c in extra {
                     w.gallery.entry(c.def_id).or_insert(c);
@@ -385,7 +391,7 @@ fn dispatch(req: Value) -> Result<Value, String> {
                 let collected: Vec<u64> = w.gallery.values().filter(|c| c.collected).map(|c| c.def_id).collect();
                 let extra: Vec<&GalleryCard> = w.gallery.values().filter(|c| !w.base_ids.contains(&c.def_id)).collect();
                 Ok(json!({ "collected": collected, "observed": w.observed, "listed": w.listed, "scanned": w.scanned, "manual": w.manual,
-                    "known": w.known, "club_no": w.club_no, "synced_at": w.synced_at, "extra": extra, "prices": w.prices, "platform": w.platform }))
+                    "known": w.known, "club_no": w.club_no, "synced_at": w.synced_at, "extra": extra, "prices": w.prices, "platform": w.platform, "coins": w.coins }))
             }
             "reset" => {
                 w.observed.clear();
@@ -397,6 +403,7 @@ fn dispatch(req: Value) -> Result<Value, String> {
                 w.synced_at = None;
                 w.prices.clear();
                 w.platform = None;
+                w.coins = None;
                 let base = w.base_ids.clone();
                 w.gallery.retain(|id, _| base.contains(id));
                 for c in w.gallery.values_mut() {
@@ -415,6 +422,25 @@ fn dispatch(req: Value) -> Result<Value, String> {
                     None => w.manual.remove(&id),
                 };
                 Ok(json!(true))
+            }
+            "best_value" => {
+                let (scanned, manual) = fo(&w);
+                let (known, club_no) = (w.known.clone(), w.club_no.clone());
+                let info = FirstOwnerInfo { known: &known, manual: &manual, scanned: &scanned, club_no: &club_no };
+                let budget = arg("budget").as_u64().or(w.coins.map(|[c, _]| c));
+                let target = arg("target").as_u64();
+                let sets = gallery_sets::all_values(&w.gallery, &info, &w.links, &w.observed, &w.prices, budget);
+                let steps = arg("steps").as_u64().map_or(200, |s| s as usize);
+                let plan = gallery_sets::token_plan(&sets, target, budget, steps);
+                Ok(json!({ "coins": w.coins, "budget": budget, "sets": sets, "plan": plan }))
+            }
+            "set_value" => {
+                let key = arg("key").as_str().unwrap_or_default().to_string();
+                let (scanned, manual) = fo(&w);
+                let (known, club_no) = (w.known.clone(), w.club_no.clone());
+                let info = FirstOwnerInfo { known: &known, manual: &manual, scanned: &scanned, club_no: &club_no };
+                let out = gallery_sets::set_value(&key, &w.gallery, &info, &w.links, &w.observed, &w.prices, w.coins.map(|[c, _]| c));
+                serde_json::to_value(out).map_err(|e| e.to_string())
             }
             "price_share" => {
                 let since = arg("since").as_u64().unwrap_or(0);
@@ -445,7 +471,7 @@ fn dispatch(req: Value) -> Result<Value, String> {
                 let (scanned, manual) = fo(&w);
                 let (known, club_no) = (w.known.clone(), w.club_no.clone());
                 let info = FirstOwnerInfo { known: &known, manual: &manual, scanned: &scanned, club_no: &club_no };
-                let out = gallery_sets::shopping_list(&key, &w.gallery, &info, &w.links, &w.observed, &w.prices, &BTreeMap::new());
+                let out = gallery_sets::shopping_list(&key, &w.gallery, &info, &w.links, &w.observed, &w.prices, &BTreeMap::new(), w.coins.map(|[c, _]| c));
                 serde_json::to_value(out).map_err(|e| e.to_string())
             }
             other => Err(format!("unknown fn {other}")),

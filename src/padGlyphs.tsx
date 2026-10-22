@@ -6,7 +6,7 @@ import { api, events, type Controller } from "./api";
 
 export type PadLayout = "playstation" | "xbox";
 export type PadChoice = PadLayout | "auto";
-export type PadButtonId = "south" | "east" | "west" | "north" | "l1" | "r1" | "view" | "up" | "down" | "left" | "right" | "rstick";
+export type PadButtonId = "south" | "east" | "west" | "north" | "l1" | "r1" | "l2" | "r2" | "view" | "up" | "down" | "left" | "right" | "rstick";
 
 const STORAGE_KEY = "fct.padLayout";
 const CHANGE_EVENT = "fct-pad-layout";
@@ -89,6 +89,8 @@ export function padName(id: PadButtonId, layout: PadLayout): string {
   if (id === "south" || id === "east" || id === "west" || id === "north") return FACE[layout][id].label;
   if (id === "l1") return layout === "xbox" ? "LB" : "L1";
   if (id === "r1") return layout === "xbox" ? "RB" : "R1";
+  if (id === "l2") return layout === "xbox" ? "LT" : "L2";
+  if (id === "r2") return layout === "xbox" ? "RT" : "R2";
   if (id === "view") return layout === "xbox" ? "View" : "Create";
   if (id === "rstick") return layout === "xbox" ? "RS" : "R3";
   return { up: "↑", down: "↓", left: "←", right: "→" }[id];
@@ -121,7 +123,7 @@ export function PadButton({ id, layout, size = 22 }: { id: PadButtonId; layout: 
       </svg>
     );
   }
-  if (id === "l1" || id === "r1" || id === "rstick") {
+  if (id === "l1" || id === "r1" || id === "l2" || id === "r2" || id === "rstick") {
     return (
       <span className="pad-pill" style={{ height: size, fontSize: size * 0.48 }} role="img" aria-label={name}>
         {name}

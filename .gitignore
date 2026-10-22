@@ -28,3 +28,4 @@ dist-ssr
 virustotal.key
 .env
 .env.*
+src/devValue.json

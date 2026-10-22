@@ -36,6 +36,7 @@ html[data-view="toast"] #root {
   height: 100%;
   display: grid;
   grid-template-rows: auto auto 1fr auto;
+  grid-template-columns: minmax(0, 1fr);
   background: var(--glow), var(--bg);
   backdrop-filter: blur(18px) saturate(1.2);
   clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
@@ -906,3 +907,80 @@ html[data-view="toast"] #root {
   .ov-body.with-ml { grid-template-columns: minmax(190px, 34%) 1fr; grid-template-rows: minmax(0, 1fr) minmax(0, 44%); }
   .ov-body.with-ml .ov-ml { grid-column: 1 / -1; }
 }
+
+/* ---- Main menu → tabs (Sets · Best value · Planner) – L2 / R2, Tab -------------------------- */
+.brand-section.main-menu { color: var(--text); }
+.sec-tabs { display: inline-flex; align-items: center; gap: 4px; margin-left: 14px; }
+.sec-tab {
+  border: 0; background: var(--surface); color: var(--muted); font: 800 12px/1 var(--font-body);
+  letter-spacing: 0.04em; text-transform: uppercase; padding: 7px 12px; cursor: pointer;
+  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+}
+.sec-tab.active { background: var(--accent); color: var(--on-accent); }
+.sec-tab:not(.active):hover { color: var(--text); }
+.zoom-ctl { display: inline-flex; gap: 2px; }
+.zoom-ctl .theme-btn { min-width: 26px; justify-content: center; padding-inline: 6px; }
+.zoom-ctl .zoom-val { min-width: 48px; font-variant-numeric: tabular-nums; }
+
+/* ---- Best value -------------------------------------------------------------------------------- */
+.bv-coins { display: inline-flex; align-items: center; gap: 4px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bv-tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+.bv-tab {
+  display: grid; justify-items: center; gap: 4px; padding: 8px 4px; border: 0; cursor: pointer;
+  background: var(--surface); color: var(--text); font: 700 11px/1.2 var(--font-body);
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+.bv-tab.active { box-shadow: inset 0 -3px 0 var(--accent); background: var(--surface-hi); }
+.bv-tab.state-reached .bv-tab-cost { color: var(--accent-2); }
+.bv-tab.state-over_budget, .bv-tab.state-not_possible, .bv-tab.state-unpriced { opacity: 0.6; }
+.bv-tab-cost { font-weight: 800; font-size: 12px; }
+.bv-tab-tokens { color: var(--muted); font-size: 10px; }
+.bv-plan { margin-top: 10px; display: grid; gap: 10px; }
+.bv-totals { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px; margin: 0; }
+.bv-totals div { background: var(--surface); padding: 8px 10px; }
+.bv-totals dt { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 800; }
+.bv-totals dd { margin: 2px 0 0; font: 800 16px/1.1 var(--font-display); display: flex; align-items: center; gap: 4px; }
+.bv-totals.big dd { font-size: 22px; }
+.bv-buys, .bv-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+.bv-buys li, .bv-steps li {
+  display: grid; grid-template-columns: 30px minmax(0, 1fr) auto auto auto; align-items: center; gap: 8px;
+  background: var(--surface); padding: 5px 8px; font-size: 12px;
+}
+.bv-steps li { grid-template-columns: 22px minmax(0, 1fr) auto auto auto auto; }
+.bv-rating { font: 800 13px/1 var(--font-display); text-align: center; }
+.bv-name { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.bv-name small { margin-left: 6px; color: var(--muted); font-size: 10px; font-weight: 700; }
+.bv-pts { display: inline-flex; align-items: center; gap: 3px; color: var(--accent-2); font-weight: 800; }
+.bv-tax { color: var(--muted); font-size: 11px; white-space: nowrap; }
+.bv-step-n { color: var(--muted); font-weight: 800; text-align: center; }
+.bv-note { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.bv-note.ok { color: var(--accent-2); }
+.bv-note.warn { color: var(--tag-gold); }
+.bv-balance { color: var(--muted); font-weight: 600; text-transform: none; letter-spacing: 0; }
+.bv-row { display: grid; gap: 4px; width: 100%; text-align: left; }
+.bv-row-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.bv-row-step { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); }
+.bv-row-meta { display: flex; flex-wrap: wrap; gap: 8px; font-size: 11px; color: var(--muted); }
+.bv-row-meta b { color: var(--accent-2); }
+.bv-ratio { color: var(--text); font-weight: 700; }
+.bv-inputs { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin: 12px 0; }
+.bv-inputs label { display: grid; gap: 4px; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 800; }
+.bv-inputs input {
+  width: 150px; padding: 8px 10px; border: 1px solid var(--line); background: var(--surface); color: var(--text);
+  font: 700 14px/1 var(--font-body);
+}
+.bv-quick { display: inline-flex; gap: 4px; }
+.planner-body { grid-template-columns: minmax(0, 1fr); }
+.ml-next { color: var(--accent-2); }
+.muted { color: var(--muted); }
+
+/* The header holds brand · tabs · status: it wraps instead of pushing the view wider than the
+   window (small screens, high zoom). */
+.ov-header { gap: 10px 14px; flex-wrap: wrap; }
+.ov-header .brand { white-space: nowrap; }
+.ov-status { flex-wrap: wrap; justify-content: flex-end; min-width: 0; }
+.ov-frame > * { min-width: 0; }
+.ov-body { min-width: 0; }
+.sec-tabs { margin-left: 0; margin-right: auto; }
+.bv-row-head .set-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bv-row-step { flex: none; }

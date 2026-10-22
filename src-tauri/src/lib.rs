@@ -597,6 +597,42 @@ async fn gallery_overview(app: AppHandle) -> Vec<gallery_sets::CategorySummary> 
     .unwrap_or_default()
 }
 
+/// Best value: every set's grades and what each costs from the user's club (EA's 5 % tax on
+/// resale, cards already collected free), and the token plan over all sets – within the coins the
+/// user has (or `budget` when given) and up to `target` tokens.
+#[derive(serde::Serialize)]
+struct BestValue {
+    coins: Option<[u64; 2]>,
+    budget: Option<u64>,
+    sets: Vec<gallery_sets::SetValue>,
+    plan: gallery_sets::TokenPlan,
+}
+
+#[tauri::command]
+async fn best_value(app: AppHandle, budget: Option<u64>, target: Option<u64>, steps: Option<usize>) -> Option<BestValue> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let (_, input) = model::input(&app);
+        let budget = budget.or(input.balance());
+        let sets = input.values(budget);
+        let plan = gallery_sets::token_plan(&sets, target, budget, steps.unwrap_or(200));
+        BestValue { coins: input.coins(), budget, sets, plan }
+    })
+    .await
+    .ok()
+}
+
+/// One set's grades and what each costs (the set view), within the user's coins.
+#[tauri::command]
+async fn set_value(app: AppHandle, key: String) -> Option<gallery_sets::SetValue> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let (_, input) = model::input(&app);
+        input.set_value(&key)
+    })
+    .await
+    .ok()
+    .flatten()
+}
+
 /// "Done" on a suggested swap (the user made it in-game; the next set page read checks it).
 #[tauri::command]
 fn mark_swap_done(state: State<AppState>, set_key: String, out_def_id: u64, out_slot: Option<usize>, into_def_id: u64) -> bool {
@@ -1267,6 +1303,8 @@ pub fn run() {
             gallery_overview,
             set_first_owner,
             price_share,
+            best_value,
+            set_value,
             price_pool,
             mark_swap_done,
             current_page,

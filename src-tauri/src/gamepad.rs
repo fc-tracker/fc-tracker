@@ -19,7 +19,7 @@ pub enum Pad {
     ToggleOverlay,
     ToggleMissing,
     /// Overlay navigation: "prev_category" | "next_category" | "up" | "down" | "left" | "right" |
-    /// "select" | "back" | "info".
+    /// "select" | "back" | "info" | "prev_section" | "next_section".
     Nav(&'static str),
     /// Right stick held up/down (−1…1, up positive): the overlay scrolls, slowly for small tilts.
     Scroll(f32),
@@ -87,6 +87,9 @@ fn nav(button: Button) -> Option<&'static str> {
     Some(match button {
         Button::LeftTrigger => "prev_category",
         Button::RightTrigger => "next_category",
+        // L2 / R2 (LT / RT): the overlay's main tabs (Sets, Best value, Planner)
+        Button::LeftTrigger2 => "prev_section",
+        Button::RightTrigger2 => "next_section",
         Button::DPadUp => "up",
         Button::DPadDown => "down",
         Button::DPadLeft => "left",
