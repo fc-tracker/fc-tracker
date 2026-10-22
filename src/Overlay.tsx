@@ -385,9 +385,9 @@ function Ladder({ set }: { set: GallerySet }) {
 }
 
 /** What each grade of the set costs from the club (Best value) – shown once it is computed. */
-function SetCosts({ setKey }: { setKey: string }) {
+function SetCosts({ setKey, name }: { setKey: string; name: string }) {
   const value = useSetValue(setKey);
-  return value ? <GradeCosts value={value} /> : null;
+  return value ? <GradeCosts value={value} /> : <p className="ml-loading">{t("value.calculatingSet", { set: name })}</p>;
 }
 
 // Main menu → tabs → categories. Today the main menu has one entry (Gallery); its tabs are the
@@ -473,7 +473,7 @@ export function SetDetail({ set, ui }: { set: GallerySet; ui: CardUi }) {
       <Regrade set={set} />
       <InGamePanel set={set} />
       <BestSelection set={set} ui={ui} />
-      <SetCosts setKey={set.key} />
+      <SetCosts setKey={set.key} name={set.name} />
 
       {set.ladder.length > 0 && (
         <section className="detail-section">

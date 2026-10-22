@@ -558,10 +558,16 @@
   "value.playersHint": "cartes à acheter puis revendre",
   "value.stepCards": "Achète ces {{count}}, place-les dans {{set}} et refais la note jusqu'à {{grade}} – puis revends-les.",
   "value.stepNoBuy": "Aucun achat : place tes bonnes cartes dans {{set}} et refais la note jusqu'à {{grade}}.",
-  "value.done": "Fait",
   "value.pricesTitle": "Prix manquants",
   "value.pricesBody": "{{sets}} sets ne peuvent pas encore être planifiés – {{cards}} de leurs cartes n'ont pas de prix.",
   "value.pricesWhy": "Pourquoi : EA n'envoie le prix d'une carte que si quelqu'un l'a dans son club ou la cherche sur le marché. Les utilisateurs de FC-Tracker partagent ces prix automatiquement (seulement la carte, le prix et l'heure), la liste se remplit donc à chaque synchro.",
   "value.pricesHelp": "Tu veux un set plus tôt ? Cherche un de ses joueurs sur le marché de la Web App – son prix rejoint la liste pour tout le monde.",
-  "value.tooDear": "{{count}} notes coûtent plus que tes crédits et sont écartées."
+  "value.tooDear": "{{count}} notes coûtent plus que tes crédits et sont écartées.",
+  "value.cardsDone": "{{done}} / {{count}} faites",
+  "value.tickTitle": "Coche quand elle est achetée, placée et revendue",
+  "value.toGrade": "{{score}} jusqu'à la note {{grade}}",
+  "value.allReached": "Toutes les notes atteintes",
+  "value.gradeNeeds": "La note {{grade}} demande un score de {{score}} et donne {{tokens}} jetons.",
+  "value.calculatingSet": "Calcul de {{set}}…",
+  "value.slotsLeft": "{{count}} places vides – un set n'a une note qu'une fois toutes les places remplies"
 }

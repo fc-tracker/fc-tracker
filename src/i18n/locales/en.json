@@ -558,10 +558,16 @@
   "value.playersHint": "cards to buy and resell",
   "value.stepCards": "Buy these {{count}}, put them in {{set}} and Regrade to {{grade}} – then sell them again.",
   "value.stepNoBuy": "No buys: put the right cards you have in {{set}} and Regrade to {{grade}}.",
-  "value.done": "Done",
   "value.pricesTitle": "Missing prices",
   "value.pricesBody": "{{sets}} sets can't be planned yet – {{cards}} of their cards have no price.",
   "value.pricesWhy": "Why: EA only sends a card's price when someone has it in their club or searches it on the market. FC-Tracker users share these prices automatically (only the card, its price and when), so this list fills up by itself with every sync.",
   "value.pricesHelp": "Want a set sooner? Search one of its players on the Web App's transfer market – its price joins the list for everyone.",
-  "value.tooDear": "{{count}} grades cost more than your coins and are left out."
+  "value.tooDear": "{{count}} grades cost more than your coins and are left out.",
+  "value.cardsDone": "{{done}} / {{count}} done",
+  "value.tickTitle": "Tick it off when it's bought, placed and sold again",
+  "value.toGrade": "{{score}} to grade {{grade}}",
+  "value.allReached": "Every grade reached",
+  "value.gradeNeeds": "Grade {{grade}} needs a score of {{score}} and gives {{tokens}} tokens.",
+  "value.calculatingSet": "Calculating {{set}}…",
+  "value.slotsLeft": "{{count}} empty slots – a set gets a grade once every slot is filled"
 }

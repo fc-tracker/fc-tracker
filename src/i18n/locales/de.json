@@ -558,10 +558,16 @@
   "value.playersHint": "Karten zum Kaufen und Wiederverkaufen",
   "value.stepCards": "Kauf diese {{count}}, setz sie in {{set}} ein und bewerte auf {{grade}} neu – dann wieder verkaufen.",
   "value.stepNoBuy": "Keine Käufe: setz die richtigen deiner Karten in {{set}} ein und bewerte auf {{grade}} neu.",
-  "value.done": "Erledigt",
   "value.pricesTitle": "Fehlende Preise",
   "value.pricesBody": "{{sets}} Sets lassen sich noch nicht planen – {{cards}} ihrer Karten haben keinen Preis.",
   "value.pricesWhy": "Warum: EA schickt den Preis einer Karte nur, wenn jemand sie im Club hat oder auf dem Markt sucht. FC-Tracker-Nutzer teilen diese Preise automatisch (nur Karte, Preis und Zeitpunkt), die Liste füllt sich also mit jeder Synchronisierung.",
   "value.pricesHelp": "Willst du ein Set früher? Such einen seiner Spieler auf dem Transfermarkt der Web App – sein Preis kommt für alle auf die Liste.",
-  "value.tooDear": "{{count}} Noten kosten mehr als deine Münzen und sind ausgelassen."
+  "value.tooDear": "{{count}} Noten kosten mehr als deine Münzen und sind ausgelassen.",
+  "value.cardsDone": "{{done}} / {{count}} erledigt",
+  "value.tickTitle": "Abhaken, wenn gekauft, eingesetzt und wieder verkauft",
+  "value.toGrade": "{{score}} bis Note {{grade}}",
+  "value.allReached": "Alle Noten erreicht",
+  "value.gradeNeeds": "Note {{grade}} braucht {{score}} Punkte und gibt {{tokens}} Tokens.",
+  "value.calculatingSet": "Berechne {{set}}…",
+  "value.slotsLeft": "{{count}} leere Plätze – ein Set bekommt erst eine Note, wenn alle Plätze belegt sind"
 }

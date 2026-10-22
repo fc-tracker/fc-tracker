@@ -558,10 +558,16 @@
   "value.playersHint": "cartas que comprar y revender",
   "value.stepCards": "Compra estas {{count}}, ponlas en {{set}} y recalifica a {{grade}}; luego véndelas.",
   "value.stepNoBuy": "Sin compras: pon tus cartas correctas en {{set}} y recalifica a {{grade}}.",
-  "value.done": "Hecho",
   "value.pricesTitle": "Precios que faltan",
   "value.pricesBody": "{{sets}} sets aún no se pueden planificar: {{cards}} de sus cartas no tienen precio.",
   "value.pricesWhy": "Por qué: EA solo envía el precio de una carta cuando alguien la tiene en su club o la busca en el mercado. Los usuarios de FC-Tracker comparten esos precios solos (solo carta, precio y momento), así que la lista crece con cada sincronización.",
   "value.pricesHelp": "¿Quieres un set antes? Busca a uno de sus jugadores en el mercado de la Web App: su precio entra en la lista para todos.",
-  "value.tooDear": "{{count}} notas cuestan más que tus monedas y se omiten."
+  "value.tooDear": "{{count}} notas cuestan más que tus monedas y se omiten.",
+  "value.cardsDone": "{{done}} / {{count}} hechas",
+  "value.tickTitle": "Márcala cuando esté comprada, colocada y vendida",
+  "value.toGrade": "{{score}} para la nota {{grade}}",
+  "value.allReached": "Todas las notas logradas",
+  "value.gradeNeeds": "La nota {{grade}} necesita {{score}} puntos y da {{tokens}} tokens.",
+  "value.calculatingSet": "Calculando {{set}}…",
+  "value.slotsLeft": "{{count}} huecos vacíos: un set solo tiene nota con todos los huecos llenos"
 }

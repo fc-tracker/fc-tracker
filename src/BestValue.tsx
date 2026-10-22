@@ -45,13 +45,45 @@ export function bestStep(v: SetValue): { plan: GradePlan; tokens: number } | nul
 const per10k = (tokens: number, tax: number) => (tokens * 10_000) / Math.max(1, tax);
 const fmtRatio = (n: number) => (n >= 100 ? num(Math.round(n)) : n.toFixed(1));
 
-function BuyList({ buys }: { buys: ValueBuy[] }) {
+/** Cards ticked off as bought, placed and sold – per set, remembered on this device. */
+function useTicks(scope: string) {
+  const key = "fct.ticks";
+  const read = (): string[] => {
+    try {
+      return JSON.parse(localStorage.getItem(key) ?? "[]");
+    } catch {
+      return [];
+    }
+  };
+  const [ticks, setTicks] = useState<Set<string>>(() => new Set(read()));
+  const toggle = (defId: number) =>
+    setTicks((cur) => {
+      const n = new Set(cur);
+      const id = `${scope}:${defId}`;
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      try {
+        localStorage.setItem(key, JSON.stringify([...n].slice(-2000)));
+      } catch {}
+      return n;
+    });
+  return { has: (defId: number) => ticks.has(`${scope}:${defId}`), toggle };
+}
+
+function BuyList({ buys, scope }: { buys: ValueBuy[]; scope: string }) {
   // dearest first: buy, place in the set, sell, then the next – the order "coins needed" assumes
   const sorted = [...buys].sort((a, b) => b.price - a.price);
+  const ticks = useTicks(scope);
+  const done = sorted.filter((b) => ticks.has(b.card.def_id)).length;
   return (
-    <ol className="bv-buys">
+    <>
+      <p className="bv-done-count">{t("value.cardsDone", { done, count: sorted.length })}</p>
+    <ol className="bv-buys ticks">
       {sorted.map((b) => (
-        <li key={b.card.def_id}>
+        <li key={b.card.def_id} className={ticks.has(b.card.def_id) ? "done" : ""}>
+          <label className="bv-tick" title={t("value.tickTitle")}>
+            <input type="checkbox" checked={ticks.has(b.card.def_id)} onChange={() => ticks.toggle(b.card.def_id)} />
+          </label>
           <span className="bv-rating">{b.card.rating ?? "?"}</span>
           <span className="bv-name">
             {b.card.name ?? "?"}
@@ -66,6 +98,7 @@ function BuyList({ buys }: { buys: ValueBuy[] }) {
         </li>
       ))}
     </ol>
+    </>
   );
 }
 
@@ -78,12 +111,24 @@ export function GradeCosts({ value, compactView = false }: { value: SetValue; co
   const [pick, setPick] = useState<number>(start);
   useEffect(() => setPick(start()), [value.key]); // eslint-disable-line react-hooks/exhaustive-deps
   const p = value.plans[pick];
+  const next = value.plans.find((g) => g.state !== "reached");
   return (
     <section className={`detail-section bv-grades ${compactView ? "compact" : ""}`}>
       <h2>
         {t("value.title")}
         {value.balance != null && <span className="bv-balance"> · {t("value.withCoins", { coins: num(value.balance) })}</span>}
       </h2>
+      <p className="bv-sofar">
+        {value.collected < value.slots ? (
+          <span>{t("value.slotsLeft", { count: value.slots - value.collected })}</span>
+        ) : next ? (
+          <span>
+            <Gem size={10} /> {t("value.toGrade", { score: num(Math.max(0, next.score_needed - value.score)), grade: next.grade })}
+          </span>
+        ) : (
+          <span className="ok">{t("value.allReached")}</span>
+        )}
+      </p>
       <div className="bv-tabs" role="tablist">
         {value.plans.map((g, i) => (
           <button key={g.grade} role="tab" aria-selected={i === pick} className={`bv-tab state-${g.state} ${i === pick ? "active" : ""}`} onClick={() => setPick(i)}>
@@ -97,6 +142,7 @@ export function GradeCosts({ value, compactView = false }: { value: SetValue; co
       </div>
       {p && (
         <div className="bv-plan">
+          <p className="bv-needs">{t("value.gradeNeeds", { grade: p.grade, score: num(p.score_needed), tokens: p.tokens })}</p>
           {p.state === "reached" && <p className="bv-note ok">{t("value.reachedNote", { grade: p.grade })}</p>}
           {p.state === "buy" && (
             <>
@@ -126,7 +172,7 @@ export function GradeCosts({ value, compactView = false }: { value: SetValue; co
                   </dd>
                 </div>
               </dl>
-              {p.buys.length > 0 ? <BuyList buys={p.buys} /> : <p className="bv-note ok">{t("value.noBuys")}</p>}
+              {p.buys.length > 0 ? <BuyList buys={p.buys} scope={value.key} /> : <p className="bv-note ok">{t("value.noBuys")}</p>}
               <p className="bv-note">{t("value.howTo")}</p>
             </>
           )}
@@ -170,8 +216,7 @@ export function ValueList({
                 {s ? (
                   <>
                     <b>+{t("overlay.tokens", { count: s.tokens })}</b>
-                    <span>{t("value.taxShort", { tax: compact(s.plan.tax) })}</span>
-                    <span className="bv-ratio">{t("value.per10k", { n: fmtRatio(per10k(s.tokens, s.plan.tax)) })}</span>
+                    <span title={t("value.per10k", { n: fmtRatio(per10k(s.tokens, s.plan.tax)) })}>{t("value.taxShort", { tax: compact(s.plan.tax) })}</span>
                   </>
                 ) : (
                   <span className="muted">{t(v.unpriced > 0 ? "value.rowUnpriced" : "value.rowNothing", { count: v.unpriced })}</span>
@@ -229,23 +274,6 @@ export function Planner({ data, onChange, busy }: { data: BestValue | null; onCh
   };
   const apply = (nextSteps = steps) => onChange(parse(budget), parse(target), nextSteps);
   const setsByKey = useMemo(() => new Map((data?.sets ?? []).map((v) => [v.key, v])), [data]);
-  const [done, setDone] = useState<Set<string>>(() => {
-    try {
-      return new Set(JSON.parse(localStorage.getItem("fct.planDone") ?? "[]"));
-    } catch {
-      return new Set();
-    }
-  });
-  const toggleDone = (id: string) =>
-    setDone((d) => {
-      const n = new Set(d);
-      if (n.has(id)) n.delete(id);
-      else n.add(id);
-      try {
-        localStorage.setItem("fct.planDone", JSON.stringify([...n]));
-      } catch {}
-      return n;
-    });
   const allBuys = useMemo(() => {
     const seen = new Map<number, { buy: ValueBuy; sets: string[] }>();
     for (const s of plan?.steps ?? []) for (const b of s.buys) {
@@ -340,9 +368,8 @@ export function Planner({ data, onChange, busy }: { data: BestValue | null; onCh
               {plan.steps.map((s, i) => {
                 const now = setsByKey.get(s.key);
                 const id = `${s.key}:${s.grade}`;
-                const isDone = done.has(id);
                 return (
-                  <li key={id} className={isDone ? "done" : ""}>
+                  <li key={id}>
                     <div className="bv-ps-head">
                       <span className="bv-step-n">{i + 1}</span>
                       <span className="bv-ps-name">{s.name}</span>
@@ -351,15 +378,11 @@ export function Planner({ data, onChange, busy }: { data: BestValue | null; onCh
                       </span>
                       <b className="bv-ps-tokens">+{t("overlay.tokens", { count: s.tokens })}</b>
                       <span className="bv-tax">{t("value.taxShort", { tax: compact(s.tax) })}</span>
-                      <label className="bv-done">
-                        <input type="checkbox" checked={isDone} onChange={() => toggleDone(id)} />
-                        {t("value.done")}
-                      </label>
                     </div>
                     <p className="bv-ps-what">
                       {s.buys.length > 0 ? t("value.stepCards", { count: s.buys.length, set: s.name, grade: s.grade }) : t("value.stepNoBuy", { set: s.name, grade: s.grade })}
                     </p>
-                    {s.buys.length > 0 && <BuyList buys={s.buys} />}
+                    {s.buys.length > 0 && <BuyList buys={s.buys} scope={s.key} />}
                   </li>
                 );
               })}

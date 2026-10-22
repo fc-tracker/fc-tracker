@@ -994,15 +994,25 @@ html[data-view="toast"] #root {
 .bv-totals small { display: block; color: var(--muted); font-size: 10.5px; margin-top: 2px; }
 .bv-plan-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .bv-plan-steps > li { background: var(--surface); padding: 10px 12px; display: grid; gap: 6px; }
-.bv-plan-steps > li.done { opacity: 0.5; }
 .bv-ps-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .bv-ps-name { font: 800 16px/1.1 var(--font-display); flex: 1; min-width: 120px; }
 .bv-ps-tokens { color: var(--accent-2); }
 .bv-ps-what { margin: 0; color: var(--muted); font-size: 12px; }
-.bv-done { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); cursor: pointer; }
 .bv-plan-steps .bv-buys li { background: var(--surface-hi); }
 .bv-missing { background: var(--surface); padding: 12px 14px; border-left: 3px solid var(--tag-gold); }
 .bv-missing h2 { margin-top: 0; }
 .bv-missing-big { margin: 0 0 6px; font-weight: 700; }
 .bv-all summary { cursor: pointer; font: 800 13px/1.2 var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
 .bv-all[open] summary { margin-bottom: 8px; }
+
+/* Best value: the set so far, what a grade needs, cards ticked off */
+.bv-sofar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin: 0 0 8px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.bv-sofar span { color: var(--muted); font-weight: 700; font-size: 12px; }
+.bv-sofar span.ok { color: var(--accent-2); }
+.bv-needs { margin: 0; font-size: 12px; color: var(--text); font-weight: 700; }
+.bv-done-count { margin: 0 0 4px; font-size: 11px; color: var(--muted); font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }
+.bv-buys.ticks li { grid-template-columns: 20px 30px minmax(0, 1fr) auto auto auto; }
+.bv-buys.ticks li.done { opacity: 0.45; }
+.bv-buys.ticks li.done .bv-name { text-decoration: line-through; }
+.bv-tick { display: grid; place-items: center; cursor: pointer; }
+.bv-tick input { accent-color: var(--accent); margin: 0; cursor: pointer; }

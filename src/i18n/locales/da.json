@@ -558,10 +558,16 @@
   "value.playersHint": "kort der skal købes og sælges igen",
   "value.stepCards": "Køb disse {{count}}, sæt dem ind i {{set}} og Regrade til {{grade}} – sælg dem så igen.",
   "value.stepNoBuy": "Ingen køb: sæt de rigtige af dine kort ind i {{set}} og Regrade til {{grade}}.",
-  "value.done": "Færdig",
   "value.pricesTitle": "Manglende priser",
   "value.pricesBody": "{{sets}} sæt kan ikke planlægges endnu – {{cards}} af deres kort har ingen pris.",
   "value.pricesWhy": "Hvorfor: EA sender kun et korts pris, når nogen har det i klubben eller søger det på markedet. FC-Tracker-brugere deler de priser automatisk (kun kortet, prisen og hvornår), så listen fylder sig selv op med hver sync.",
   "value.pricesHelp": "Vil du have et sæt hurtigere? Søg en af dets spillere på Web App'ens transfer market – prisen kommer med på listen for alle.",
-  "value.tooDear": "{{count}} grades koster mere end dine coins og er udeladt."
+  "value.tooDear": "{{count}} grades koster mere end dine coins og er udeladt.",
+  "value.cardsDone": "{{done}} / {{count}} færdige",
+  "value.tickTitle": "Sæt flueben, når det er købt, sat ind og solgt igen",
+  "value.toGrade": "{{score}} til grade {{grade}}",
+  "value.allReached": "Alle grades nået",
+  "value.gradeNeeds": "Grade {{grade}} kræver en score på {{score}} og giver {{tokens}} tokens.",
+  "value.calculatingSet": "Beregner {{set}}…",
+  "value.slotsLeft": "{{count}} tomme pladser – et sæt får først en grade, når alle pladser er fyldt"
 }
