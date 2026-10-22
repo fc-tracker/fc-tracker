@@ -208,7 +208,6 @@ export default function ControlStage({ id, layout }: { id: ControlId; layout: Pa
                 <div className="brand">
                   <span className="brand-mark" aria-hidden="true" />
                   <span className="brand-name">FC-Tracker</span>
-                  <span className="brand-section">{t("overlay.gallery")}</span>
                 </div>
               </header>
               <div className="cat-bar">

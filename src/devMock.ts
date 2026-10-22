@@ -3,7 +3,8 @@
 // computes from a synced club (scripts/demo-data.mjs → src/demoData.json).
 import type { CurrentPage, GalleryCategory, GalleryStatus, ShoppingList, SyncSummary, ToastPayload } from "./api";
 import demo from "./demoData.json";
-import type { ChampsData, ChampsMatch } from "./championsData";
+import type { ChampsData } from "./championsData";
+import { exampleChamps } from "./championsExample";
 
 export const mockGallery = demo.overview as unknown as GalleryCategory[];
 const shopping = demo.shopping as unknown as ShoppingList[];
@@ -101,32 +102,12 @@ export const mockSetValue = async (key: string, out: number[] = []) => {
   return v ? dropOut(v, out) : null;
 };
 
-// Champions (beta): one real FC 27 weekend as the tracker reads it – the matches of a public FC 27
-// stream (Nice SC; results, clubs and opponents' records as shown on the result cards). Goal
-// minutes are not in it: the stream never showed every goal, and nothing here is made up.
-// Opponents' gamertags are left out (they are personal data and never shown outside the user's PC).
-const champsT0 = Date.now() - 3 * 3_600_000;
-const champsTeam = (abbr: string | null, club: string, record: [number, number] | null = null) => ({ abbr, club, gamertag: null, record, est: null });
-const champsMatch = (n: number, over: Partial<ChampsMatch>): ChampsMatch => ({
-  started: champsT0 + n * 1_500_000, seen: champsT0 + n * 1_500_000 + 900_000, n, outcome: "win", confirmed: true, hub_only: false,
-  home: champsTeam("NIC", "Nice SC"), away: champsTeam(null, "Opponent"), me_home: true, score: null, timeline: [], last: null,
-  extra_time: false, disconnect: false, paused_at: null, card_win: null, coins: null, sp: null, ...over,
-});
-export const mockChampions: ChampsData = {
-  runs: [
-    {
-      id: champsT0,
-      ends_at: Date.now() + (3 * 24 + 6) * 3_600_000,
-      hub: { at: Date.now(), wins: 1, losses: 2, remaining: 12, points: 1, rank: "Contender IV", rank_pts: [1, 2], ends_at: Date.now() + (3 * 24 + 6) * 3_600_000 },
-      matches: [
-        champsMatch(1, { away: champsTeam(null, "Class on Grass", [6, 6]), score: [6, 0], coins: 941, sp: 64 }),
-        champsMatch(2, { outcome: "loss", home: champsTeam("NS5", "NS105", [3, 0]), away: champsTeam("NIC", "Nice SC"), me_home: false, score: [5, 4], sp: 15 }),
-        champsMatch(3, { outcome: "loss", away: champsTeam(null, "Basprovol", [1, 0]), score: [4, 5], extra_time: true, sp: 24 }),
-      ],
-    },
-  ],
-  me: { gamertag: null, clubs: ["Nice SC"], abbrs: ["NIC"] },
-  last_hub: null,
-  pending: null,
+// Champions (beta): the real weekend of a public FC 27 stream (championsExample.ts).
+export const mockChampions: ChampsData = exampleChamps();
+// the website demo: the weekend in progress while a Weekend League is on, otherwise nothing of its
+// own – then the Champions tab shows the clock to the next one, how it works and the example
+export const demoChampions = (): ChampsData => {
+  const e = exampleChamps();
+  return (e.runs[0].ends_at ?? 0) > Date.now() ? e : { runs: [], me: e.me, last_hub: null, pending: null };
 };
 export const mockChampionsEmpty: ChampsData = { runs: [], me: { gamertag: null, clubs: [], abbrs: [] }, last_hub: null, pending: null };

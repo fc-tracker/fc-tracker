@@ -24,6 +24,11 @@ if (theme && (THEMES as readonly string[]).includes(theme)) {
     localStorage.setItem("fct.theme", theme);
   } catch {}
 }
+// ?section=champions opens that tab (the Champions page); otherwise Sets – the demo never
+// remembers a tab from an earlier visit
+try {
+  localStorage.setItem("fct.section", params.get("section") ?? "sets");
+} catch {}
 document.documentElement.dataset.view = "overlay";
 document.documentElement.classList.add("demo");
 

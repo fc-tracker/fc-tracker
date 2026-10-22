@@ -2,12 +2,13 @@
 // Gallery is sold again – it costs EA's 5 % tax; cards already collected cost nothing; nothing is
 // suggested that the user's coins can't pay for. Used in the overlay (app) and FC-Tracker Web alike.
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api, type BestValue, type GradePlan, type SetValue, type TokenPlan, type ValueBuy } from "./api";
+import { api, IS_WEB, type BestValue, type GradePlan, type SetValue, type TokenPlan, type ValueBuy } from "./api";
 import { excludeCard, includeCard, useExcluded } from "./excluded";
 import { compact, num } from "./format";
 import { t, type MessageKey } from "./i18n";
 import { Gem } from "./icons";
 import { GradeDiamond } from "./Overlay";
+import { rememberPlan, shoppingOf, ShoppingRows } from "./shopping";
 
 export type ValueSection = "value" | "planner";
 
@@ -143,9 +144,19 @@ export function GradeCosts({ value, compactView = false }: { value: SetValue; co
           <button key={g.grade} role="tab" aria-selected={i === pick} className={`bv-tab state-${g.state} ${i === pick ? "active" : ""} ${g === top ? "top" : ""}`} onClick={() => setPick(i)}>
             <GradeDiamond grade={g.grade} size={26} />
             <span className="bv-tab-cost">
-              {g.state === "reached" ? "✓" : g.state === "buy" ? <Coins value={g.tax} approx /> : t(STATE_KEY[g.state])}
+              {g.state === "reached" ? (
+                <>
+                  <span className="bv-check" aria-hidden="true" />
+                  {t("value.state.reached")}
+                </>
+              ) : g.state === "buy" ? (
+                <Coins value={g.tax} approx />
+              ) : (
+                t(STATE_KEY[g.state])
+              )}
             </span>
-            {g.state === "buy" && <span className="bv-tab-sub">{t("value.afterTax")}</span>}
+            {/* every tab has the same rows (diamond · cost · after tax · tokens), so they line up */}
+            <span className="bv-tab-sub">{g.state === "buy" ? t("value.afterTax") : ""}</span>
             <span className="bv-tab-tokens">{g.tokens_total > 0 ? t("overlay.tokens", { count: g.tokens_total }) : " "}</span>
           </button>
         ))}
@@ -324,15 +335,7 @@ export function Planner({
   });
   const asked = goal === "5" ? 5 : goal === "10" ? 10 : null;
   const setsByKey = useMemo(() => new Map((data?.sets ?? []).map((v) => [v.key, v])), [data]);
-  const allBuys = useMemo(() => {
-    const seen = new Map<number, { buy: ValueBuy; sets: string[] }>();
-    for (const st of plan?.steps ?? []) for (const b of st.buys) {
-      const e = seen.get(b.card.def_id);
-      if (e) e.sets.push(st.name);
-      else seen.set(b.card.def_id, { buy: b, sets: [st.name] });
-    }
-    return [...seen.values()].sort((a, b) => b.buy.price - a.buy.price);
-  }, [plan]);
+  const allBuys = useMemo(() => shoppingOf(plan), [plan]);
   const balance = data?.coins?.[0] ?? null;
   const field = (value: string, set: (v: string) => void, placeholder: string, apply: (v: string) => void) => (
     <input
@@ -482,22 +485,13 @@ export function Planner({
             </ol>
             <MissingPrices sets={data?.sets ?? []} />
             {allBuys.length > 0 && (
-              <details className="detail-section bv-all">
-                <summary>{t("value.shopping", { count: allBuys.length })}</summary>
-                <ol className="bv-buys">
-                  {allBuys.slice(0, 200).map(({ buy, sets }) => (
-                    <li key={buy.card.def_id}>
-                      <span className="bv-rating">{buy.card.rating ?? "?"}</span>
-                      <span className="bv-name">
-                        {buy.card.name ?? "?"}
-                        <small>{sets.join(" · ")}</small>
-                      </span>
-                      <Coins value={buy.price} approx />
-                      <span className="bv-tax">{t("value.taxShort", { tax: compact(buy.tax) })}</span>
-                    </li>
-                  ))}
-                </ol>
-              </details>
+              <section className="detail-section pl-shop">
+                <h2>
+                  {t("value.shopping", { count: allBuys.length })}
+                  {!IS_WEB && <span className="pl-shop-hint">{t("missing.shopWhere")}</span>}
+                </h2>
+                <ShoppingRows items={allBuys} />
+              </section>
             )}
           </>
         )}
@@ -514,6 +508,7 @@ export function useBestValue(active: boolean) {
   const excluded = useExcluded().length;
   const load = (budget: number | null = null, target: number | null = null, steps: number | null = null) => {
     last.current = [budget, target, steps];
+    rememberPlan(last.current);
     setBusy(true);
     api
       .bestValue(budget, target, steps)

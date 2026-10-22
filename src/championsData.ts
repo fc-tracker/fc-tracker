@@ -161,3 +161,41 @@ export function weekendStats(run: ChampsRun): WeekendStats {
     form: ms.filter((m) => m.outcome).map((m) => m.outcome!) ,
   };
 }
+
+// ---- the Weekend League clock
+const HOUR = 3_600_000;
+const WEEK = 7 * 24 * HOUR;
+/** A Weekend League runs Friday 19:00 → Monday 08:00 UK time (61 h, most published FC 27 schedules). */
+const WINDOW = 61 * HOUR;
+
+/** London wall-clock offset from UTC right now (GMT or BST), in ms. */
+function londonOffset(at: number): number {
+  const p = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })
+    .formatToParts(new Date(at))
+    .reduce<Record<string, string>>((o, x) => ((o[x.type] = x.value), o), {});
+  const wall = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute);
+  return wall - Math.floor(at / 60_000) * 60_000;
+}
+
+export type Clock = { live: boolean; ends: number; opens: number; exact: boolean };
+
+/** When the current Weekend League ends, or when the next one opens. The game's own timer when the
+ *  hub was read (this weekend, or a past one + whole weeks); else the usual schedule, as "about". */
+export function champsClock(data: ChampsData | null, now: number): Clock {
+  const hubEnds = [data?.last_hub?.ends_at, ...(data?.runs ?? []).map((r) => r.ends_at ?? r.hub.ends_at)].filter((x): x is number => !!x);
+  const known = hubEnds.length ? Math.max(...hubEnds) : null;
+  // a hub read with time left = the event is on (the game's own timer)
+  if (known && known > now) return { live: true, ends: known, opens: known - WINDOW, exact: true };
+  if (known) {
+    const ends = known + Math.ceil((now - known) / WEEK) * WEEK;
+    return { live: now >= ends - WINDOW, ends, opens: ends - WINDOW, exact: false };
+  }
+  // next Monday 08:00 London after now; the window opened 61 h before it
+  const off = londonOffset(now);
+  const wall = new Date(now + off);
+  const toMonday = (8 - wall.getUTCDay()) % 7;
+  let ends = Date.UTC(wall.getUTCFullYear(), wall.getUTCMonth(), wall.getUTCDate() + toMonday, 8) - off;
+  if (ends <= now) ends += WEEK;
+  return { live: now >= ends - WINDOW, ends, opens: ends - WINDOW, exact: false };
+}
+

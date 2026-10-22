@@ -278,7 +278,7 @@ export default function Launcher() {
         {view === "home" && (
           <>
             <section className="ln-hero">
-              <p className="ln-eyebrow">{t("ln.eyebrow")}</p>
+              <p className="ln-eyebrow">{t("brand.tagline")}</p>
               {bridgeError ? (
                 <Hero title={t("ln.error.title")} text={tError(bridgeError)} />
               ) : !paired && bridge ? (

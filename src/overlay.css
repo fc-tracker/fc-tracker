@@ -97,7 +97,7 @@ html[data-view="toast"] #root {
   clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
   transition: background var(--dur) var(--ease);
 }
-.theme-btn:hover, .theme-btn:focus-visible { background: var(--accent); color: #0b0d14; }
+.theme-btn:hover, .theme-btn:focus-visible { background: var(--accent); color: var(--on-accent); }
 .theme-swatch { width: 10px; height: 10px; transform: rotate(45deg); background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
 
 /* ── category tabs (like the in-game Gallery tab bar) ───────────────────── */
@@ -431,12 +431,11 @@ html[data-view="toast"] #root {
 .ml-rating.tier-special.rar-special { background: linear-gradient(160deg, var(--rar-special-a), var(--rar-special-b)); color: var(--rar-special-ink); }
 .swap-card.tier-special.rar-special b { color: var(--rar-special-hi); }
 /* Holographic special cards: purple glow like in-game */
-.mini-card.holo { box-shadow: inset 0 0 0 2px var(--tag-special), inset 0 0 18px rgba(154, 124, 255, 0.85); }
+.mini-card.holo { box-shadow: inset 0 0 18px rgba(154, 124, 255, 0.85); }
 .mini-card.ghost { filter: grayscale(0.85) brightness(0.62); }
 .mini-card.ghost:hover { filter: none; }
 .mini-card.empty {
   background: transparent;
-  outline: 1px dashed var(--line); outline-offset: -1px;
   clip-path: none; animation: none;
 }
 
@@ -602,7 +601,7 @@ html[data-view="toast"] #root {
 .swap-fo.fo-unknown, .swap-fo.fo-manual { background: var(--tag-gold); color: #1d1606; }
 .swap-card.tier-special b { color: var(--tag-special); }
 .swap-card.tier-gold b { color: var(--tag-gold); }
-.swap-card.holo { box-shadow: inset 0 0 0 1px var(--tag-special), inset 0 0 12px rgba(154, 124, 255, 0.6); }
+.swap-card.holo { box-shadow: inset 0 0 12px rgba(154, 124, 255, 0.6); }
 .muted.small { font-size: 12px; color: var(--muted); }
 .swap-list li > .swap-card:first-child { opacity: 0.7; }
 .swap-list li > .swap-card:nth-child(3) { background: var(--surface-hi); box-shadow: inset 3px 0 0 var(--accent-2); }
@@ -615,11 +614,11 @@ html[data-view="toast"] #root {
 .ml-side {
   all: unset; cursor: pointer; position: absolute; top: 18px; right: 18px; z-index: 2;
   display: inline-flex; gap: 2px; padding: 3px;
-  background: var(--surface); box-shadow: inset 0 0 0 1px var(--line);
+  background: var(--surface);
   clip-path: polygon(5px 0, 100% 0, calc(100% - 5px) 100%, 0 100%);
 }
 .ml-side span { font: 700 11px/1 var(--font-body); padding: 5px 7px; color: var(--muted); }
-.ml-side span.on { background: var(--accent); color: #0b0d14; }
+.ml-side span.on { background: var(--accent); color: var(--on-accent); }
 .ml-side:hover span:not(.on) { color: var(--text); }
 
 /* narrower windows (half mode on small screens) */
@@ -678,7 +677,7 @@ html[data-view="toast"] #root {
 .ml-rating.tier-silver { background: linear-gradient(160deg, #e3e8ee, #9aa6b2); color: #1b2128; }
 .ml-rating.tier-bronze { background: linear-gradient(160deg, #e3a979, #9a5f35); color: #2a1406; }
 .ml-rating.tier-special { background: linear-gradient(160deg, var(--rar-special-a), var(--rar-special-b)); color: var(--rar-special-ink); }
-.ml-rating.holo { box-shadow: inset 0 0 0 2px var(--tag-special), inset 0 0 10px rgba(154, 124, 255, 0.85); }
+.ml-rating.holo { box-shadow: inset 0 0 10px rgba(154, 124, 255, 0.85); }
 .ml-name { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .ml-name small { margin-left: 6px; font-size: 10px; font-weight: 800; color: var(--muted); letter-spacing: 0.06em; }
 .ml-gain { display: inline-flex; align-items: center; gap: 3px; font-weight: 800; font-size: 12px; color: var(--accent-2); font-variant-numeric: tabular-nums; }
@@ -782,7 +781,7 @@ html[data-view="toast"] #root {
 .card-menu {
   position: absolute; top: -4px; left: calc(100% - 14px); z-index: 6;
   min-width: 158px; padding: 8px; display: grid; gap: 3px;
-  background: var(--bg-2); box-shadow: 0 12px 34px rgba(0, 0, 0, 0.55), inset 0 0 0 1px var(--line);
+  background: var(--bg-2); box-shadow: 0 12px 34px rgba(0, 0, 0, 0.55);
   clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
   animation: rise 160ms var(--ease) both;
 }
@@ -833,14 +832,14 @@ html[data-view="toast"] #root {
 .ml .ml-frame { padding-top: 50px; }
 .ml-tabs {
   position: absolute; top: 18px; left: 20px; z-index: 2; display: inline-flex; gap: 2px; padding: 3px;
-  background: var(--surface); box-shadow: inset 0 0 0 1px var(--line);
+  background: var(--surface);
   clip-path: polygon(5px 0, 100% 0, calc(100% - 5px) 100%, 0 100%);
 }
 .ml-tabs button {
   all: unset; cursor: pointer; font: 700 11px/1 var(--font-body); padding: 5px 9px; color: var(--muted);
   letter-spacing: 0.02em;
 }
-.ml-tabs button.on { background: var(--accent); color: var(--bg); }
+.ml-tabs button.on { background: var(--accent); color: var(--on-accent); }
 .ml-tabs button:not(.on):hover { color: var(--text); }
 .ml-tabs button:disabled { opacity: 0.4; cursor: default; }
 .ml-best-total {
@@ -1003,7 +1002,7 @@ html[data-view="toast"] #root {
 .bv-buys li { grid-template-columns: 30px minmax(0, 1fr) auto auto 22px; }
 
 /* ---- Planner: a control column beside the plan, one card per set ------------------------------- */
-.pl { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 22px; max-width: 1240px; align-items: start; }
+.pl { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 22px; align-items: start; }
 .pl-side { display: grid; gap: 12px; }
 @media (min-height: 860px) { .pl-side { position: sticky; top: 0; } }
 .pl-head .detail-title { margin: 2px 0 6px; }
@@ -1057,8 +1056,7 @@ html[data-view="toast"] #root {
 .bv-more:hover { color: var(--text); }
 .bv-top { border: 0; background: transparent; padding: 0; cursor: pointer; color: var(--accent-2); font: 700 12px/1.3 var(--font-body); text-align: left; }
 .bv-top:hover { color: var(--text); }
-.bv-tab.top { box-shadow: inset 0 0 0 1px var(--accent-2); }
-.bv-tab.top.active { box-shadow: inset 0 -3px 0 var(--accent), inset 0 0 0 1px var(--accent-2); }
+/* .bv-tab.top: its frame is drawn by frame.css */
 .pl-box h3 { display: flex; align-items: center; justify-content: space-between; }
 .pl-keys { display: inline-flex; gap: 3px; align-items: center; }
 .pl-keys .key-hint { font-size: 10px; }
@@ -1143,8 +1141,6 @@ html[data-view="toast"] #root {
 .ch-history b { font-family: var(--font-display); font-size: 22px; }
 .ch-history small, .ch-history span { color: var(--muted); font-size: 11px; }
 .ch-privacy { margin: 0; color: var(--muted); font-size: 11px; }
-.ch-empty { text-align: center; max-width: 520px; margin: 0 auto; }
-.ch-empty h2 { margin: 0; font-family: var(--font-display); font-size: 32px; color: var(--text); }
 @media (prefers-reduced-motion: reduce) { .ch, .ch-progress > span { animation: none; transition: none; } }
 
 .ch-side { display: grid; gap: 12px; align-content: start; }
@@ -1157,14 +1153,119 @@ html[data-view="toast"] #root {
 .sec-badge { margin-left: 6px; padding: 2px 5px; font-size: 9px; letter-spacing: 0.08em; background: var(--surface-hi); color: var(--muted); clip-path: polygon(3px 0, 100% 0, calc(100% - 3px) 100%, 0 100%); }
 .sec-badge.new { background: var(--accent); color: var(--on-accent); }
 .sec-tab.active .sec-badge { background: color-mix(in srgb, var(--on-accent) 18%, transparent); color: var(--on-accent); }
-.ch-news { display: grid; gap: 8px; max-width: 640px; padding: 18px 22px; background: color-mix(in srgb, var(--accent-2) 10%, var(--surface)); border-left: 3px solid var(--accent-2); clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%); }
-.ch-news.full { margin: 4vh auto 0; }
-.ch-news .eyebrow { color: var(--accent-2); }
-.ch-news h2 { margin: 0; font-family: var(--font-display); font-size: 34px; line-height: 1; text-transform: uppercase; color: var(--text); }
-.ch-news p { margin: 0; color: var(--text); }
-.ch-news-points { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
-.ch-news-points li { position: relative; padding-left: 18px; color: var(--text); }
-.ch-news-points li::before { content: ""; position: absolute; left: 2px; top: 0.55em; width: 7px; height: 7px; background: var(--accent-2); transform: rotate(45deg); }
-.ch-news-btn { justify-self: start; display: inline-flex; align-items: center; gap: 8px; margin-top: 4px; }
-.ch-news-small { color: var(--muted) !important; font-size: 12px; }
 .bv-tab-sub { color: var(--muted); font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-top: -2px; }
+
+/* The frame's rows are header · tabs · body · footer. Views without a tab bar (Planner, Champions)
+   keep the body in the stretching row, so the footer stays at the bottom. */
+.ov-frame > .ov-body, .ov-frame > .ov-empty { grid-row: 3; }
+.ov-frame > .ov-footer { grid-row: 4; }
+
+/* Buy next: two rankings in one scrolling column – best for the coins, then the most valuable */
+.ml-scroll { min-height: 0; overflow-y: auto; overflow-x: hidden; display: grid; gap: 14px; align-content: start; padding-right: 2px; scrollbar-width: thin; }
+.ml-scroll .ml-list { overflow: visible; mask-image: none; }
+.ml-sec { display: grid; gap: 6px; }
+.ml-sec h2 {
+  margin: 0; display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 8px;
+  font: 700 13px/1.1 var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent-2);
+}
+.ml-sec h2 small { font: 600 10.5px/1.2 var(--font-body); letter-spacing: 0; text-transform: none; color: var(--muted); }
+.ml-sec + .ml-sec { padding-top: 12px; border-top: 1px solid var(--line); }
+.ml-none { margin: 0; padding: 8px 10px; font-size: 12px; color: var(--muted); background: var(--surface); clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%); }
+.ml-noprice { white-space: nowrap; }
+/* the side window can't scroll (click-through): the last rows fade instead of being cut */
+.ml:not(.embedded) .ml-scroll { overflow: hidden; mask-image: linear-gradient(to bottom, #000 calc(100% - 36px), transparent); }
+
+/* Shopping list (Planner, full width · side panel tab): numbered, dearest first */
+.shop-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); }
+.shop-list li {
+  display: grid; grid-template-columns: 22px 34px minmax(0, 1fr) auto; gap: 8px; align-items: center;
+  padding: 6px 10px 6px 8px; background: var(--surface);
+  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+  animation: rise 300ms var(--ease) both;
+}
+.shop-n { font: 700 14px/1 var(--font-display); color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+.shop-name { display: grid; min-width: 0; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.shop-name small { font-size: 11px; font-weight: 600; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+.shop-price { display: grid; justify-items: end; gap: 1px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.shop-price small { font-size: 10.5px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.pl-shop h2 { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; }
+.pl-shop-hint { font: 600 12px/1.3 var(--font-body); letter-spacing: 0; text-transform: none; color: var(--muted); }
+.shop-frame .shop-list { grid-template-columns: 1fr; }
+/* the side panel's top strip (the only part that takes clicks, 52 px): tabs left, Left/Right right */
+.ml-top { position: absolute; top: 16px; left: 18px; right: 18px; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ml-top .ml-tabs, .ml-top .ml-side { position: static; }
+.ml-top .ml-tabs button { padding: 5px 7px; }
+.ml-top .ml-tabs { min-width: 0; }
+
+/* grade tabs: four fixed rows (diamond · cost · after tax · tokens) – a reached grade lines up with
+   one still to buy, its check as large as the cost text */
+.bv-tab { grid-template-rows: 30px 18px 12px 13px; align-items: center; align-content: center; }
+.bv-tab-cost { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.bv-tab-sub:empty::before, .bv-tab-tokens:empty::before { content: "\00a0"; }
+.bv-check {
+  width: 13px; height: 13px; flex: none; background: var(--accent-2);
+  clip-path: polygon(14% 50%, 0 64%, 38% 100%, 100% 22%, 86% 8%, 38% 72%);
+}
+
+/* ── Champions view: left-aligned like every other view ────────────────────────────────────────
+   header (title · the clock · the record) → switch strip → guide → example weekend → leaderboard */
+.ch { align-content: start; }
+.ch-head { align-items: stretch; flex-wrap: wrap; }
+.ch-title { flex: 1 1 320px; min-width: 0; align-self: end; }
+.ch-title .detail-sub { max-width: 62ch; }
+.ch-clock {
+  flex: none; display: grid; align-content: center; gap: 3px; min-width: 210px; padding: 12px 18px 12px 16px;
+  background: var(--surface); border-left: 3px solid var(--accent);
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
+}
+.ch-clock.live { border-left-color: var(--result-win); background: color-mix(in srgb, var(--result-win) 9%, var(--surface)); }
+.ch-clock small { display: flex; align-items: center; gap: 7px; font: 800 11px/1.2 var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.ch-clock b { font: 700 44px/0.95 var(--font-display); letter-spacing: 0.01em; font-variant-numeric: tabular-nums; color: var(--text); white-space: nowrap; }
+.ch-clock > span { font-size: 11px; color: var(--muted); }
+.ch-live-dot { width: 8px; height: 8px; flex: none; background: var(--result-win); transform: rotate(45deg); animation: ch-pulse 1.6s var(--ease) infinite; }
+@keyframes ch-pulse { 50% { opacity: 0.35; transform: rotate(45deg) scale(0.7); } }
+.ch-record { align-self: center; }
+
+/* off (app) / app-only (web): one strip with the action at its end */
+.ch-strip {
+  display: flex; align-items: center; gap: 14px; padding: 12px 14px 12px 16px;
+  background: color-mix(in srgb, var(--accent-2) 11%, var(--surface)); border-left: 3px solid var(--accent-2);
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
+}
+.ch-strip p { flex: 1; margin: 0; font-size: 13px; line-height: 1.45; color: var(--text); }
+.ch-strip b { color: var(--accent-2); }
+.ch-strip-mark { flex: none; width: 12px; height: 12px; background: var(--accent-2); transform: rotate(45deg); box-shadow: 0 0 12px var(--accent-2); }
+.ch-strip-btn { flex: none; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
+
+/* how it works: four steps in a row, the done step ticked */
+.ch-guide { display: grid; gap: 8px; }
+.ch-how { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.ch-how li.done .bv-how-n { background: var(--accent-2); }
+@container ovframe (max-width: 980px) { .ch-how { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@container ovframe (max-width: 620px) { .ch-how { grid-template-columns: minmax(0, 1fr); } .ch-clock { min-width: 0; flex: 1 1 100%; } }
+
+/* the example weekend: the real components with a real stream's weekend, clearly marked */
+.ch-example { position: relative; display: grid; gap: 12px; padding: 14px 16px 16px; border: 1px dashed color-mix(in srgb, var(--muted) 55%, transparent); }
+.ch-example-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ch-example-head p { margin: 0; font-size: 12px; color: var(--muted); }
+.ch-example-head b { color: var(--text); }
+.ch-example-tag {
+  font: 800 10px/1 var(--font-body); letter-spacing: 0.12em; text-transform: uppercase; padding: 4px 9px;
+  color: var(--bg); background: var(--muted); clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
+}
+.ch-example-body { display: grid; gap: 16px; opacity: 0.88; }
+
+.ch-foot { display: grid; grid-template-columns: minmax(240px, 420px) 1fr; gap: 12px 18px; align-items: end; }
+.ch-board-n { color: var(--muted) !important; font-size: 12px !important; }
+.ch-line.empty { height: 26px; }
+@container ovframe (max-width: 620px) { .ch-foot { grid-template-columns: minmax(0, 1fr); } }
+@media (prefers-reduced-motion: reduce) { .ch-live-dot { animation: none; } }
+.ch-example-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; opacity: 0.88; }
+.ch-example-top > div:first-child { display: grid; gap: 2px; }
+.ch-example-rank { font: 700 34px/1 var(--font-display); text-transform: uppercase; letter-spacing: 0.01em; }
+.ch-example-top small { color: var(--muted); font-size: 12px; }
+.ch-example-top .ch-record b { font-size: 44px; }
+/* Planner and Champions have one column: the narrow two-row split (set list above, detail below) is
+   not theirs – their view keeps the whole height */
+.ov-body.planner-body { grid-template-rows: minmax(0, 1fr); }
+@container ovframe (max-width: 620px) { .ov-body.planner-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); } }

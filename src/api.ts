@@ -196,7 +196,10 @@ export interface ShoppingList {
   collected: number;
   missing: number;
   score: number;
+  /** Best buys for the coins (known price within the balance), most points per 1K tax first. */
   entries: ShoppingEntry[];
+  /** Most valuable: every missing card that adds points, most first – priced or not. */
+  valuable?: ShoppingEntry[];
   /** The whole best selection from the user's own cards (side panel tab "Best selection"). */
   best: BestSelection | null;
   /** Cards left out because they cost more than the user's coins, and those coins. */
@@ -205,7 +208,7 @@ export interface ShoppingList {
   /** The best value next grade of this set (within the coins). */
   next_grade?: GradePlan | null;
   tokens_have?: number;
-  /** Cards left out because no price was seen for them yet (rarely bought – unrealistic). */
+  /** Cards in `valuable` without a price seen yet. */
   unpriced?: number;
   /** Every grade reached: buying adds score but no tokens, so nothing is suggested. */
   top_reached?: boolean;
@@ -433,7 +436,8 @@ const appApi = {
   toggleMissingList: () => (browserDev ? Promise.resolve() : invoke<void>("toggle_missing_list")),
   missingListVisible: () => (browserDev ? Promise.resolve(false) : invoke<boolean>("missing_list_visible")),
   uiPrefs: () =>
-    browserDev ? Promise.resolve<UiPrefs>({ mode: "panel", missing_side: "left", after_play: "remind" }) : invoke<UiPrefs>("ui_prefs"),
+    // the website demo shows the Champions tracker switched on (a weekend in progress)
+    browserDev ? Promise.resolve<UiPrefs>({ mode: "panel", missing_side: "left", after_play: "remind", champions: import.meta.env.MODE === "demo" }) : invoke<UiPrefs>("ui_prefs"),
   setOverlayMode: (mode: OverlayMode) =>
     browserDev ? Promise.resolve<UiPrefs>({ mode, missing_side: "left", after_play: "remind" }) : invoke<UiPrefs>("set_overlay_mode", { mode }),
   setMissingSide: (side: "left" | "right") =>
@@ -513,7 +517,7 @@ const appApi = {
   openDiagnostics: () => invoke<void>("open_diagnostics"),
   /** Champions tracker (beta): everything read from Champions matches (local data). */
   championsData: () =>
-    browserDev ? import("./devMock").then((m) => (new URLSearchParams(location.search).has("champs-empty") ? m.mockChampionsEmpty : m.mockChampions)) : invoke<ChampsData>("champions_data"),
+    browserDev ? import("./devMock").then((m) => (import.meta.env.MODE === "demo" ? m.demoChampions() : new URLSearchParams(location.search).has("champs-empty") ? m.mockChampionsEmpty : m.mockChampions)) : invoke<ChampsData>("champions_data"),
   setChampionsTracking: (on: boolean) =>
     browserDev ? Promise.resolve<UiPrefs>({ mode: "panel", missing_side: "left", after_play: "remind", champions: on }) : invoke<UiPrefs>("set_champions_tracking", { on }),
   clearChampions: () => (browserDev ? import("./devMock").then((m) => m.mockChampionsEmpty) : invoke<ChampsData>("clear_champions")),

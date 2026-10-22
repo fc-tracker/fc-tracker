@@ -62,7 +62,7 @@ html[data-view="launcher"] body {
 .ln-brand { font: 700 22px/1 var(--font-display); letter-spacing: 0.05em; text-transform: uppercase; }
 .ln-pill {
   display: inline-flex; align-items: center; gap: 9px; padding: 8px 16px;
-  background: var(--surface); border: 1px solid var(--line); font-size: 13px; font-weight: 600;
+  background: var(--surface); font-size: 13px; font-weight: 600;
   clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
 }
 .ln-dot { width: 8px; height: 8px; flex: none; background: var(--muted); transform: rotate(45deg); display: inline-block; }
@@ -148,7 +148,7 @@ html[data-view="launcher"] body {
 /* the angled box is drawn by ::before, so the info tip can reach outside the tile */
 .ln-tile { position: relative; isolation: isolate; display: flex; flex-direction: column; gap: 5px; padding: 10px 14px; min-width: 0; }
 .ln-tile::before {
-  content: ""; position: absolute; inset: 0; z-index: -1; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line);
+  content: ""; position: absolute; inset: 0; z-index: -1; background: var(--surface);
   clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
 }
 .ln-tile-label { color: var(--muted); font: 600 11px/1.2 var(--font-display); letter-spacing: 0.12em; text-transform: uppercase; }
@@ -203,11 +203,10 @@ html[data-view="launcher"] :focus-visible { outline: 2px solid var(--accent-2); 
 /* "$ Support me" in the launcher looks like the status pill next to it (same box, size and font) */
 html[data-view="launcher"] .support-btn {
   gap: 9px; padding: 8px 16px; font: 600 13px/1.2 var(--font-body); color: var(--text);
-  background: var(--surface); box-shadow: none; outline: 1px solid var(--line); outline-offset: -1px;
+  background: var(--surface); box-shadow: none;
   clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
 }
 html[data-view="launcher"] .support-btn:hover, html[data-view="launcher"] .support-btn.active { background: var(--surface-hi); color: var(--support-gold); }
-html[data-view="launcher"] .support-btn:focus-visible { outline: 2px solid var(--accent-2); }
 html[data-view="launcher"] .support-coin { width: 14px; height: 14px; font-size: 10px; }
 html[data-view="launcher"] .support-btn:hover .support-coin, html[data-view="launcher"] .support-btn.active .support-coin {
   background: radial-gradient(circle at 35% 30%, var(--support-gold-hi), var(--support-gold)); color: var(--support-ink);
@@ -331,8 +330,7 @@ html[data-view="launcher"] .support-btn:hover .support-coin, html[data-view="lau
    The game stand-in and the controllers depict things outside the app, so they keep their own
    colours; everything of ours (overlay, Buy next, prompt) is the real thing with theme tokens. */
 .cs {
-  position: relative; aspect-ratio: 16 / 10; overflow: hidden; border: 1px solid rgba(140, 160, 255, 0.18);
-  background:
+  position: relative; aspect-ratio: 16 / 10; overflow: hidden; background:
     radial-gradient(70% 70% at 85% 0%, rgba(141, 107, 255, 0.3), transparent 70%),
     radial-gradient(60% 60% at 0% 100%, rgba(63, 224, 184, 0.12), transparent 70%),
     linear-gradient(160deg, #141936, #0a0d20);

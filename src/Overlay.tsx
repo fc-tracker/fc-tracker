@@ -568,6 +568,13 @@ export default function Overlay() {
   const best = useBestValue(section !== "sets");
   const [valueCat, setValueCat] = useState<string>("all");
   const [valueKey, setValueKey] = useState<string | null>(null);
+  // the Champions view says whether its tracker is off (Enter switches it on then)
+  const [champsOff, setChampsOff] = useState(false);
+  useEffect(() => {
+    const on = (e: Event) => setChampsOff((e as CustomEvent<boolean | null>).detail === false);
+    window.addEventListener("fct:champions-state", on);
+    return () => window.removeEventListener("fct:champions-state", on);
+  }, []);
   const [zoom, setZoomState] = useState<number>(() => {
     const z = Number(readPref("fct.zoom", "1"));
     return ZOOMS.includes(z) ? z : 1;
@@ -682,8 +689,10 @@ export default function Overlay() {
   // The click-through missing-players list follows the set picked here.
   const selectedKey = selected?.key;
   useEffect(() => {
-    if (selectedKey && (catKey || setKey)) api.followSet(selectedKey).catch(() => {});
-  }, [selectedKey, catKey, setKey]);
+    // inside the view (full screen, FC-Tracker Web) the list always shows the set on screen – also
+    // the one opened first; the separate side panel follows a set only once it is picked here
+    if (selectedKey && (IS_WEB || mode === "full" || catKey || setKey)) api.followSet(selectedKey).catch(() => {});
+  }, [selectedKey, catKey, setKey, mode]);
 
   const changeMode = (m: OverlayMode) => {
     setMode(m);
@@ -965,6 +974,10 @@ export default function Overlay() {
   const pad = input === "keyboard" ? null : input;
   // "New" on the Champions tab until it has been opened once (the tracker ships switched off)
   const champsNew = section !== "champions" && !champsTabSeen();
+  // the footer names only what works in the view: Planner and Champions scroll, Enter switches
+  // the Champions tracker on while it is off
+  const scrolls = section === "planner" || section === "champions";
+  const enterHint: MessageKey | null = section === "planner" ? null : section === "champions" ? (champsOff ? "champs.hintSwitch" : null) : "overlay.hintOpen";
   const syncedAt = sync?.synced_at ?? null;
   const nextTheme = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
 
@@ -974,8 +987,8 @@ export default function Overlay() {
         <header className={`ov-header mode-${mode}`} data-tauri-drag-region={mode === "panel" ? true : undefined}>
           <div className="brand" data-tauri-drag-region={mode === "panel" ? true : undefined} title={mode === "panel" ? t("overlay.dragHint") : undefined}>
             <span className="brand-mark" aria-hidden="true" />
+            {/* only the name: the section tabs next to it say where you are (Sets, Champions …) */}
             <span className="brand-name" data-tauri-drag-region={mode === "panel" ? true : undefined}>FC-Tracker</span>
-            <span className="brand-section main-menu" data-tauri-drag-region={mode === "panel" ? true : undefined} aria-current="page">{t("overlay.gallery")}</span>
           </div>
           <nav className="sec-tabs" aria-label={t("overlay.gallery")}>
             {pad ? <PadButton id="l2" layout={pad} size={18} /> : <kbd className="key-hint">Tab</kbd>}
@@ -1221,23 +1234,23 @@ export default function Overlay() {
           {pad ? (
             <>
               <span><PadButton id="l2" layout={pad} size={20} /><PadButton id="r2" layout={pad} size={20} /> {t("overlay.hintSection")}</span>
-              <span><PadButton id="l1" layout={pad} size={20} /><PadButton id="r1" layout={pad} size={20} /> {t(section === "planner" ? "value.hintGoal" : "overlay.hintCategory")}</span>
-              <span><PadButton id="up" layout={pad} size={20} /><PadButton id="down" layout={pad} size={20} /> {t(section === "planner" ? "value.hintScroll" : "overlay.hintSet")}</span>
-              {section !== "planner" && <span><PadButton id="south" layout={pad} size={20} /> {t("overlay.hintOpen")}</span>}
+              {section !== "champions" && <span><PadButton id="l1" layout={pad} size={20} /><PadButton id="r1" layout={pad} size={20} /> {t(section === "planner" ? "value.hintGoal" : "overlay.hintCategory")}</span>}
+              <span><PadButton id="up" layout={pad} size={20} /><PadButton id="down" layout={pad} size={20} /> {t(scrolls ? "value.hintScroll" : "overlay.hintSet")}</span>
+              {enterHint && <span><PadButton id="south" layout={pad} size={20} /> {t(enterHint)}</span>}
               <span><PadButton id="east" layout={pad} size={20} /> {t("overlay.hintBack")}</span>
-              {section !== "planner" && <span><PadButton id="west" layout={pad} size={20} /> {t("overlay.hintInfo")}</span>}
+              {!scrolls && <span><PadButton id="west" layout={pad} size={20} /> {t("overlay.hintInfo")}</span>}
               {!IS_WEB && <span>{t("pad.hold")} <PadButton id="view" layout={pad} size={20} /> {t("overlay.hintToggle")}</span>}
               {!IS_WEB && <span>{t("pad.doubleTap")} <PadButton id="view" layout={pad} size={20} /> {t("overlay.hintMissing")}</span>}
             </>
           ) : (
             <>
               <span><kbd>Tab</kbd> {t("overlay.hintSection")}</span>
-              <span><kbd>Q</kbd> <kbd>E</kbd> {t(section === "planner" ? "value.hintGoal" : "overlay.hintCategory")}</span>
+              {section !== "champions" && <span><kbd>Q</kbd> <kbd>E</kbd> {t(section === "planner" ? "value.hintGoal" : "overlay.hintCategory")}</span>}
               <span><kbd>Ctrl</kbd>+<kbd>scroll</kbd> {t("overlay.zoom")}</span>
-              <span><kbd>↑</kbd> <kbd>↓</kbd> {t(section === "planner" ? "value.hintScroll" : "overlay.hintSet")}</span>
-              {section !== "planner" && <span><kbd>Enter</kbd> {t("overlay.hintOpen")}</span>}
+              <span><kbd>↑</kbd> <kbd>↓</kbd> {t(scrolls ? "value.hintScroll" : "overlay.hintSet")}</span>
+              {enterHint && <span><kbd>Enter</kbd> {t(enterHint)}</span>}
               <span><kbd>Esc</kbd> {t("overlay.hintBack")}</span>
-              {section !== "planner" && <span><kbd>I</kbd> {t("overlay.hintInfo")}</span>}
+              {!scrolls && <span><kbd>I</kbd> {t("overlay.hintInfo")}</span>}
               {!IS_WEB && <span><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> {t("overlay.hintToggle")}</span>}
               {!IS_WEB && <span><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd> {t("overlay.hintMissing")}</span>}
             </>

@@ -12,6 +12,7 @@ import MissingList from "./MissingList";
 import Overlay from "./Overlay";
 import Toast from "./Toast";
 import "./styles.css";
+import "./frame.css";
 
 // One bundle serves all windows: ?view=overlay (overlay), ?view=missing (missing-players list).
 const view = new URLSearchParams(window.location.search).get("view");

@@ -1,8 +1,9 @@
 # FC-Tracker
 
-A Windows companion for the EA SPORTS FC 27 Ultimate Team Gallery. It reads the Gallery screens you
-open in the game and shows, on top of the game, the best selection for each set, the swaps that gain
-points and the cards worth buying next.
+A Windows companion for EA SPORTS FC 27 Ultimate Team. It reads the Gallery screens you open in the
+game and shows, on top of the game, the best selection for each set, the swaps that gain points and
+the cards worth buying next – and its Champions tracker (beta, off until you switch it on) records
+your FUT Champions matches.
 
 This repository is the full source code of the app and its Chrome extension, published so anyone can
 check what it does. It is **source-available, not open source**: you may read it, build it and use it

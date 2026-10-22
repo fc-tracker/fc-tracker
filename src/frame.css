@@ -1,0 +1,115 @@
+/* Frames that follow the cut corners (launcher, overlay, side panel, FC-Tracker Web).
+   A border, outline or inset shadow on an element with a clip-path loses its line along every cut:
+   the clip removes the corner, the line doesn't turn with it. Here the frame is a ring drawn by
+   ::after with its own clip-path – the outer shape minus the same shape moved in by the line width
+   (evenodd) – so the line runs along the diagonals too. Tokens only.
+   --fr-c: the corner cut · --fr-w: line width · --fr-color: line colour. */
+
+/* ── box: top-left and bottom-right corners cut (the FC card shape) ── */
+/* :where() – no specificity, so a popup that is absolute / fixed (card menu, support panel, web
+   preview) keeps its own position; everything else gets the containing block the ring needs */
+:where(html[data-view="launcher"] .ln-pill,
+html[data-view="launcher"] .support-btn,
+.ln-tile,
+.cs,
+.support-panel,
+.card-menu,
+.bv-tab.top,
+.mini-card.holo,
+.mini-card.empty,
+.ml-rating.holo,
+.wb-preview) {
+  position: relative;
+}
+html[data-view="launcher"] .ln-pill::after,
+html[data-view="launcher"] .support-btn::after,
+.ln-tile::after,
+.cs::after,
+.support-panel::after,
+.card-menu::after,
+.bv-tab.top::after,
+.mini-card.holo::after,
+.mini-card.empty::after,
+.ml-rating.holo::after,
+.wb-preview::after {
+  --i: calc(var(--fr-w, 1px) * 0.414); /* the diagonal moves in by w·(√2 − 1) */
+  content: ""; position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  background: var(--fr-color, var(--line));
+  clip-path: polygon(evenodd,
+    var(--fr-c) 0, 100% 0, 100% calc(100% - var(--fr-c)), calc(100% - var(--fr-c)) 100%, 0 100%, 0 var(--fr-c), var(--fr-c) 0,
+    calc(var(--fr-c) + var(--i)) var(--fr-w, 1px),
+    calc(100% - var(--fr-w, 1px)) var(--fr-w, 1px),
+    calc(100% - var(--fr-w, 1px)) calc(100% - var(--fr-c) - var(--i)),
+    calc(100% - var(--fr-c) - var(--i)) calc(100% - var(--fr-w, 1px)),
+    var(--fr-w, 1px) calc(100% - var(--fr-w, 1px)),
+    var(--fr-w, 1px) calc(var(--fr-c) + var(--i)),
+    calc(var(--fr-c) + var(--i)) var(--fr-w, 1px));
+}
+
+/* ── slant: a parallelogram (top-left and bottom-right edges lean) ── */
+:where(.ml-side, .ml-tabs, .swap-card.holo, .wb-badge, .wb-club, .wb-btn.ghost) { position: relative; }
+.ml-side::after, .ml-tabs::after, .swap-card.holo::after, .wb-badge::after, .wb-club::after, .wb-btn.ghost::after {
+  content: ""; position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  background: var(--fr-color, var(--line));
+  clip-path: polygon(evenodd,
+    var(--fr-c) 0, 100% 0, calc(100% - var(--fr-c)) 100%, 0 100%, var(--fr-c) 0,
+    calc(var(--fr-c) + var(--fr-w, 1px) * 0.8) var(--fr-w, 1px),
+    calc(100% - var(--fr-w, 1px) * 1.25) var(--fr-w, 1px),
+    calc(100% - var(--fr-c) - var(--fr-w, 1px) * 0.8) calc(100% - var(--fr-w, 1px)),
+    calc(var(--fr-w, 1px) * 1.25) calc(100% - var(--fr-w, 1px)),
+    calc(var(--fr-c) + var(--fr-w, 1px) * 0.8) var(--fr-w, 1px));
+}
+
+/* ── mirrored box: top-right and bottom-left corners cut ── */
+:where(.wb-source) { position: relative; }
+.wb-source::after {
+  --i: calc(var(--fr-w, 1px) * 0.414);
+  content: ""; position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  background: var(--fr-color, var(--line));
+  clip-path: polygon(evenodd,
+    0 0, calc(100% - var(--fr-c)) 0, 100% var(--fr-c), 100% 100%, var(--fr-c) 100%, 0 calc(100% - var(--fr-c)), 0 0,
+    var(--fr-w, 1px) var(--fr-w, 1px),
+    calc(100% - var(--fr-c) - var(--i)) var(--fr-w, 1px),
+    calc(100% - var(--fr-w, 1px)) calc(var(--fr-c) + var(--i)),
+    calc(100% - var(--fr-w, 1px)) calc(100% - var(--fr-w, 1px)),
+    calc(var(--fr-c) + var(--i)) calc(100% - var(--fr-w, 1px)),
+    var(--fr-w, 1px) calc(100% - var(--fr-c) - var(--i)),
+    var(--fr-w, 1px) var(--fr-w, 1px));
+}
+
+/* ── each element's cut, width and colour ── */
+html[data-view="launcher"] .ln-pill, html[data-view="launcher"] .support-btn, .ln-tile, .card-menu, .bv-tab.top, .mini-card.empty { --fr-c: 8px; }
+.bv-tab.top { --fr-color: var(--accent-2); }
+.mini-card.holo { --fr-c: 8px; --fr-w: 2px; --fr-color: var(--tag-special); }
+.ml-rating.holo { --fr-c: 5px; --fr-w: 2px; --fr-color: var(--tag-special); }
+.cs { --fr-c: 16px; --fr-color: rgba(140, 160, 255, 0.18); }
+.support-panel { --fr-c: var(--cut, 12px); --fr-color: color-mix(in srgb, var(--support-gold) 35%, transparent); }
+.wb-preview { --fr-c: 10px; }
+.ml-side, .ml-tabs, .wb-badge { --fr-c: 5px; }
+.wb-badge { --fr-color: var(--accent-2); }
+.wb-club { --fr-c: 6px; }
+.swap-card.holo { --fr-c: 8px; --fr-color: var(--tag-special); }
+.wb-btn.ghost { --fr-c: 8px; }
+.wb-source { --fr-c: 12px; }
+.wb-source:hover, .wb-source:focus-visible { --fr-color: var(--accent-2); }
+
+/* the launcher pills: one line colour, a brighter one on hover / keyboard focus */
+html[data-view="launcher"] .support-btn:hover, html[data-view="launcher"] .support-btn.active,
+html[data-view="launcher"] .support-btn:focus-visible { --fr-color: color-mix(in srgb, var(--support-gold) 70%, transparent); }
+
+/* Keyboard focus on cut elements: the outline sits inside, where the clip can't remove it. */
+html[data-view="launcher"] :focus-visible,
+.ov button:focus-visible,
+.mini-card:focus-visible,
+.wb-club:focus-visible,
+.wb-btn:focus-visible { outline-offset: -3px; }
+html[data-view="launcher"] .support-btn:focus-visible { outline: none; }
+
+/* the selected grade tab: its bar stops before the cut corner instead of running into it */
+.bv-tab.active { box-shadow: none; }
+.bv-tab.active::before { content: ""; position: absolute; left: 0; right: 8px; bottom: 0; height: 3px; background: var(--accent); pointer-events: none; }
+.bv-tab { position: relative; }
+
+/* the launcher's top-right pair ("$ Support me" · "FC 27 not running"): exactly the same box */
+html[data-view="launcher"] .ln-pill,
+html[data-view="launcher"] .support-btn { box-sizing: border-box; height: 36px; padding: 0 16px; line-height: 1; font-size: 13px; font-weight: 600; }

@@ -1147,7 +1147,12 @@ pub struct ShoppingList {
     pub missing: usize,
     /// Best score with the cards the user has now.
     pub score: u64,
+    /// Best buys for the coins: a known price within the balance, most points per 1,000 tax first.
     pub entries: Vec<ShoppingEntry>,
+    /// Most valuable: every missing card that adds points, most points first – priced or not, within
+    /// the coins or not (a card nobody has seen a price for yet is still worth knowing about).
+    #[serde(default)]
+    pub valuable: Vec<ShoppingEntry>,
     /// The best selection from the user's own cards (the side panel's "Best selection" tab).
     pub best: Option<BestSelection>,
     /// Cards left out because their price is above the user's coins, and those coins.
@@ -1157,7 +1162,7 @@ pub struct ShoppingList {
     /// The best value next grade of this set (cheapest tokens per tax coin within the coins).
     pub next_grade: Option<GradePlan>,
     pub tokens_have: u64,
-    /// Cards left out because nobody has seen a price for them yet (rarely bought – unrealistic).
+    /// Missing cards that add points but have no price seen yet (only in `valuable`).
     #[serde(default)]
     pub unpriced: usize,
     /// Every grade of the set is reached: a bought card adds score but no tokens, so none is shown.
@@ -1368,7 +1373,8 @@ pub fn shopping_list(
     // Only realistic buys: a known price (EA's market average), never above the coins, and none
     // at all once every grade is reached (more score, no tokens). Best value first: points per
     // 1,000 coins of tax – a cheap card that does the job beats a star that does a little more.
-    let unpriced = entries.iter().filter(|e| e.card.price.is_none()).count();
+    let mut valuable: Vec<ShoppingEntry> = entries.iter().filter(|e| e.gain > 0).cloned().collect();
+    let unpriced = valuable.iter().filter(|e| e.card.price.is_none()).count();
     entries.retain(|e| e.card.price.is_some());
     let before = entries.len();
     entries.retain(|e| balance.is_none_or(|b| e.card.price.is_none_or(|p| p <= b)));
@@ -1377,7 +1383,10 @@ pub fn shopping_list(
     let top_reached = !value.plans.is_empty() && value.plans.iter().all(|p| p.state == "reached");
     if top_reached {
         entries.clear();
+        valuable.clear();
     }
+    valuable.sort_by(|a, b| b.gain.cmp(&a.gain).then(a.card.price.unwrap_or(u64::MAX).cmp(&b.card.price.unwrap_or(u64::MAX))));
+    valuable.truncate(SHOPPING_SHOWN);
     entries.retain(|e| e.gain > 0);
     entries.sort_by(|a, b| b.per_k.unwrap_or(0).cmp(&a.per_k.unwrap_or(0)).then(b.gain.cmp(&a.gain)));
     entries.truncate(SHOPPING_SHOWN);
@@ -1430,6 +1439,7 @@ pub fn shopping_list(
         missing: missing.len(),
         score: current,
         entries,
+        valuable,
         best,
         over_budget,
         balance,
@@ -2151,6 +2161,9 @@ mod tests {
         let ids: Vec<u64> = list.entries.iter().map(|e| e.card.def_id).collect();
         assert_eq!(ids, vec![102, 100], "best value first, nothing that adds nothing, nothing without a price");
         assert_eq!(list.unpriced, 1);
+        // Most valuable keeps every card that adds points – the unpriced star first, nothing that adds nothing.
+        let ids: Vec<u64> = list.valuable.iter().map(|e| e.card.def_id).collect();
+        assert_eq!(ids, vec![103, 100, 102], "most points first, priced or not");
         // 4,900 base (replaces a 100) plus the tag bonus on it – but no first-owner bonus.
         let gain = list.entries[1].gain;
         assert!(gain > 4900 && gain < 4900 * 2, "{gain}");

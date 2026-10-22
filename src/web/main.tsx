@@ -19,6 +19,7 @@ import { startPrices } from "../prices";
 import * as reader from "./reader";
 import "../overlay.css";
 import "./web.css";
+import "../frame.css";
 
 const lang = new URLSearchParams(location.search).get("lang");
 if (lang && lang in LOCALES) setLocale(lang as Locale);

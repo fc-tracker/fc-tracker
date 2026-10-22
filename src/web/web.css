@@ -31,7 +31,7 @@ html.web body { font-family: var(--font-body); color: var(--text); }
 .wb-brand-name { font: 700 22px/1 var(--font-display); letter-spacing: 0.04em; text-transform: uppercase; }
 .wb-badge {
   font: 700 11px/1 var(--font-body); letter-spacing: 0.08em; text-transform: uppercase;
-  padding: 4px 7px; color: var(--accent-2); box-shadow: inset 0 0 0 1px var(--accent-2);
+  padding: 4px 7px; color: var(--accent-2);
   clip-path: polygon(5px 0, 100% 0, calc(100% - 5px) 100%, 0 100%);
 }
 .wb-status { flex: 1; min-width: 0; margin: 0; display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -48,7 +48,7 @@ html.web body { font-family: var(--font-body); color: var(--text); }
 .wb-club {
   all: unset; cursor: pointer; flex: none; display: inline-flex; align-items: center; gap: 8px;
   padding: 7px 12px; font: 600 13px/1 var(--font-body); color: var(--text); text-decoration: none;
-  background: var(--surface); box-shadow: inset 0 0 0 1px var(--line);
+  background: var(--surface);
   clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
 }
 .wb-club:hover, .wb-club:focus-visible { background: var(--surface-hi); }
@@ -61,12 +61,12 @@ html.web body { font-family: var(--font-body); color: var(--text); }
 
 .wb-btn {
   all: unset; cursor: pointer; box-sizing: border-box; display: inline-flex; align-items: center; gap: 8px;
-  padding: 9px 16px; font: 700 14px/1 var(--font-body); color: var(--text); background: var(--accent);
+  padding: 9px 16px; font: 700 14px/1 var(--font-body); color: var(--on-accent); background: var(--accent);
   clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
 }
 .wb-btn:hover, .wb-btn:focus-visible { filter: brightness(1.12); }
 .wb-btn:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
-.wb-btn.ghost { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+.wb-btn.ghost { background: var(--surface); color: var(--text); }
 .wb-btn.app { background: var(--accent-2); color: var(--bg); }
 .wb-btn:disabled { opacity: 0.45; cursor: default; filter: none; }
 .wb-link { all: unset; cursor: pointer; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
@@ -80,7 +80,7 @@ html.web body { font-family: var(--font-body); color: var(--text); }
 /* live preview with the reader's boxes (bottom left, above the footer) */
 .wb-preview {
   position: fixed; left: 18px; bottom: 44px; z-index: 20; width: 300px; aspect-ratio: 16 / 9;
-  background: var(--bg); box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5), inset 0 0 0 1px var(--line);
+  background: var(--bg); box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
   clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
 }
 .wb-preview video, .wb-preview canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
@@ -110,10 +110,10 @@ html.web body { font-family: var(--font-body); color: var(--text); }
 .wb-sources { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
 .wb-source {
   all: unset; cursor: pointer; box-sizing: border-box; display: grid; gap: 4px; padding: 14px 16px;
-  background: var(--surface); box-shadow: inset 0 0 0 1px var(--line);
+  background: var(--surface);
   clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
 }
-.wb-source:hover, .wb-source:focus-visible { background: var(--surface-hi); box-shadow: inset 0 0 0 1px var(--accent-2); }
+.wb-source:hover, .wb-source:focus-visible { background: var(--surface-hi); }
 .wb-source b { font: 700 20px/1.1 var(--font-display); text-transform: uppercase; }
 .wb-source span { color: var(--muted); font-size: 13px; line-height: 1.4; }
 .wb-icon { width: 26px; height: 26px; color: var(--accent-2); }

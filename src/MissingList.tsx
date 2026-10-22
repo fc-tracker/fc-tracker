@@ -5,13 +5,26 @@ import { rarity } from "./rarities";
 import { t, useLocale, type MessageKey } from "./i18n";
 import { Gem } from "./icons";
 import { useTheme } from "./theme";
+import { ShoppingPanel } from "./shopping";
 import "./overlay.css";
 
-const SHOWN = 18;
+/** Rows of "Best for your coins": the side window can't scroll (it never takes the mouse), so it
+ *  keeps the top few and lets the most valuable fill the rest; the overlay and web scroll all. */
+const FOR_COINS_WINDOW = 5;
+const SHOWN_EMBEDDED = 30;
 /** From this many cards the best selection uses dense rows (30-slot league sets fit). */
 const DENSE_FROM = 16;
 
-type Tab = "best" | "buy";
+type Tab = "best" | "buy" | "shop";
+
+/** The overlay's last tab (Overlay.tsx keeps it in fct.section) – same origin, so readable here. */
+function lastSection(): string | null {
+  try {
+    return localStorage.getItem("fct.section");
+  } catch {
+    return null;
+  }
+}
 
 function tagName(id: number, fallback: string) {
   const key = `tag.${id}` as MessageKey;
@@ -44,7 +57,7 @@ export default function MissingList({ embedded = false }: { embedded?: boolean }
   const [loading, setLoading] = useState(true);
   const [side, setSide] = useState<"left" | "right">("left");
   // A tab picked by hand holds for that set; another set starts from the automatic choice.
-  const [picked, setPicked] = useState<{ key: string; tab: Tab } | null>(null);
+  const [picked, setPicked] = useState<{ key: string; tab: Tab } | null>(() => (lastSection() === "planner" ? { key: "", tab: "shop" } : null));
   useEffect(() => {
     api.uiPrefs().then((p) => setSide(p.missing_side)).catch(() => {});
   }, []);
@@ -79,7 +92,8 @@ export default function MissingList({ embedded = false }: { embedded?: boolean }
       // opened again: the tab follows what the app knows (a hand-picked tab doesn't stick)
       events.onMissingVisible((v) => {
         if (v) {
-          setPicked(null);
+          // opened from the Planner (the overlay's last tab): the shopping list, else what the app knows
+          setPicked(lastSection() === "planner" ? { key: "", tab: "shop" } : null);
           load();
         }
       }),
@@ -92,8 +106,8 @@ export default function MissingList({ embedded = false }: { embedded?: boolean }
 
   if (!list) {
     return (
-      <div className="ml">
-        {sideSwitch}
+      <div className={`ml ${embedded || IS_WEB ? "embedded" : ""}`}>
+        <div className="ml-top">{sideSwitch}</div>
         <div className="ml-frame">
           {loading ? <p className="ml-empty ml-loading">{t("progress.calculating")}</p> : <p className="ml-empty">{t("missing.empty")}</p>}
         </div>
@@ -101,11 +115,13 @@ export default function MissingList({ embedded = false }: { embedded?: boolean }
     );
   }
 
-  const tab: Tab = picked?.key === list.key ? picked.tab : autoTab(list);
+  // The shopping list is the whole plan, not one set – once picked it stays while sets change.
+  const tab: Tab = picked?.tab === "shop" ? "shop" : picked?.key === list.key ? picked.tab : autoTab(list);
   const choose = (next: Tab) => setPicked({ key: list.key, tab: next });
 
   return (
-    <div className="ml">
+    <div className={`ml ${embedded || IS_WEB ? "embedded" : ""}`}>
+      <div className="ml-top">
       <div className="ml-tabs" role="tablist" aria-label={t("best.tabs")}>
         <button role="tab" aria-selected={tab === "best"} className={tab === "best" ? "on" : ""} onClick={() => choose("best")} disabled={!list.best}>
           {t("best.tab")}
@@ -113,9 +129,13 @@ export default function MissingList({ embedded = false }: { embedded?: boolean }
         <button role="tab" aria-selected={tab === "buy"} className={tab === "buy" ? "on" : ""} onClick={() => choose("buy")}>
           {t("missing.title")}
         </button>
+        <button role="tab" aria-selected={tab === "shop"} className={tab === "shop" ? "on" : ""} onClick={() => choose("shop")}>
+          {t("missing.shopTab")}
+        </button>
       </div>
       {sideSwitch}
-      {tab === "best" && list.best ? <Best list={list} best={list.best} /> : <BuyNext list={list} />}
+      </div>
+      {tab === "shop" ? <ShoppingPanel /> : tab === "best" && list.best ? <Best list={list} best={list.best} /> : <BuyNext list={list} forCoinsShown={IS_WEB || embedded ? SHOWN_EMBEDDED : FOR_COINS_WINDOW} />}
     </div>
   );
 }
@@ -249,8 +269,44 @@ function Coins({ card, perK = null }: { card: GalleryCardView; perK?: number | n
   );
 }
 
-function BuyNext({ list }: { list: ShoppingList }) {
-  const rows = list.entries.slice(0, SHOWN);
+function BuyRow({ e, i }: { e: ShoppingList["entries"][number]; i: number }) {
+  return (
+    <li className={`ml-row ${e.got ? "got" : e.gain > 0 ? "" : "no-gain"}`} style={{ animationDelay: `${i * 25}ms` }}>
+      <Rating card={e.card} />
+      <span className="ml-name">
+        {e.card.name ?? "?"}
+        <small>{e.card.position ?? ""}</small>
+      </span>
+      <span className="ml-gain">
+        {e.gain > 0 ? (
+          <>
+            <Gem size={9} />+{compact(e.gain)}
+          </>
+        ) : (
+          "–"
+        )}
+      </span>
+      <span className="ml-price">
+        {e.got ? (
+          <span className="ml-got">✓ {t(e.got_source === "pack" ? "missing.gotPack" : "missing.got")}</span>
+        ) : e.card.price ? (
+          <Coins card={e.card} perK={e.per_k ?? null} />
+        ) : (
+          <span className="ml-noprice">{t("missing.noPrice")}</span>
+        )}
+      </span>
+    </li>
+  );
+}
+
+/** Buy next: the best buys for the coins (known price, most points per 1,000 tax), then the most
+ *  valuable cards by points – priced or not, so a set whose cards nobody has priced yet still
+ *  shows what is worth looking for. */
+function BuyNext({ list, forCoinsShown }: { list: ShoppingList; forCoinsShown: number }) {
+  // in the side window the most valuable fill whatever height is left (the last rows fade out)
+  const forCoins = list.entries.slice(0, forCoinsShown);
+  const valuable = (list.valuable ?? []).slice(0, SHOWN_EMBEDDED);
+  const done = list.top_reached || list.missing === 0;
   return (
     <div className="ml-frame" key={`buy-${list.key}`}>
       <header className="ml-head">
@@ -272,51 +328,46 @@ function BuyNext({ list }: { list: ShoppingList }) {
         )}
       </header>
 
-      {rows.length === 0 ? (
-        <p className="ml-empty">
-          {t(list.top_reached ? "missing.topReached" : list.missing === 0 ? "missing.complete" : (list.unpriced ?? 0) > 0 ? "missing.nonePriced" : "missing.noValue")}
-        </p>
+      {done ? (
+        <p className="ml-empty">{t(list.top_reached ? "missing.topReached" : "missing.complete")}</p>
       ) : (
-        <ol className="ml-list">
-          {rows.map((e, i) => (
-            <li
-              key={e.card.def_id}
-              className={`ml-row ${e.got ? "got" : e.gain > 0 ? "" : "no-gain"}`}
-              style={{ animationDelay: `${i * 25}ms` }}
-            >
-              <Rating card={e.card} />
-              <span className="ml-name">
-                {e.card.name ?? "?"}
-                <small>{e.card.position ?? ""}</small>
-              </span>
-              <span className="ml-gain">
-                {e.gain > 0 ? (
-                  <>
-                    <Gem size={9} />+{compact(e.gain)}
-                  </>
-                ) : (
-                  "–"
-                )}
-              </span>
-              <span className="ml-price">
-                {e.got ? (
-                  <span className="ml-got">
-                    ✓ {t(e.got_source === "pack" ? "missing.gotPack" : "missing.got")}
-                  </span>
-                ) : (
-                  <Coins card={e.card} perK={e.per_k ?? null} />
-                )}
-              </span>
-            </li>
-          ))}
-        </ol>
+        <div className="ml-scroll">
+          <section className="ml-sec">
+            <h2>
+              {t("missing.forCoins")}
+              <small>{list.balance != null ? t("missing.forCoinsSub", { coins: compact(list.balance) }) : t("missing.forCoinsSubNoBalance")}</small>
+            </h2>
+            {forCoins.length > 0 ? (
+              <ol className="ml-list">
+                {forCoins.map((e, i) => (
+                  <BuyRow key={e.card.def_id} e={e} i={i} />
+                ))}
+              </ol>
+            ) : (
+              <p className="ml-none">{t((list.unpriced ?? 0) > 0 ? "missing.nonePriced" : "missing.noValue")}</p>
+            )}
+          </section>
+          {valuable.length > 0 && (
+            <section className="ml-sec">
+              <h2>
+                {t("missing.valuable")}
+                <small>{t("missing.valuableSub")}</small>
+              </h2>
+              <ol className="ml-list">
+                {valuable.map((e, i) => (
+                  <BuyRow key={e.card.def_id} e={e} i={i + forCoins.length} />
+                ))}
+              </ol>
+            </section>
+          )}
+        </div>
       )}
 
       <footer className="ml-foot">
         {list.entries.some((e) => e.got) && <span className="ml-got-hint">✓ {t("missing.gotHint")}</span>}
         {(list.over_budget ?? 0) > 0 && list.balance != null && <span>{t("missing.overBudget", { count: list.over_budget ?? 0, coins: num(list.balance) })}</span>}
-        {!list.top_reached && (list.unpriced ?? 0) > 0 && <span>{t("missing.unpricedOut", { count: list.unpriced ?? 0 })}</span>}
-        {rows.some((e) => !e.got && e.card.price) && <span>{t("missing.priceNote")}</span>}
+        {!done && (list.unpriced ?? 0) > 0 && <span>{t("missing.unpricedIn", { count: list.unpriced ?? 0 })}</span>}
+        <span>{t("missing.priceNote")}</span>
         <span>{t("missing.note")}</span>
       </footer>
     </div>
