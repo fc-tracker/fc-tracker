@@ -582,5 +582,6 @@
   "value.autoUpdate": "El plan sigue a tu club: una carta comprada y colocada sale de la lista tras la siguiente sincronización.",
   "value.needsAtOnce": "necesita {{coins}} a la vez",
   "value.zeroTokens": "Completa el set con nota {{grade}}: sin tokens, pero el set más barato que te queda.",
-  "value.showAll": "Ver las {{count}}"
+  "value.showAll": "Ver las {{count}}",
+  "value.topGrade": "Lo más alto con tus monedas: {{grade}} · necesita ≈{{coins}} a la vez · {{tokens}} tokens en total"
 }

@@ -114,6 +114,8 @@ export function GradeCosts({ value, compactView = false }: { value: SetValue; co
   useEffect(() => setPick(start()), [value.key]); // eslint-disable-line react-hooks/exhaustive-deps
   const p = value.plans[pick];
   const next = value.plans.find((g) => g.state !== "reached");
+  // the highest grade the coins reach (or the club already holds) – the top score within the coins
+  const top = [...value.plans].reverse().find((g) => g.state === "buy" || g.state === "reached");
   return (
     <section className={`detail-section bv-grades ${compactView ? "compact" : ""}`}>
       <h2>
@@ -130,10 +132,15 @@ export function GradeCosts({ value, compactView = false }: { value: SetValue; co
         ) : (
           <span className="ok">{t("value.allReached")}</span>
         )}
+        {top && top.state === "buy" && (
+          <button className="bv-top" onClick={() => setPick(value.plans.indexOf(top))}>
+            {t("value.topGrade", { grade: top.grade, coins: compact(top.coins_needed), tokens: top.tokens_total })}
+          </button>
+        )}
       </p>
       <div className="bv-tabs" role="tablist">
         {value.plans.map((g, i) => (
-          <button key={g.grade} role="tab" aria-selected={i === pick} className={`bv-tab state-${g.state} ${i === pick ? "active" : ""}`} onClick={() => setPick(i)}>
+          <button key={g.grade} role="tab" aria-selected={i === pick} className={`bv-tab state-${g.state} ${i === pick ? "active" : ""} ${g === top ? "top" : ""}`} onClick={() => setPick(i)}>
             <GradeDiamond grade={g.grade} size={26} />
             <span className="bv-tab-cost">
               {g.state === "reached" ? "✓" : g.state === "buy" ? <Coins value={g.coins_needed} approx /> : t(STATE_KEY[g.state])}

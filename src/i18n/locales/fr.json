@@ -582,5 +582,6 @@
   "value.autoUpdate": "Le plan suit ton club : une carte achetée et placée quitte la liste après la prochaine synchro.",
   "value.needsAtOnce": "demande {{coins}} d'un coup",
   "value.zeroTokens": "Termine le set à la note {{grade}} – pas de jetons, mais le set le moins cher qui reste dans tes crédits.",
-  "value.showAll": "Voir les {{count}}"
+  "value.showAll": "Voir les {{count}}",
+  "value.topGrade": "Le plus haut dans tes crédits : {{grade}} · demande ≈{{coins}} d'un coup · {{tokens}} jetons au total"
 }

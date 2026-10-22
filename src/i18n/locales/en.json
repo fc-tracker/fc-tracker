@@ -582,5 +582,6 @@
   "value.autoUpdate": "The plan follows your club: a card you bought and placed leaves the list after the next sync.",
   "value.needsAtOnce": "needs {{coins}} at once",
   "value.zeroTokens": "Completes the set at grade {{grade}} – no tokens, but the cheapest set left within your coins.",
-  "value.showAll": "Show all {{count}}"
+  "value.showAll": "Show all {{count}}",
+  "value.topGrade": "Highest within your coins: {{grade}} · needs ≈{{coins}} at once · {{tokens}} tokens in total"
 }

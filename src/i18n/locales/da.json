@@ -582,5 +582,6 @@
   "value.autoUpdate": "Planen følger din klub: et kort, du har købt og sat ind, forsvinder fra listen efter næste sync.",
   "value.needsAtOnce": "kræver {{coins}} på én gang",
   "value.zeroTokens": "Fuldender sættet på grade {{grade}} – ingen tokens, men det billigste sæt tilbage inden for dine coins.",
-  "value.showAll": "Vis alle {{count}}"
+  "value.showAll": "Vis alle {{count}}",
+  "value.topGrade": "Højest inden for dine coins: {{grade}} · kræver ≈{{coins}} på én gang · {{tokens}} tokens i alt"
 }
