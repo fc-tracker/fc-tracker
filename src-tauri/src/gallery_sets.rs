@@ -2343,3 +2343,31 @@ mod budget_tests {
         assert!(v.plans.iter().flat_map(|p| p.buys.iter()).all(|b| b.card.def_id != 900));
     }
 }
+
+#[cfg(test)]
+mod value_real_prices {
+    /// Real data, real prices only (own sightings + the shared pool), the real coin balance:
+    /// `cargo test --release --lib value_real_prices -- --ignored --nocapture`
+    #[test]
+    #[ignore]
+    fn value_with_real_prices_and_coins() {
+        let store = crate::store::Store::copy_of_user_data();
+        let snap = &store.snapshot;
+        println!("coins: {:?}  platform: {:?}  prices: {}", snap.coins, snap.platform, snap.prices.len());
+        let balance = snap.coins.map(|[c, _]| c);
+        assert!(balance.is_some(), "the coin balance must be known from EA's user info");
+        let fo = super::FirstOwnerInfo { known: &snap.first_owner, manual: &snap.first_owner_manual, scanned: &snap.first_owner_scanned, club_no: &snap.first_owner_club_no };
+        let values = super::all_values(&snap.gallery, &fo, &snap.team_links, &snap.set_obs, &snap.prices, balance);
+        let count = |s: &str| values.iter().flat_map(|v| v.plans.iter()).filter(|p| p.state == s).count();
+        println!("grades: reached {} · buy {} · too dear {} · no prices {} · not possible {}", count("reached"), count("buy"), count("over_budget"), count("unpriced"), count("not_possible"));
+        for v in &values {
+            for p in v.plans.iter().filter(|p| p.state == "buy") {
+                assert!(p.coins_needed <= balance.unwrap());
+                println!("  {} → {}: {} buys, tax {}, coins needed {}", v.name, p.grade, p.buys.len(), p.tax, p.coins_needed);
+            }
+        }
+        let plan = super::token_plan(&values, None, balance, 200);
+        println!("plan: +{} tokens, tax {}, peak {} (balance {:?})", plan.tokens, plan.tax, plan.coins_needed, balance);
+        assert!(plan.coins_needed <= balance.unwrap());
+    }
+}

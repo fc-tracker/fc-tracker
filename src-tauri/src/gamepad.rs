@@ -280,3 +280,16 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+mod section_tests {
+    use super::*;
+
+    #[test]
+    fn triggers_switch_the_overlay_tabs_shoulders_the_categories() {
+        assert_eq!(nav(Button::LeftTrigger2), Some("prev_section"));
+        assert_eq!(nav(Button::RightTrigger2), Some("next_section"));
+        assert_eq!(nav(Button::LeftTrigger), Some("prev_category"));
+        assert_eq!(nav(Button::RightTrigger), Some("next_category"));
+    }
+}
