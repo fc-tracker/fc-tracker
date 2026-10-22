@@ -157,5 +157,41 @@
   },
   "openWeb": {
     "message": "Åbn FC-Tracker Web"
+  },
+  "getApp": {
+    "message": "Hent appen"
+  },
+  "openFailed": {
+    "message": "FC-Tracker åbnede ikke – er den installeret på denne PC? Hent den på fc-tracker.com/download."
+  },
+  "laneClub": {
+    "message": "klub $COUNT$ spillere",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "laneGallery": {
+    "message": "Gallery $DONE$/$TOTAL$",
+    "placeholders": {
+      "done": {
+        "content": "$1"
+      },
+      "total": {
+        "content": "$2"
+      }
+    }
+  },
+  "laneExtras": {
+    "message": "SBC'er m.m. $DONE$/$TOTAL$",
+    "placeholders": {
+      "done": {
+        "content": "$1"
+      },
+      "total": {
+        "content": "$2"
+      }
+    }
   }
 }

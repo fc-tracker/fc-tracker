@@ -157,5 +157,41 @@
   },
   "openWeb": {
     "message": "Ouvrir FC-Tracker Web"
+  },
+  "getApp": {
+    "message": "Obtenir l'app"
+  },
+  "openFailed": {
+    "message": "FC-Tracker ne s'est pas ouvert – est-il installé sur ce PC ? Télécharge-le sur fc-tracker.com/download."
+  },
+  "laneClub": {
+    "message": "club $COUNT$ joueurs",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "laneGallery": {
+    "message": "Galerie $DONE$/$TOTAL$",
+    "placeholders": {
+      "done": {
+        "content": "$1"
+      },
+      "total": {
+        "content": "$2"
+      }
+    }
+  },
+  "laneExtras": {
+    "message": "DCE et plus $DONE$/$TOTAL$",
+    "placeholders": {
+      "done": {
+        "content": "$1"
+      },
+      "total": {
+        "content": "$2"
+      }
+    }
   }
 }

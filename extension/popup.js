@@ -23,6 +23,12 @@ async function refresh() {
   $("pair").hidden = !running || authorized;
   $("unpairBtn").hidden = !authorized;
   $("openAppBtn").hidden = !!running;
+  // Never seen the app on this PC (the extension came first): get it instead of opening it.
+  const status = await send({ type: "status" });
+  appSeen = !!running || !!status?.appSeen;
+  appFailed = !running && !!status?.openFailed;
+  $("openAppBtn").textContent = msg(appSeen && !appFailed ? "openApp" : "getApp");
+  if (appFailed) $("error").textContent = msg("openFailed");
   const syncedAt = Number(res?.synced_at ?? 0);
   $("lastSync").hidden = !authorized || !syncedAt;
   if (syncedAt) $("lastSync").textContent = msg("lastSync", [ago(syncedAt)]);
@@ -78,7 +84,12 @@ $("updateBtn").onclick = async () => {
   result.textContent = msg(key);
 };
 
-$("openAppBtn").onclick = () => chrome.tabs.create({ url: "fctracker://open" });
+const DOWNLOAD = "https://www.fc-tracker.com/download";
+let appSeen = true;
+let appFailed = false;
+// The background opens the app and watches for it (the popup closes when a tab opens); if it
+// doesn't answer, the next popup offers the download instead.
+$("openAppBtn").onclick = () => (!appSeen || appFailed ? chrome.tabs.create({ url: DOWNLOAD }) : send({ type: "openApp" }));
 // FC-Tracker Web, told which extension this is (a copy from the .zip has its own id)
 $("openWebBtn").onclick = () => chrome.tabs.create({ url: `https://www.fc-tracker.com/web?ext=${chrome.runtime.id}` });
 

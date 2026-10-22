@@ -3,15 +3,18 @@
 // 1. Passive: listens to responses the Web App fetches itself (used to map endpoints).
 // 2. Active club sync: on command from relay.js, pages through the club using the Web App's
 //    own services (services.Club.search) – the same calls the Club screen makes – and reads the
-//    Gallery card list per league set (services.Item.searchConceptItems). One page at a time,
-//    about one a second, to keep the load on EA's servers low.
+//    Gallery card list per league set (services.Item.searchConceptItems), and opens the rest of
+//    the Web App's screens the same way (SBCs, objectives, season pass, Champions / Rivals / Squad
+//    Battles, leaderboards, evolutions, squads, store) – read only. Three calm lanes side by side,
+//    each about a request a second, to keep the load on EA's servers low.
 // The transfer market is never searched, and nothing is bought, sold or listed. Prices come only
 // from EA's own `marketAverage` in the club items and from market searches the user does.
 // Never reads or forwards EA's session token; only item data leaves the page.
 (() => {
   const SOURCE = "fc-tracker-hook";
   const COMMAND_SOURCE = "fc-tracker-relay";
-  const UT_PATH = /\/ut\/game\//;
+  // Ultimate Team (/ut/game/) and the FC-wide season pass / objectives (/fc/user, /fc/season)
+  const UT_PATH = /\/ut\/game\/|\/fc\/(user|season)\b/;
   // Login/auth responses may contain session ids and are never forwarded.
   const BLOCKED = /\/(auth|login|token|connect)\b/i;
   const SECRET_KEYS = /^(sid|token|authcode|access_token|refresh_token|phishingtoken)$/i;
@@ -51,6 +54,31 @@
       return;
     }
     post({ kind: "capture", url: url.split("?")[0], body: scrub(body) });
+    if (TEXT_PATHS.test(url)) postTexts(body);
+  }
+
+  // EA sends SBC / objective / event names as text keys ("FC27_S1_OWW_COMP_GROUP"); the Web App
+  // shows them through its own localisation – we send the shown text along (fct://webapp/texts).
+  const TEXT_PATHS = /\/(sbs|scmp|champs2|rivals|sqbt|academy|fc\/user|fc\/season)\//;
+  const TEXT_KEYS = new Set(["title", "subtitle", "name", "description", "featuredTitle", "featuredSubTitle", "header"]);
+  const knownTexts = new Set();
+  function postTexts(body) {
+    const texts = {};
+    const walk = (v) => {
+      if (Array.isArray(v)) return v.forEach(walk);
+      if (!v || typeof v !== "object") return;
+      for (const [k, x] of Object.entries(v)) {
+        if (typeof x === "string" && TEXT_KEYS.has(k) && /^[A-Z][A-Z0-9_.]{5,}$/.test(x) && !knownTexts.has(x)) {
+          knownTexts.add(x);
+          try {
+            const shown = window.services?.Localization?.localize?.(x);
+            if (typeof shown === "string" && shown && shown !== x && !shown.startsWith("*")) texts[x] = shown;
+          } catch {}
+        } else if (x && typeof x === "object") walk(x);
+      }
+    };
+    walk(body);
+    if (Object.keys(texts).length) post({ kind: "capture", url: "fct://webapp/texts", body: { texts } });
   }
 
   const origFetch = window.fetch;
@@ -209,6 +237,8 @@
       name: s.name,
       firstName: s.firstName,
       lastName: s.lastName,
+      // games, goals, cards … (a manager: games, wins, draws, losses, clean sheets)
+      lifetimeStats: Array.isArray(e._lifetimeStats) ? e._lifetimeStats : Array.isArray(e.lifetimeStats) ? e.lifetimeStats : undefined,
     };
   }
 
@@ -341,10 +371,10 @@
     return seen.size;
   }
 
-  async function syncAll(gallerySets) {
-    const players = await syncClub();
-    const sets = Array.isArray(gallerySets) ? gallerySets : [];
-    for (let i = 0; i < sets.length; i++) {
+  let stopped = false;
+
+  async function syncGallery(sets) {
+    for (let i = 0; i < sets.length && !stopped; i++) {
       post({ kind: "progress", phase: "gallery", done: i, total: sets.length });
       try {
         await syncGallerySet(sets[i]);
@@ -352,6 +382,84 @@
         // One failing set should not stop the rest; it is retried on the next sync.
       }
     }
+  }
+
+  // ---------- the rest of the Web App: SBCs, objectives, events (read only) ----------
+  // The same calls the Web App makes when its screens open (SBC, Objectives, Champions, Rivals,
+  // Squad Battles, Leaderboards, Evolutions, Squads, Store). Responses flow through the passive
+  // capture above. Most are cached by the Web App itself (then no request is sent at all).
+  // Never a claim, submit, purchase or bid.
+  const EXTRA_DELAY_MS = 900;
+  const MAX_SBC_CHALLENGES = 25; // open SBC sets whose challenges are read per sync (calm)
+
+  async function call(fn) {
+    try {
+      const obs = fn();
+      return obs && typeof obs.observe === "function" ? await observe(obs, 20_000) : null;
+    } catch {
+      return null;
+    } finally {
+      await sleep(EXTRA_DELAY_MS);
+    }
+  }
+
+  async function syncExtras() {
+    const s = window.services ?? {};
+    const steps = [
+      () => s.SBC?.requestSets?.(),
+      () => s.Objectives?.requestCategories?.(),
+      () => s.Objectives?.requestCampaignDetails?.(),
+      () => s.Objectives?.requestMetaObjectiveGroups?.(),
+      () => s.Objectives?.requestTokenInventory?.(),
+      () => s.Champions?.requestChampsHub?.(),
+      () => s.Champions?.checkOutstandingRewards?.(),
+      () => s.Rivals?.getEvent?.(),
+      () => s.Rivals?.getWeeklyRewardsInfo?.(),
+      () => s.SquadBattles?.requestCurrentEventFullScope?.(),
+      () => s.Leaderboards?.requestOptions?.(),
+      () => s.Academy?.requestAcademyHub?.(),
+      () => s.Squad?.requestSquadList?.(),
+      () => s.Club?.getStats?.(),
+      () => s.EventToken?.requestDefinitions?.(),
+      () => s.Store?.getPacks?.(),
+    ];
+    let sbcSets = [];
+    for (let i = 0; i < steps.length && !stopped; i++) {
+      post({ kind: "progress", phase: "extras", done: i, total: steps.length });
+      const res = await call(steps[i]);
+      if (i === 0) sbcSets = res?.data?.sets ?? res?.response?.sets ?? [];
+    }
+    // SBC challenges (requirements + rewards) of open sets, most rewarding first: players, then the rest
+    const open = (Array.isArray(sbcSets) ? sbcSets : []).filter((set) => {
+      try {
+        if (typeof set.isComplete === "function" && set.isComplete()) return false;
+        if (typeof set.isExpired === "function" && set.isExpired()) return false;
+        return typeof s.SBC?.requestChallengesForSet === "function";
+      } catch {
+        return false;
+      }
+    });
+    for (const set of open.slice(0, MAX_SBC_CHALLENGES)) {
+      if (stopped) break;
+      await call(() => s.SBC.requestChallengesForSet(set));
+    }
+  }
+
+  /**
+   * Club, Gallery and the rest run side by side – three calm lanes (each about a request a second,
+   * like a person moving between Web App screens), so a sync takes about a third of the time.
+   */
+  async function syncAll(gallerySets) {
+    const sets = Array.isArray(gallerySets) ? gallerySets : [];
+    stopped = false;
+    // a failing club read (signed out, the club never loads) stops the other lanes too
+    const club = syncClub().catch((e) => {
+      stopped = true;
+      throw e;
+    });
+    // the Gallery and the rest start once the Web App is signed in and loaded
+    await waitForWebApp();
+    const [players] = await Promise.all([club, syncGallery(sets), syncExtras().catch(() => {})]);
     post({ kind: "syncComplete", count: players });
   }
 

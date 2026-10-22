@@ -22,6 +22,10 @@
   let loginState = null;
   let pendingStart = false;
   let blockedSent = false;
+  // The app was never seen on this PC (extension installed first): offer to get it instead of opening it.
+  let appSeen = true;
+  // The three sync lanes (club · Gallery · SBCs and the rest), shown together on one line.
+  const lanes = { club: 0, gDone: 0, gTotal: 0, xDone: 0, xTotal: 0 };
 
   function ensureBadge() {
     if (badge || !document.body) return badge;
@@ -41,7 +45,14 @@
     open.textContent = msg("openApp");
     open.style.cssText =
       "background:#3fe0b8;color:#04130e;border-radius:6px;padding:5px 10px;font-weight:700;text-decoration:none;white-space:nowrap";
-    open.onclick = waitForApp;
+    open.onclick = (e) => {
+      if (!appSeen) {
+        e.preventDefault();
+        window.open("https://www.fc-tracker.com/download", "_blank", "noopener");
+        return;
+      }
+      waitForApp();
+    };
     badge.append(text, btn, open);
     document.body.appendChild(badge);
     return badge;
@@ -55,6 +66,7 @@
     b.style.borderColor = urgent ? "#ff6b6b" : "#f5c542";
     b.children[1].style.display = showButton ? "" : "none";
     b.children[2].style.display = appUp ? "none" : "";
+    b.children[2].textContent = msg(appSeen ? "openApp" : "getApp");
   }
 
   // After "Open FC-Tracker": watch for the app (the background then delivers what was saved).
@@ -66,7 +78,12 @@
       const res = await send({ type: "ping" });
       if (res?.app === "fc-tracker" || ++tries > 30) {
         clearInterval(appWatch);
-        if (res?.app !== "fc-tracker") return;
+        // it didn't start (not installed on this PC any more?): offer the download
+        if (res?.app !== "fc-tracker") {
+          appSeen = false;
+          if (!syncing) render(msg("openFailed"), false, true);
+          return;
+        }
         appUp = true;
         if (!syncing) render(msg("badgeDelivered"), false);
       }
@@ -133,6 +150,7 @@
     const res = await send({ type: "gallerySets" });
     const gallerySets = Array.isArray(res?.sets) ? res.sets : [];
     syncing = true;
+    Object.assign(lanes, { club: 0, gDone: 0, gTotal: gallerySets.length, xDone: 0, xTotal: 0 });
     window.postMessage({ source: COMMAND_SOURCE, cmd: "syncClub", gallerySets }, window.location.origin);
   }
 
@@ -165,13 +183,14 @@
         return;
       }
       case "progress": {
-        const text =
-          data.phase === "waiting"
-            ? msg("badgeWaiting")
-            : data.phase === "gallery"
-              ? msg("badgeGallery", [String(data.done + 1), String(data.total)])
-              : msg("badgeProgress", [String(data.count)]);
-        return render(text, false);
+        if (data.phase === "waiting") return render(msg("badgeWaiting"), false);
+        if (data.phase === "club") lanes.club = data.count ?? lanes.club;
+        if (data.phase === "gallery") Object.assign(lanes, { gDone: data.done + 1, gTotal: data.total });
+        if (data.phase === "extras") Object.assign(lanes, { xDone: data.done + 1, xTotal: data.total });
+        const parts = [msg("laneClub", [String(lanes.club)])];
+        if (lanes.gTotal) parts.push(msg("laneGallery", [String(Math.min(lanes.gDone, lanes.gTotal)), String(lanes.gTotal)]));
+        if (lanes.xTotal) parts.push(msg("laneExtras", [String(Math.min(lanes.xDone, lanes.xTotal)), String(lanes.xTotal)]));
+        return render("FC-Tracker: " + parts.join(" · "), false);
       }
       case "login":
         loginState = data.state;
@@ -203,6 +222,7 @@
     await fctI18n.load();
     whenBody(() => {
       appUp = !!(res && res.app === "fc-tracker");
+      appSeen = appUp || !!status?.appSeen;
       if (appUp && !res.authorized) return render(msg("badgeNotPaired"), false);
       if (!appUp && !status?.paired && !status?.web) return render(msg("badgeNoApp"), false);
       if (!appUp && status?.paired) render(msg("badgeAppClosed"), false);

@@ -202,6 +202,11 @@ pub struct Store {
     pub pending_buy: Option<PendingBuy>,
     /// The coin balance last read (top-right of Ultimate Team screens).
     pub last_coins: Option<u32>,
+    /// Everything else the Web App tells us (webdata.json): SBCs, objectives, hubs, club record.
+    pub web: crate::webdata::WebData,
+    web_dirty: bool,
+    /// The Gallery set read last in the running sync (for the progress notice).
+    sync_last_set: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -232,6 +237,8 @@ impl Item {
         self.team_id = self.team_id.or(old.team_id);
         self.nation_id = self.nation_id.or(old.nation_id);
         self.rareflag = self.rareflag.or(old.rareflag);
+        self.stats = self.stats.take().or_else(|| old.stats.clone());
+        self.assists = self.assists.or(old.assists);
         self
     }
 }
@@ -254,7 +261,8 @@ impl Store {
         // A copy written while the app ran from a packaged (MSIX) app joins the real data (it is
         // migrated on its own first, so neither side's versions can re-run old migrations).
         let absorbed = crate::merge::absorb_redirected(&dir, &mut snapshot);
-        let mut store = Self { dir, snapshot, sync_active: false, sync_missed: Vec::new(), sync_abort: false, sync_blocked: None, sync_never_owned: BTreeMap::new(), sync_sets_read: BTreeSet::new(), club_read_started: None, revision: Default::default(), focus_set: None, dirty: false, pending_buy: None, last_coins: None };
+        let mut store = Self { dir, snapshot, sync_active: false, sync_missed: Vec::new(), sync_abort: false, sync_blocked: None, sync_never_owned: BTreeMap::new(), sync_sets_read: BTreeSet::new(), club_read_started: None, revision: Default::default(), focus_set: None, dirty: false, pending_buy: None, last_coins: None, web: crate::webdata::WebData::default(), web_dirty: false, sync_last_set: None };
+        store.web = crate::webdata::WebData::load(&store.dir);
         if store.replay_card_database_captures() > 0 || !absorbed.is_empty() {
             store.save();
         }
@@ -728,6 +736,9 @@ impl Store {
 
         let now = at.min(now_ms());
         self.bump();
+        if self.web.ingest(url, body, now) {
+            self.web_dirty = true;
+        }
         if !url.starts_with("fct://") {
             self.merge_market_averages(body, now);
             if let Some(c) = credits(url, body) {
@@ -751,6 +762,7 @@ impl Store {
         }
         if url.starts_with(GALLERY_PREFIX) {
             self.sync_sets_read.insert(url[GALLERY_PREFIX.len()..].to_string());
+            self.sync_last_set = Some(url[GALLERY_PREFIX.len()..].to_string());
             let cards: Vec<GalleryCard> = body
                 .get("cards")
                 .and_then(Value::as_array)
@@ -812,6 +824,10 @@ impl Store {
     fn note_owners(&mut self, asset: Option<u64>, owners: Option<u64>) {
         let (Some(asset), Some(owners)) = (asset, owners) else { return };
         if owners == 1 {
+            // a first-owner card new to us that is an open SBC / objective reward came from there
+            if !self.snapshot.first_owner.contains(&asset) && self.web.note_first_owner_arrival(asset, now_ms() / 1000) {
+                self.web_dirty = true;
+            }
             self.snapshot.first_owner.insert(asset);
             self.snapshot.first_owner_club_no.remove(&asset);
         } else if owners > 1 && !self.snapshot.first_owner.contains(&asset) {
@@ -841,13 +857,16 @@ impl Store {
     }
 
     /// The progress notice of the running sync, after data from `url` came in: the club
-    /// (players so far), then the Gallery (which set, n of all).
+    /// (players so far), then the Gallery (which set, n of all). The club, the Gallery and the
+    /// rest are read side by side – once a Gallery set is in, the notice stays on the Gallery
+    /// (with the player count) instead of flipping between the two.
     pub fn sync_progress(&self, url: &str) -> serde_json::Value {
         let players = self.summary().player_count;
-        if let Some(key) = url.strip_prefix(GALLERY_PREFIX) {
+        let gallery_key = url.strip_prefix(GALLERY_PREFIX).map(str::to_string).or_else(|| self.sync_last_set.clone().filter(|_| !self.sync_sets_read.is_empty()));
+        if let Some(key) = gallery_key {
             let total = crate::gallery_sets::sync_filters().len();
             serde_json::json!({ "kind": "sync", "state": "running", "phase": "gallery", "count": players,
-                "done": self.sync_sets_read.len().min(total), "total": total, "set": crate::gallery_sets::sync_filter_name(key) })
+                "done": self.sync_sets_read.len().min(total), "total": total, "set": crate::gallery_sets::sync_filter_name(&key) })
         } else {
             serde_json::json!({ "kind": "sync", "state": "running", "phase": "club", "count": players })
         }
@@ -912,6 +931,9 @@ impl Store {
 
     pub fn save(&mut self) {
         self.dirty = false;
+        if std::mem::take(&mut self.web_dirty) {
+            self.web.save(&self.dir);
+        }
         self.bump();
         // Write a temp file, then rename: a crash mid-write never leaves a half snapshot.
         if let Ok(json) = serde_json::to_string(&self.snapshot) {
@@ -1095,6 +1117,31 @@ mod tests {
 
     fn random_suffix() -> u128 {
         SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos()
+    }
+
+    #[test]
+    fn a_first_owner_sbc_reward_gets_its_origin_and_stats_are_kept() {
+        let mut s = temp_store();
+        let far = now_ms() / 1000 + 86_400;
+        s.ingest("https://u/ut/game/fc27/sbs/sets", &serde_json::json!({ "sets": [
+            { "name": "POTM Premier League", "endTime": far, "awards": [{ "type": "item", "itemData": { "itemType": "player", "resourceId": 50331691 } }] }
+        ]}));
+        // the reward lands in the club as first owner; a bought card is no SBC card
+        s.ingest("fct://club/players", &serde_json::json!({ "itemData": [
+            { "id": 11, "assetId": 50331691, "owners": 1, "lifetimeStats": [30, 12, 2, 0, 0] },
+            { "id": 12, "assetId": 777, "owners": 3 }
+        ]}));
+        assert_eq!(s.web.origin.get(&50331691).map(|o| o.kind.as_str()), Some("sbc"));
+        assert!(!s.web.origin.contains_key(&777));
+        assert_eq!(s.snapshot.items[&11].stats.as_deref(), Some(&[30, 12, 2, 0, 0][..]));
+        // a raw EA club response: lifetimeStatsArray + lifetimeAssists
+        s.ingest("https://u/ut/game/fc27/club", &serde_json::json!({ "itemData": [{ "id": 13, "resourceId": 5, "lifetimeStatsArray": [9, 4, 0, 0, 0], "lifetimeAssists": 3 }] }));
+        assert_eq!(s.snapshot.items[&13].assists, Some(3));
+        // kept across a restart
+        s.save();
+        let again = Store::load(s.dir.clone());
+        assert!(again.web.origin.contains_key(&50331691));
+        assert!(again.web.latest.contains_key("/ut/game/fc27/sbs/sets"));
     }
 
     #[test]

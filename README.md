@@ -68,7 +68,12 @@ Everything below can be checked in the code; the file is named for each point.
 - **During a sync it is active:** it pages through your club with the Web App's own club search – the
   same requests the Club screen makes when you scroll through it – and reads the Gallery card list for
   each league set the same way. One page at a time, about one a second, and it stops when nothing new
-  comes (`extension/hook.js`). Outside a sync it only reads what the Web App loads anyway.
+  comes (`extension/hook.js`). It also opens the Web App's other screens the same way – SBCs,
+  objectives, season pass, Champions / Rivals / Squad Battles, leaderboards, evolutions, squads and
+  the store – to show where cards come from (SBC and objective rewards), your club record and
+  player stats. Read only: it never claims, submits, buys or bids. The club, the Gallery and these
+  screens run side by side (three calm lanes, each about one request a second). Outside a sync it
+  only reads what the Web App loads anyway.
 - Never searches the transfer market, and never buys, sells, bids or lists anything. Prices come only
   from EA's own market average in your club data.
 - Sends that data only to the FC-Tracker app on your own PC, `127.0.0.1` (`extension/background.js`,

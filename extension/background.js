@@ -88,7 +88,12 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
   if (wActive && wTab === tabId) await webAbandon();
 });
 
+// FC-Tracker Web reads the club and the Gallery; the rest of a sync (SBCs, objectives, events)
+// is only for the app – not kept in the browser for the page.
+const WEB_SKIP = /\/(sbs|scmp|champs2|rivals|sqbt|leaderboards|academy|squad|store|eventtoken|club\/stats)\b|\/fc\/(user|season)\b|^fct:\/\/webapp\//;
+
 function webKeep(url, body, at) {
+  if (WEB_SKIP.test(url)) return Promise.resolve();
   return serial(async () => {
     const { wPending, wActive } = await chrome.storage.local.get(["wPending", "wActive"]);
     if (!wActive) return;
@@ -271,7 +276,25 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
         }
         case "status": {
           const { lastSyncAt } = await chrome.storage.local.get("lastSyncAt");
-          return reply({ paired: !!(await token()), web: await webLinked(), lastSyncAt: lastSyncAt ?? 0, saved: await hasSaved() });
+          const paired = !!(await token());
+          const { appSeen, openFailedAt } = await chrome.storage.local.get(["appSeen", "openFailedAt"]);
+          // "Open FC-Tracker" didn't start the app in the last 10 minutes: offer the download
+          const openFailed = !!openFailedAt && Date.now() - openFailedAt < 10 * 60 * 1000;
+          return reply({ paired, appSeen: !!appSeen || paired, openFailed, web: await webLinked(), lastSyncAt: lastSyncAt ?? 0, saved: await hasSaved() });
+        }
+        case "openApp": {
+          // fctracker:// (registered by the app's installer); no answer within ~8 s = not installed here
+          await chrome.storage.local.remove("openFailedAt");
+          await chrome.tabs.create({ url: "fctracker://open" });
+          reply({ ok: true });
+          for (let i = 0; i < 8; i++) {
+            await new Promise((r) => setTimeout(r, 1000));
+            try {
+              if ((await call("/ping")).app === "fc-tracker") return;
+            } catch {}
+          }
+          await chrome.storage.local.set({ openFailedAt: Date.now() });
+          return;
         }
         case "pair": {
           const res = await call("/pair", { method: "POST", body: { code: msg.code } });
@@ -398,6 +421,12 @@ function isOlder(have, latest) {
 
 /** The app tells which extension version belongs to it. */
 async function rememberLatest(res) {
+  // The app answered once: it is installed (the popup offers "Open FC-Tracker", else "Get the app").
+  if (res?.app === "fc-tracker") {
+    const { appSeen } = await chrome.storage.local.get("appSeen");
+    if (!appSeen) await chrome.storage.local.set({ appSeen: true });
+    await chrome.storage.local.remove("openFailedAt");
+  }
   if (typeof res?.extension_latest === "string" && /^\d+(\.\d+)*$/.test(res.extension_latest)) {
     await chrome.storage.local.set({ latest: res.extension_latest });
   }

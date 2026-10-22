@@ -21,6 +21,7 @@ mod types;
 mod ui;
 mod updates;
 mod watch;
+mod webdata;
 mod wgc;
 
 use bridge::{Bridge, BridgeEvent, BridgeInfo};

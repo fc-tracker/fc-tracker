@@ -79,7 +79,8 @@ html[data-view="launcher"] body {
 .ln-update-mark { width: 10px; height: 10px; flex: none; background: var(--accent-2); transform: rotate(45deg); box-shadow: 0 0 10px var(--accent-2); }
 
 /* ── hero ───────────────────────────────────────────────────────────── */
-.ln-hero { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; max-width: 580px; padding: clamp(8px, 3vh, 32px) 0; }
+/* "safe": when the hero is taller than its room it starts at the top instead of growing over the header */
+.ln-hero { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: safe center; max-width: 620px; padding: clamp(6px, 2.4vh, 28px) 0 clamp(10px, 2.4vh, 24px); }
 .ln-eyebrow { margin: 0 0 14px; color: var(--accent-2); font: 700 14px/1 var(--font-display); letter-spacing: 0.16em; text-transform: uppercase; }
 .ln-title { margin: 0 0 clamp(8px, 1.6vh, 14px); font: 700 clamp(40px, min(6.4vw, 10vh), 84px)/0.95 var(--font-display); text-transform: uppercase; letter-spacing: 0.01em; }
 .ln-text { margin: 0 0 clamp(14px, 3vh, 26px); color: var(--muted); font-size: 16px; max-width: 46ch; }
@@ -141,16 +142,37 @@ html[data-view="launcher"] body {
 .ln-message.error { color: var(--ln-error); }
 
 /* ── status tiles ───────────────────────────────────────────────────── */
-.ln-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
-.ln-tile {
-  display: flex; flex-direction: column; gap: 4px; padding: 16px 18px;
-  background: var(--surface); border: 1px solid var(--line);
-  clip-path: polygon(var(--ln-cut) 0, 100% 0, 100% calc(100% - var(--ln-cut)), calc(100% - var(--ln-cut)) 100%, 0 100%, 0 var(--ln-cut));
+/* compact: label, a diamond (green ok · orange to do · red broken) and a short value; the long
+   explanation sits behind the info mark, so the row stays one line at any window size */
+.ln-tiles { flex: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+/* the angled box is drawn by ::before, so the info tip can reach outside the tile */
+.ln-tile { position: relative; isolation: isolate; display: flex; flex-direction: column; gap: 5px; padding: 10px 14px; min-width: 0; }
+.ln-tile::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line);
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
 }
-.ln-tile-label { color: var(--muted); font: 600 12px/1.2 var(--font-display); letter-spacing: 0.12em; text-transform: uppercase; }
-.ln-tile-value { display: flex; align-items: center; gap: 9px; font-weight: 700; }
-.ln-tile p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
-.ln-tile .ln-link { margin-top: 6px; }
+.ln-tile-label { color: var(--muted); font: 600 11px/1.2 var(--font-display); letter-spacing: 0.12em; text-transform: uppercase; }
+.ln-tile-value { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 14px; font-weight: 700; }
+.ln-tile-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ln-tile .ln-link { margin-top: 0; font-size: 12px; }
+.ln-tile.good .ln-dot { background: var(--ln-ok); box-shadow: 0 0 10px var(--ln-ok); }
+.ln-tile.todo .ln-dot { background: var(--ln-warn); box-shadow: 0 0 8px color-mix(in srgb, var(--ln-warn) 60%, transparent); }
+.ln-tile.bad .ln-dot { background: var(--ln-error); box-shadow: 0 0 8px color-mix(in srgb, var(--ln-error) 60%, transparent); }
+
+/* info mark: a small "i" – its text shows above it on hover or keyboard focus */
+.ln-info {
+  position: relative; flex: none; display: inline-grid; place-items: center; width: 16px; height: 16px; cursor: help;
+  color: var(--muted); font: 700 11px/1 var(--font-body); font-style: normal; text-transform: none; letter-spacing: 0;
+  border: 1px solid var(--line); border-radius: 50%;
+}
+.ln-info:hover, .ln-info:focus-visible { color: var(--text); border-color: var(--muted); }
+.ln-info-tip {
+  position: absolute; z-index: 20; bottom: calc(100% + 8px); right: -10px; width: max-content; max-width: 260px;
+  padding: 8px 10px; background: var(--menu, var(--surface-hi)); border: 1px solid var(--line); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  color: var(--text); font: 500 12px/1.45 var(--font-body); text-align: left; white-space: normal;
+  opacity: 0; visibility: hidden; pointer-events: none; transition: opacity var(--dur) var(--ease);
+}
+.ln-info:hover .ln-info-tip, .ln-info:focus-visible .ln-info-tip { opacity: 1; visibility: visible; }
 
 /* ── controls & settings pages ──────────────────────────────────────── */
 /* Settings is taller than the window: the page scrolls inside ln-main (which clips) */
@@ -178,9 +200,37 @@ html[data-view="launcher"] .ln-online-dot { width: 7px; height: 7px; border-radi
 
 html[data-view="launcher"] :focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
 
+/* "$ Support me" in the launcher looks like the status pill next to it (same box, size and font) */
+html[data-view="launcher"] .support-btn {
+  gap: 9px; padding: 8px 16px; font: 600 13px/1.2 var(--font-body); color: var(--text);
+  background: var(--surface); box-shadow: none; outline: 1px solid var(--line); outline-offset: -1px;
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+html[data-view="launcher"] .support-btn:hover, html[data-view="launcher"] .support-btn.active { background: var(--surface-hi); color: var(--support-gold); }
+html[data-view="launcher"] .support-btn:focus-visible { outline: 2px solid var(--accent-2); }
+html[data-view="launcher"] .support-coin { width: 14px; height: 14px; font-size: 10px; }
+html[data-view="launcher"] .support-btn:hover .support-coin, html[data-view="launcher"] .support-btn.active .support-coin {
+  background: radial-gradient(circle at 35% 30%, var(--support-gold-hi), var(--support-gold)); color: var(--support-ink);
+}
+
+/* no scroll on the home view: smaller windows drop the extras before anything overflows */
+@media (max-height: 760px) {
+  .ln-text { font-size: 15px; }
+  .ln-news > div > p:last-child { display: none; }
+}
 @media (max-height: 700px) {
-  .ln-tile p { display: none; }
   .ln-page h1 { font-size: 40px; }
+  .ln-eyebrow { margin-bottom: 8px; }
+  .ln-already { margin-top: 10px; padding-top: 10px; }
+  .ln-btn { padding: 13px 22px; font-size: 16px; }
+  .ln-btn.small { padding: 9px 14px; font-size: 14px; }
+}
+@media (max-height: 640px) {
+  .ln-text { display: none; }
+}
+@media (max-width: 1040px) {
+  .ln-news { flex-wrap: wrap; }
+  .ln-news-actions { width: 100%; padding-left: 28px; }
 }
 @media (max-width: 860px) {
   .ln-main { padding: 22px 26px; }
@@ -407,10 +457,15 @@ html[data-view="launcher"] .ln-input { width: 150px; padding: 9px 10px; font: 70
 
 /* "New · Beta" – the Champions tracker announcement on the home view (it ships switched off) */
 .ln-news {
-  display: flex; gap: 14px; align-items: flex-start; margin-top: clamp(14px, 2.6vh, 22px); padding: 16px 18px;
-  background: color-mix(in srgb, var(--accent-2) 10%, var(--surface)); border-left: 3px solid var(--accent-2);
-  clip-path: polygon(0 0, calc(100% - var(--ln-cut)) 0, 100% var(--ln-cut), 100% 100%, 0 100%);
+  position: relative; isolation: isolate; flex: none;
+  display: flex; gap: 14px; align-items: center; margin-top: clamp(12px, 2.4vh, 20px); padding: 12px 16px 12px 19px;
   animation: ln-news-in 360ms var(--ease) both;
+}
+/* the box (and its accent edge) on ::before, so the info tip isn't clipped */
+.ln-news::before {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background: color-mix(in srgb, var(--accent-2) 10%, var(--surface)); box-shadow: inset 3px 0 0 var(--accent-2);
+  clip-path: polygon(0 0, calc(100% - var(--ln-cut)) 0, 100% var(--ln-cut), 100% 100%, 0 100%);
 }
 .ln-news > div { flex: 1; min-width: 0; }
 .ln-news p { margin: 0 0 8px; font-size: 14px; }
@@ -420,7 +475,10 @@ html[data-view="launcher"] .ln-input { width: 150px; padding: 9px 10px; font: 70
 .ln-news-mark { flex: none; width: 14px; height: 14px; margin-top: 4px; background: var(--accent-2); transform: rotate(45deg); box-shadow: 0 0 12px var(--accent-2); }
 .ln-news.on .ln-news-mark { margin-top: 0; }
 .ln-news-eyebrow { margin: 0 0 2px !important; color: var(--accent-2); font: 800 11px/1 var(--font-body) !important; letter-spacing: 0.12em; text-transform: uppercase; }
-.ln-news-title { display: block; margin-bottom: 4px; font: 700 24px/1.1 var(--font-display); text-transform: uppercase; }
-.ln-news-small { color: var(--muted); font-size: 13px !important; }
+.ln-news-title { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; font: 700 20px/1.1 var(--font-display); text-transform: uppercase; }
+.ln-news > div > p:last-child { margin: 0; color: var(--muted); font-size: 13px; }
+.ln-news-mark { align-self: flex-start; margin-top: 18px; }
+.ln-news-actions { flex: none; }
+.ln-news .ln-info-tip { right: auto; left: -10px; }
 @keyframes ln-news-in { from { opacity: 0; transform: translateY(6px); } }
 @media (prefers-reduced-motion: reduce) { .ln-news { animation: none; } }

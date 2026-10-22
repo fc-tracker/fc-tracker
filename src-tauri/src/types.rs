@@ -159,5 +159,12 @@ pub struct Item {
     pub nation_id: Option<u64>,
     #[serde(default)]
     pub rareflag: Option<u64>,
+    /// EA's lifetime stats of this card in the user's club (`lifetimeStatsArray`): a player =
+    /// [games, goals, yellow cards, red cards, …], a manager = [games, wins, draws, losses, clean sheets].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stats: Option<Vec<u64>>,
+    /// Lifetime assists of a player (`lifetimeAssists`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub assists: Option<u64>,
     pub last_seen: u64,
 }

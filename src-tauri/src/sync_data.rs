@@ -159,6 +159,14 @@ pub(crate) fn parse_item(v: &Value, now: u64) -> Option<Item> {
         team_id: v.get("teamId").or_else(|| v.get("teamid")).and_then(Value::as_u64),
         nation_id: v.get("nationId").or_else(|| v.get("nation")).and_then(Value::as_u64),
         rareflag: v.get("rareflag").and_then(Value::as_u64),
+        // raw EA JSON: lifetimeStatsArray; our plain items (the extension's club read): lifetimeStats
+        stats: v
+            .get("lifetimeStatsArray")
+            .or_else(|| v.get("lifetimeStats"))
+            .and_then(Value::as_array)
+            .map(|a| a.iter().filter_map(Value::as_u64).collect::<Vec<_>>())
+            .filter(|a| !a.is_empty()),
+        assists: v.get("lifetimeAssists").and_then(Value::as_u64),
         last_seen: now,
     })
 }

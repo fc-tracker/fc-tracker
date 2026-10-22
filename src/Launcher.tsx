@@ -371,7 +371,7 @@ export default function Launcher() {
                           ? t("tile.extension.silent")
                           : t("tile.extension.waiting")
                 }
-                good={paired && !extOutdated && !!bridge?.extension_live}
+                state={extOutdated ? "todo" : !paired ? "bad" : bridge?.extension_live ? "good" : bridge?.browser_running ? "bad" : "todo"}
                 text={
                   extOutdated
                     ? t("tile.extension.outdatedText")
@@ -391,7 +391,7 @@ export default function Launcher() {
               <Tile
                 label={t("status.displayMode")}
                 value={setup ? (setup.exists ? t(`mode.${setup.mode}`) : t("status.setupMissing")) : "…"}
-                good={!!borderless}
+                state={borderless ? "good" : setup && !setup.exists ? "bad" : "todo"}
                 text={t("tile.mode.text")}
               >
                 {setup?.exists && !borderless && (
@@ -407,7 +407,7 @@ export default function Launcher() {
                     ? `${t("status.players", { count: sync.player_count })} · ${formatAge(sync.synced_at)}`
                     : t("tile.club.never")
                 }
-                good={!!sync?.synced_at}
+                state={sync?.synced_at ? "good" : "todo"}
                 text={t("tile.club.text")}
               />
             </section>
@@ -643,17 +643,18 @@ function ChampsNewsCard({ on, news, onSwitch, onClose }: { on: boolean | null; n
       <span className="ln-news-mark" aria-hidden="true" />
       <div>
         <p className="ln-news-eyebrow">{t("champs.news.eyebrow")}</p>
-        <b className="ln-news-title">{t("champs.news.title")}</b>
+        <b className="ln-news-title">
+          {t("champs.news.title")} <InfoMark text={t("champs.news.how")} />
+        </b>
         <p>{t("champs.news.text")}</p>
-        <p className="ln-news-small">{t("champs.news.how")}</p>
-        <div className="ln-seg">
-          <button className="ln-btn small" onClick={onSwitch}>
-            {t("champs.news.switch")}
-          </button>
-          <button className="ln-btn small ghost" onClick={() => onClose("later")}>
-            {t("champs.news.later")}
-          </button>
-        </div>
+      </div>
+      <div className="ln-seg ln-news-actions">
+        <button className="ln-btn small" onClick={onSwitch}>
+          {t("champs.news.switch")}
+        </button>
+        <button className="ln-btn small ghost" onClick={() => onClose("later")}>
+          {t("champs.news.later")}
+        </button>
       </div>
     </div>
   );
@@ -681,16 +682,28 @@ function Step({ state, label, detail }: { state: "done" | "active" | "todo"; lab
   );
 }
 
-function Tile({ label, value, good, text, children }: { label: string; value: string; good: boolean; text: string; children?: ReactNode }) {
+/** A status at the bottom of the home view: a diamond (green ok, orange to do, red broken), the
+ * label and a short value; the longer explanation sits behind the info mark. */
+function Tile({ label, value, state, text, children }: { label: string; value: string; state: "good" | "todo" | "bad"; text: string; children?: ReactNode }) {
   return (
-    <div className={`ln-tile ${good ? "good" : "todo"}`}>
+    <div className={`ln-tile ${state}`}>
       <span className="ln-tile-label">{label}</span>
       <span className="ln-tile-value">
-        <span className="ln-dot" /> {value}
+        <span className="ln-dot" aria-hidden="true" />
+        <span className="ln-tile-text">{value}</span>
+        <InfoMark text={text} />
       </span>
-      <p>{text}</p>
       {children}
     </div>
+  );
+}
+
+/** A small "i" that shows its text on hover or keyboard focus – it never takes room in the layout. */
+function InfoMark({ text }: { text: string }) {
+  return (
+    <span className="ln-info" tabIndex={0} role="note" aria-label={text}>
+      i<span className="ln-info-tip" aria-hidden="true">{text}</span>
+    </span>
   );
 }
 
