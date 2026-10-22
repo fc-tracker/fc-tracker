@@ -432,7 +432,10 @@ fn dispatch(req: Value) -> Result<Value, String> {
                 let exclude: BTreeSet<u64> = serde_json::from_value(arg("exclude")).unwrap_or_default();
                 let sets = gallery_sets::all_values(&w.gallery, &info, &w.links, &w.observed, &w.prices, budget, &exclude);
                 let steps = arg("steps").as_u64().map_or(200, |s| s as usize);
-                let plan = gallery_sets::token_plan(&sets, target, budget, steps);
+                let mut plan = gallery_sets::token_plan(&sets, target, budget, steps);
+                if arg("steps").is_u64() && target.is_none() {
+                    gallery_sets::fill_sets(&mut plan, &sets, steps);
+                }
                 Ok(json!({ "coins": w.coins, "budget": budget, "sets": sets, "plan": plan }))
             }
             "set_value" => {

@@ -1868,6 +1868,41 @@ pub fn token_plan(values: &[SetValue], target: Option<u64>, balance: Option<u64>
     TokenPlan { players: bought.len(), steps, tokens, tax, total_price, coins_needed: coins_peak, balance }
 }
 
+/// "Best N sets" when fewer than N sets give tokens within the coins: the plan is topped up with the
+/// cheapest grades other sets can still reach (0 tokens – shown as such), each set's highest
+/// affordable one, cheapest tax first, within the coins left after the plan's own tax.
+pub fn fill_sets(plan: &mut TokenPlan, values: &[SetValue], sets: usize) {
+    let taken: BTreeSet<&str> = plan.steps.iter().map(|s| s.key.as_str()).collect();
+    let mut extra: Vec<(u64, PlanStep)> = Vec::new();
+    for v in values.iter().filter(|v| !taken.contains(v.key.as_str())) {
+        let left = plan.balance.map(|b| b.saturating_sub(plan.tax));
+        let pick = v.plans.iter().rev().find(|p| p.state == "buy" && !p.buys.is_empty() && left.is_none_or(|l| p.coins_needed <= l));
+        if let Some(p) = pick {
+            extra.push((p.tax, PlanStep { key: v.key.clone(), name: v.name.clone(), grade: p.grade.clone(), tokens: 0, tax: p.tax, coins_needed: p.coins_needed, buys: p.buys.clone() }));
+        }
+    }
+    extra.sort_by_key(|(tax, _)| *tax);
+    let mut bought: BTreeSet<u64> = plan.steps.iter().flat_map(|s| s.buys.iter().map(|b| b.card.def_id)).collect();
+    for (_, mut step) in extra {
+        if plan.steps.len() >= sets {
+            break;
+        }
+        if plan.balance.is_some_and(|b| step.coins_needed + plan.tax > b) {
+            continue;
+        }
+        step.buys.retain(|b| !bought.contains(&b.card.def_id));
+        step.tax = step.buys.iter().map(|b| b.tax).sum();
+        for b in &step.buys {
+            bought.insert(b.card.def_id);
+            plan.total_price += b.price;
+        }
+        plan.coins_needed = plan.coins_needed.max(step.coins_needed + plan.tax);
+        plan.tax += step.tax;
+        plan.steps.push(step);
+    }
+    plan.players = bought.len();
+}
+
 #[cfg(test)]
 mod value_tests {
     use super::*;
@@ -2404,7 +2439,8 @@ mod value_real_prices {
         println!("plan: +{} tokens, tax {}, peak {} (balance {:?})", plan.tokens, plan.tax, plan.coins_needed, balance);
         assert!(plan.coins_needed <= balance.unwrap());
         // "Best 5 sets": one shopping list that takes five different sets up a grade, within the coins.
-        let five = super::token_plan(&values, None, balance, 5);
+        let mut five = super::token_plan(&values, None, balance, 5);
+        super::fill_sets(&mut five, &values, 5);
         let keys: std::collections::BTreeSet<&str> = five.steps.iter().map(|s| s.key.as_str()).collect();
         println!("best 5: +{} tokens, tax {}, peak {}, {} players", five.tokens, five.tax, five.coins_needed, five.players);
         for st in &five.steps {

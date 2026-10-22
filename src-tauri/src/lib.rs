@@ -616,7 +616,10 @@ async fn best_value(app: AppHandle, budget: Option<u64>, target: Option<u64>, st
         let budget = budget.or(input.balance());
         let exclude = exclude.unwrap_or_default().into_iter().collect();
         let sets = input.values(budget, &exclude);
-        let plan = gallery_sets::token_plan(&sets, target, budget, steps.unwrap_or(200));
+        let mut plan = gallery_sets::token_plan(&sets, target, budget, steps.unwrap_or(200));
+        if let (Some(n), None) = (steps, target) {
+            gallery_sets::fill_sets(&mut plan, &sets, n);
+        }
         BestValue { coins: input.coins(), budget, sets, plan }
     })
     .await

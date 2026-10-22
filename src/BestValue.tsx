@@ -46,45 +46,18 @@ export function bestStep(v: SetValue): { plan: GradePlan; tokens: number } | nul
 const per10k = (tokens: number, tax: number) => (tokens * 10_000) / Math.max(1, tax);
 const fmtRatio = (n: number) => (n >= 100 ? num(Math.round(n)) : n.toFixed(1));
 
-/** Cards ticked off as bought, placed and sold – per set, remembered on this device. */
-function useTicks(scope: string) {
-  const key = "fct.ticks";
-  const read = (): string[] => {
-    try {
-      return JSON.parse(localStorage.getItem(key) ?? "[]");
-    } catch {
-      return [];
-    }
-  };
-  const [ticks, setTicks] = useState<Set<string>>(() => new Set(read()));
-  const toggle = (defId: number) =>
-    setTicks((cur) => {
-      const n = new Set(cur);
-      const id = `${scope}:${defId}`;
-      if (n.has(id)) n.delete(id);
-      else n.add(id);
-      try {
-        localStorage.setItem(key, JSON.stringify([...n].slice(-2000)));
-      } catch {}
-      return n;
-    });
-  return { has: (defId: number) => ticks.has(`${scope}:${defId}`), toggle };
-}
-
-function BuyList({ buys, scope }: { buys: ValueBuy[]; scope: string }) {
-  // dearest first: buy, place in the set, sell, then the next – the order "coins needed" assumes
+/** The cards to buy, dearest first (buy, place, sell, then the next – the order "coins needed"
+ * assumes). No ticks: a card the user bought and placed is collected after the next sync and leaves
+ * the list by itself. */
+function BuyList({ buys, limit }: { buys: ValueBuy[]; limit?: number }) {
   const sorted = [...buys].sort((a, b) => b.price - a.price);
-  const ticks = useTicks(scope);
-  const done = sorted.filter((b) => ticks.has(b.card.def_id)).length;
+  const [all, setAll] = useState(false);
+  const shown = limit && !all ? sorted.slice(0, limit) : sorted;
   return (
     <>
-      <p className="bv-done-count">{t("value.cardsDone", { done, count: sorted.length })}</p>
-    <ol className="bv-buys ticks">
-      {sorted.map((b) => (
-        <li key={b.card.def_id} className={ticks.has(b.card.def_id) ? "done" : ""}>
-          <label className="bv-tick" title={t("value.tickTitle")}>
-            <input type="checkbox" checked={ticks.has(b.card.def_id)} onChange={() => ticks.toggle(b.card.def_id)} />
-          </label>
+    <ol className="bv-buys">
+      {shown.map((b) => (
+        <li key={b.card.def_id}>
           <span className="bv-rating">{b.card.rating ?? "?"}</span>
           <span className="bv-name">
             {b.card.name ?? "?"}
@@ -95,13 +68,17 @@ function BuyList({ buys, scope }: { buys: ValueBuy[]; scope: string }) {
             {compact(b.card.score)}
           </span>
           <Coins value={b.price} approx />
-          <span className="bv-tax">{t("value.taxShort", { tax: compact(b.tax) })}</span>
           <button className="bv-x" title={t("value.excludeTitle")} aria-label={t("value.excludeTitle")} onClick={() => excludeCard(b.card)}>
             ✕
           </button>
         </li>
       ))}
     </ol>
+    {shown.length < sorted.length && (
+      <button className="bv-more" onClick={() => setAll(true)}>
+        {t("value.showAll", { count: sorted.length })}
+      </button>
+    )}
     </>
   );
 }
@@ -198,7 +175,7 @@ export function GradeCosts({ value, compactView = false }: { value: SetValue; co
                   </dd>
                 </div>
               </dl>
-              {p.buys.length > 0 ? <BuyList buys={p.buys} scope={value.key} /> : <p className="bv-note ok">{t("value.noBuys")}</p>}
+              {p.buys.length > 0 ? <BuyList buys={p.buys} /> : <p className="bv-note ok">{t("value.noBuys")}</p>}
               <p className="bv-note">{t("value.howTo")}</p>
             </>
           )}
@@ -287,156 +264,190 @@ function MissingPrices({ sets }: { sets: SetValue[] }) {
   );
 }
 
-/** The token planner: a budget (the user's coins by default) or a token target → which sets to
- * take to which grade, and one shopping list for all of them. */
+type Goal = "all" | "5" | "10" | "tokens";
+
+/** The token planner (DESIGN 9r): a narrow control column – the coins (EA's balance, or another
+ * amount), the goal and the result – beside the plan as one card per set. Every change recalculates
+ * at once (a named wait); the plan follows the club, so nothing is ticked by hand. */
 export function Planner({ data, onChange, busy }: { data: BestValue | null; onChange: (budget: number | null, target: number | null, steps: number | null) => void; busy: boolean }) {
   const [budget, setBudget] = useState<string>("");
   const [target, setTarget] = useState<string>("");
-  const [steps, setSteps] = useState<number | null>(null);
+  const [goal, setGoal] = useState<Goal>("all");
   const plan: TokenPlan | null = data?.plan ?? null;
-  const parse = (s: string) => {
-    const n = Number(s.replace(/[^\d]/g, ""));
+  const parse = (v: string) => {
+    const n = Number(v.replace(/[^\d]/g, ""));
     return n > 0 ? n : null;
   };
-  const apply = (nextSteps = steps) => onChange(parse(budget), parse(target), nextSteps);
+  const run = (g: Goal = goal, b = budget, tg = target) =>
+    onChange(parse(b), g === "tokens" ? parse(tg) : null, g === "5" ? 5 : g === "10" ? 10 : null);
+  const pickGoal = (g: Goal) => {
+    setGoal(g);
+    if (g !== "tokens" || parse(target)) run(g);
+  };
+  const asked = goal === "5" ? 5 : goal === "10" ? 10 : null;
   const setsByKey = useMemo(() => new Map((data?.sets ?? []).map((v) => [v.key, v])), [data]);
   const allBuys = useMemo(() => {
     const seen = new Map<number, { buy: ValueBuy; sets: string[] }>();
-    for (const s of plan?.steps ?? []) for (const b of s.buys) {
+    for (const st of plan?.steps ?? []) for (const b of st.buys) {
       const e = seen.get(b.card.def_id);
-      if (e) e.sets.push(s.name);
-      else seen.set(b.card.def_id, { buy: b, sets: [s.name] });
+      if (e) e.sets.push(st.name);
+      else seen.set(b.card.def_id, { buy: b, sets: [st.name] });
     }
     return [...seen.values()].sort((a, b) => b.buy.price - a.buy.price);
   }, [plan]);
+  const balance = data?.coins?.[0] ?? null;
+  const field = (value: string, set: (v: string) => void, placeholder: string, apply: (v: string) => void) => (
+    <input
+      inputMode="numeric"
+      value={value}
+      placeholder={placeholder}
+      onChange={(e) => set(e.target.value)}
+      onBlur={(e) => apply(e.target.value)}
+      onKeyDown={(e) => e.key === "Enter" && apply((e.target as HTMLInputElement).value)}
+    />
+  );
   return (
-    <div className="detail bv-planner">
-      <div className="detail-head">
-        <div>
+    <div className="pl">
+      <aside className="pl-side">
+        <header className="pl-head">
           <p className="eyebrow">{t("value.plannerEyebrow")}</p>
           <h1 className="detail-title">{t("value.plannerTitle")}</h1>
-          <p className="detail-sub">{t("value.plannerSub")}</p>
-        </div>
-      </div>
-      <form
-        className="bv-inputs"
-        onSubmit={(e) => {
-          e.preventDefault();
-          apply();
-        }}
-      >
-        <label>
-          <span>{t("value.budget")}</span>
-          <input inputMode="numeric" placeholder={data?.coins ? num(data.coins[0]) : t("value.budgetUnknown")} value={budget} onChange={(e) => setBudget(e.target.value)} />
-        </label>
-        <label>
-          <span>{t("value.target")}</span>
-          <input inputMode="numeric" placeholder={t("value.targetAny")} value={target} onChange={(e) => setTarget(e.target.value)} />
-        </label>
-        <div className="bv-quick" role="group">
-          {[null, 5, 10].map((n) => (
-            <button
-              key={String(n)}
-              type="button"
-              className={`theme-btn ${steps === n ? "active" : ""}`}
-              onClick={() => {
-                setSteps(n);
-                apply(n);
-              }}
-            >
-              {n == null ? t("value.allSets") : t("value.nextSets", { count: n })}
-            </button>
-          ))}
-        </div>
-        <button type="submit" className="theme-btn active">
-          {t("value.calculate")}
-        </button>
-      </form>
-      <ol className="bv-how">
-        {(["1", "2", "3"] as const).map((n) => (
-          <li key={n}>
-            <span className="bv-how-n">{n}</span>
-            <b>{t(`value.how${n}Title` as MessageKey)}</b>
-            <span>{t(`value.how${n}` as MessageKey)}</span>
-          </li>
-        ))}
-      </ol>
-      {busy && <p className="ml-loading">{t("value.calculating")}</p>}
-      {busy && !plan ? null : !plan || plan.steps.length === 0 ? (
-        <>
-          <p className="bv-note">{t(data && data.sets.some((s) => s.unpriced > 0) ? "value.planEmptyPrices" : "value.planEmpty")}</p>
-          {data && <MissingPrices sets={data.sets} />}
-        </>
-      ) : (
-        <>
-          <dl className="bv-totals big">
-            {(
-              [
-                ["value.tokens", "value.tokensHint", <>+{num(plan.tokens)}</>],
-                ["value.lostToTax", "value.taxHint", <Coins value={plan.tax} approx />],
-                ["value.coinsNeeded", "value.neededHint", <Coins value={plan.coins_needed} approx />],
-                ["value.sets", "value.setsHint", <>{num(plan.steps.length)}</>],
-                ["value.players", "value.playersHint", <>{num(plan.players)}</>],
-              ] as [MessageKey, MessageKey, React.ReactNode][]
-            ).map(([label, hint, value]) => (
-              <div key={label}>
-                <dt>{t(label)}</dt>
-                <dd>{value}</dd>
-                <small>{t(hint)}</small>
-              </div>
+          <p className="pl-sub">{t("value.plannerSub")}</p>
+        </header>
+
+        <section className="pl-box">
+          <h3>{t("value.budget")}</h3>
+          <p className="pl-coins">
+            <span className="ml-coin" aria-hidden="true" />
+            {parse(budget) ? num(parse(budget)!) : balance != null ? num(balance) : "–"}
+            <small>{parse(budget) ? t("value.ownAmount") : balance != null ? t("value.fromEa") : t("value.budgetUnknown")}</small>
+          </p>
+          <label className="pl-other">
+            <span>{t("value.otherAmount")}</span>
+            {field(budget, setBudget, balance != null ? num(balance) : "", (v) => run(goal, v))}
+          </label>
+        </section>
+
+        <section className="pl-box">
+          <h3>{t("value.goal")}</h3>
+          <div className="pl-seg" role="radiogroup" aria-label={t("value.goal")}>
+            {(["all", "5", "10", "tokens"] as Goal[]).map((g) => (
+              <button key={g} role="radio" aria-checked={goal === g} className={goal === g ? "on" : ""} onClick={() => pickGoal(g)}>
+                {g === "all" ? t("value.goalAll") : g === "tokens" ? t("value.goalTokens") : t("value.goalSets", { count: Number(g) })}
+              </button>
             ))}
-          </dl>
-          {steps != null && plan.steps.length < steps && (
-            <p className="bv-note warn">{t("value.fewerSets", { count: plan.steps.length, asked: steps })}</p>
+          </div>
+          {goal === "tokens" && (
+            <label className="pl-other">
+              <span>{t("value.target")}</span>
+              {field(target, setTarget, "100", (v) => run("tokens", budget, v))}
+            </label>
           )}
-          <MissingPrices sets={data?.sets ?? []} />
-          <ExcludedBar />
-          <section className="detail-section">
-            <h2>{t("value.steps")}</h2>
-            <ol className="bv-plan-steps">
-              {plan.steps.map((s, i) => {
-                const now = setsByKey.get(s.key);
-                const id = `${s.key}:${s.grade}`;
+          <p className="pl-hint">{t(goal === "all" ? "value.goalAllHint" : goal === "tokens" ? "value.goalTokensHint" : "value.goalSetsHint", { count: asked ?? 0 })}</p>
+        </section>
+
+        {plan && plan.steps.length > 0 && (
+          <section className="pl-result" aria-live="polite">
+            <p className="pl-big">
+              <Gem size={18} />+{num(plan.tokens)}
+              <small>{t("value.tokensHint")}</small>
+            </p>
+            <dl>
+              {(
+                [
+                  ["value.lostToTax", "value.taxHint", <Coins value={plan.tax} approx />],
+                  ["value.coinsNeeded", "value.neededHint", <Coins value={plan.coins_needed} approx />],
+                  ["value.sets", "value.setsHint", <>{num(plan.steps.length)}</>],
+                  ["value.players", "value.playersHint", <>{num(plan.players)}</>],
+                ] as [MessageKey, MessageKey, React.ReactNode][]
+              ).map(([label, hint, value]) => (
+                <div key={label} title={t(hint)}>
+                  <dt>{t(label)}</dt>
+                  <dd>{value}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+        )}
+        <ExcludedBar />
+      </aside>
+
+      <div className="pl-main">
+        <ol className="pl-how">
+          {(["1", "2", "3"] as const).map((n) => (
+            <li key={n}>
+              <span className="bv-how-n">{n}</span>
+              <div>
+                <b>{t(`value.how${n}Title` as MessageKey)}</b>
+                <span>{t(`value.how${n}` as MessageKey)}</span>
+              </div>
+            </li>
+          ))}
+        </ol>
+        {busy && <p className="ml-loading">{t("value.calculating")}</p>}
+        {busy && !plan ? null : !plan || plan.steps.length === 0 ? (
+          <>
+            <p className="bv-note">{t(data && data.sets.some((v) => v.unpriced > 0) ? "value.planEmptyPrices" : "value.planEmpty")}</p>
+            {data && <MissingPrices sets={data.sets} />}
+          </>
+        ) : (
+          <>
+            {asked != null && plan.steps.length < asked && <p className="bv-note warn">{t("value.fewerSets", { count: plan.steps.length, asked })}</p>}
+            <p className="pl-auto">{t("value.autoUpdate")}</p>
+            <ol className="pl-steps">
+              {plan.steps.map((st, i) => {
+                const now = setsByKey.get(st.key);
                 return (
-                  <li key={id}>
-                    <div className="bv-ps-head">
-                      <span className="bv-step-n">{i + 1}</span>
-                      <span className="bv-ps-name">{s.name}</span>
-                      <span className="bv-row-step">
-                        <GradeDiamond grade={now?.grade ?? null} size={22} />→<GradeDiamond grade={s.grade} size={22} />
+                  <li key={`${st.key}:${st.grade}`} className={`pl-step ${st.tokens === 0 ? "zero" : ""}`}>
+                    <header>
+                      <span className="pl-n">{i + 1}</span>
+                      <span className="pl-name">
+                        {st.name}
+                        <small>
+                          {t("value.taxShort", { tax: compact(st.tax) })} · {t("value.needsAtOnce", { coins: compact(st.coins_needed) })}
+                        </small>
                       </span>
-                      <b className="bv-ps-tokens">+{t("overlay.tokens", { count: s.tokens })}</b>
-                      <span className="bv-tax">{t("value.taxShort", { tax: compact(s.tax) })}</span>
-                    </div>
-                    <p className="bv-ps-what">
-                      {s.buys.length > 0 ? t("value.stepCards", { count: s.buys.length, set: s.name, grade: s.grade }) : t("value.stepNoBuy", { set: s.name, grade: s.grade })}
+                      <span className="bv-row-step">
+                        <GradeDiamond grade={now?.grade ?? null} size={24} />
+                        <span aria-hidden="true">→</span>
+                        <GradeDiamond grade={st.grade} size={30} />
+                      </span>
+                      <b className="pl-tokens">{st.tokens > 0 ? `+${st.tokens}` : "0"}</b>
+                    </header>
+                    <p className="pl-what">
+                      {st.tokens === 0
+                        ? t("value.zeroTokens", { grade: st.grade })
+                        : st.buys.length > 0
+                          ? t("value.stepCards", { count: st.buys.length, set: st.name, grade: st.grade })
+                          : t("value.stepNoBuy", { set: st.name, grade: st.grade })}
                     </p>
-                    {s.buys.length > 0 && <BuyList buys={s.buys} scope={s.key} />}
+                    {st.buys.length > 0 && <BuyList buys={st.buys} limit={5} />}
                   </li>
                 );
               })}
             </ol>
-          </section>
-          {allBuys.length > 0 && (
-            <details className="detail-section bv-all">
-              <summary>{t("value.shopping", { count: allBuys.length })}</summary>
-              <ol className="bv-buys">
-                {allBuys.slice(0, 200).map(({ buy, sets }) => (
-                  <li key={buy.card.def_id}>
-                    <span className="bv-rating">{buy.card.rating ?? "?"}</span>
-                    <span className="bv-name">
-                      {buy.card.name ?? "?"}
-                      <small>{sets.join(" · ")}</small>
-                    </span>
-                    <Coins value={buy.price} approx />
-                    <span className="bv-tax">{t("value.taxShort", { tax: compact(buy.tax) })}</span>
-                  </li>
-                ))}
-              </ol>
-            </details>
-          )}
-        </>
-      )}
+            <MissingPrices sets={data?.sets ?? []} />
+            {allBuys.length > 0 && (
+              <details className="detail-section bv-all">
+                <summary>{t("value.shopping", { count: allBuys.length })}</summary>
+                <ol className="bv-buys">
+                  {allBuys.slice(0, 200).map(({ buy, sets }) => (
+                    <li key={buy.card.def_id}>
+                      <span className="bv-rating">{buy.card.rating ?? "?"}</span>
+                      <span className="bv-name">
+                        {buy.card.name ?? "?"}
+                        <small>{sets.join(" · ")}</small>
+                      </span>
+                      <Coins value={buy.price} approx />
+                      <span className="bv-tax">{t("value.taxShort", { tax: compact(buy.tax) })}</span>
+                    </li>
+                  ))}
+                </ol>
+              </details>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }

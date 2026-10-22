@@ -941,12 +941,11 @@ html[data-view="toast"] #root {
 .bv-totals dt { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 800; }
 .bv-totals dd { margin: 2px 0 0; font: 800 16px/1.1 var(--font-display); display: flex; align-items: center; gap: 4px; }
 .bv-totals.big dd { font-size: 22px; }
-.bv-buys, .bv-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
-.bv-buys li, .bv-steps li {
+.bv-buys { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+.bv-buys li {
   display: grid; grid-template-columns: 30px minmax(0, 1fr) auto auto auto; align-items: center; gap: 8px;
   background: var(--surface); padding: 5px 8px; font-size: 12px;
 }
-.bv-steps li { grid-template-columns: 22px minmax(0, 1fr) auto auto auto auto; }
 .bv-rating { font: 800 13px/1 var(--font-display); text-align: center; }
 .bv-name { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .bv-name small { margin-left: 6px; color: var(--muted); font-size: 10px; font-weight: 700; }
@@ -963,13 +962,6 @@ html[data-view="toast"] #root {
 .bv-row-meta { display: flex; flex-wrap: wrap; gap: 8px; font-size: 11px; color: var(--muted); }
 .bv-row-meta b { color: var(--accent-2); }
 .bv-ratio { color: var(--text); font-weight: 700; }
-.bv-inputs { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin: 12px 0; }
-.bv-inputs label { display: grid; gap: 4px; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 800; }
-.bv-inputs input {
-  width: 150px; padding: 8px 10px; border: 1px solid var(--line); background: var(--surface); color: var(--text);
-  font: 700 14px/1 var(--font-body);
-}
-.bv-quick { display: inline-flex; gap: 4px; }
 .planner-body { grid-template-columns: minmax(0, 1fr); }
 .ml-next { color: var(--accent-2); }
 .muted { color: var(--muted); }
@@ -985,40 +977,15 @@ html[data-view="toast"] #root {
 .bv-row-head .set-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bv-row-step { flex: none; }
 
-/* Planner: how it works, explained tiles, one card per step */
-.bv-how { list-style: none; margin: 4px 0 14px; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.bv-how li { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; background: var(--surface); padding: 10px 12px; font-size: 12px; line-height: 1.4; color: var(--muted); }
-.bv-how li b { color: var(--text); font-size: 13px; }
-.bv-how li span:last-child { grid-column: 2; }
-.bv-how-n { grid-row: span 2; display: grid; place-items: center; width: 28px; height: 28px; background: var(--accent); color: var(--on-accent); font: 800 14px/1 var(--font-display); clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); align-self: center; }
-.bv-totals small { display: block; color: var(--muted); font-size: 10.5px; margin-top: 2px; }
-.bv-plan-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.bv-plan-steps > li { background: var(--surface); padding: 10px 12px; display: grid; gap: 6px; }
-.bv-ps-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.bv-ps-name { font: 800 16px/1.1 var(--font-display); flex: 1; min-width: 120px; }
-.bv-ps-tokens { color: var(--accent-2); }
-.bv-ps-what { margin: 0; color: var(--muted); font-size: 12px; }
-.bv-plan-steps .bv-buys li { background: var(--surface-hi); }
+/* Planner: the numbered diamond of a step, the missing prices box, the full shopping list */
+.bv-how-n { display: grid; place-items: center; width: 28px; height: 28px; background: var(--accent); color: var(--on-accent); font: 800 14px/1 var(--font-display); clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
 .bv-missing { background: var(--surface); padding: 12px 14px; border-left: 3px solid var(--tag-gold); }
 .bv-missing h2 { margin-top: 0; }
 .bv-missing-big { margin: 0 0 6px; font-weight: 700; }
 .bv-all summary { cursor: pointer; font: 800 13px/1.2 var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
 .bv-all[open] summary { margin-bottom: 8px; }
 
-/* Best value: the set so far, what a grade needs, cards ticked off */
-.bv-sofar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin: 0 0 8px; font-weight: 800; font-variant-numeric: tabular-nums; }
-.bv-sofar span { color: var(--muted); font-weight: 700; font-size: 12px; }
-.bv-sofar span.ok { color: var(--accent-2); }
-.bv-needs { margin: 0; font-size: 12px; color: var(--text); font-weight: 700; }
-.bv-done-count { margin: 0 0 4px; font-size: 11px; color: var(--muted); font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }
-.bv-buys.ticks li { grid-template-columns: 20px 30px minmax(0, 1fr) auto auto auto; }
-.bv-buys.ticks li.done { opacity: 0.45; }
-.bv-buys.ticks li.done .bv-name { text-decoration: line-through; }
-.bv-tick { display: grid; place-items: center; cursor: pointer; }
-.bv-tick input { accent-color: var(--accent); margin: 0; cursor: pointer; }
-
 /* Best value: leave a card out (✕) and bring it back */
-.bv-buys.ticks li { grid-template-columns: 20px 30px minmax(0, 1fr) auto auto auto 22px; }
 .bv-x { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; padding: 2px 4px; line-height: 1; }
 .bv-x:hover, .bv-x:focus-visible { color: var(--text); background: var(--surface-hi); }
 .bv-excluded { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin: 8px 0; font-size: 12px; color: var(--muted); }
@@ -1028,3 +995,63 @@ html[data-view="toast"] #root {
 }
 .bv-chip:hover { background: var(--accent); color: var(--on-accent); }
 .bv-chip.all { background: transparent; color: var(--accent-2); }
+
+/* Best value: how far to the next grade, what a grade needs */
+.bv-sofar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin: 0 0 8px; font-weight: 700; font-size: 12px; color: var(--muted); }
+.bv-sofar .ok { color: var(--accent-2); }
+.bv-needs { margin: 0; font-size: 12px; color: var(--text); font-weight: 700; }
+.bv-buys li { grid-template-columns: 30px minmax(0, 1fr) auto auto 22px; }
+
+/* ---- Planner: a control column beside the plan, one card per set ------------------------------- */
+.pl { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 22px; max-width: 1240px; margin: 0 auto; align-items: start; }
+.pl-side { display: grid; gap: 12px; }
+@media (min-height: 860px) { .pl-side { position: sticky; top: 0; } }
+.pl-head .detail-title { margin: 2px 0 6px; }
+.pl-sub { margin: 0; color: var(--muted); font-size: 12.5px; line-height: 1.45; max-width: 34ch; }
+.pl-box, .pl-result { background: var(--surface); padding: 12px 14px; display: grid; gap: 8px;
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px)); }
+.pl-box h3 { margin: 0; font: 800 11px/1 var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.pl-coins { margin: 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font: 800 26px/1 var(--font-display); font-variant-numeric: tabular-nums; }
+.pl-coins small { flex-basis: 100%; font: 600 11px/1.2 var(--font-body); color: var(--muted); }
+.pl-other { display: grid; gap: 4px; font-size: 11px; color: var(--muted); }
+.pl-other input { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--line); background: var(--surface-hi); color: var(--text); font: 700 14px/1 var(--font-body); }
+.pl-other input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.pl-seg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px; }
+.pl-seg button { border: 0; cursor: pointer; padding: 9px 4px; background: var(--surface-hi); color: var(--muted); font: 800 12px/1.1 var(--font-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  clip-path: polygon(5px 0, 100% 0, calc(100% - 5px) 100%, 0 100%); }
+.pl-seg button.on { background: var(--accent); color: var(--on-accent); }
+.pl-seg button:not(.on):hover { color: var(--text); }
+.pl-hint { margin: 0; font-size: 11.5px; line-height: 1.4; color: var(--muted); }
+.pl-result { border-top: 3px solid var(--accent-2); }
+.pl-big { margin: 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--accent-2); font: 800 40px/1 var(--font-display); font-variant-numeric: tabular-nums; }
+.pl-big small { flex-basis: 100%; color: var(--muted); font: 600 11px/1 var(--font-body); }
+.pl-result dl { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.pl-result dl div { background: var(--surface-hi); padding: 7px 9px; cursor: help; }
+.pl-result dt { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 800; }
+.pl-result dd { margin: 3px 0 0; font: 800 17px/1 var(--font-display); display: flex; align-items: center; gap: 4px; }
+.pl-main { display: grid; gap: 14px; min-width: 0; }
+.pl-how { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.pl-how li { display: flex; gap: 10px; align-items: flex-start; background: var(--surface); padding: 10px 12px; font-size: 12px; line-height: 1.4; color: var(--muted); }
+.pl-how li div { display: grid; gap: 2px; }
+.pl-how b { color: var(--text); font-size: 13px; }
+.pl-how .bv-how-n { flex: none; }
+.pl-auto { margin: 0; font-size: 12px; color: var(--muted); padding-left: 10px; border-left: 2px solid var(--accent-2); }
+.pl-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); gap: 10px; align-items: start; }
+.pl-step { background: var(--surface); padding: 12px 12px 10px; display: grid; gap: 8px; animation: detail-in 320ms var(--ease) both;
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%); border-top: 3px solid var(--accent); }
+.pl-step.zero { border-top-color: var(--line); }
+.pl-step header { display: flex; align-items: center; gap: 10px; }
+.pl-n { flex: none; display: grid; place-items: center; width: 24px; height: 24px; background: var(--surface-hi); color: var(--muted); font: 800 13px/1 var(--font-display); }
+.pl-name { flex: 1; min-width: 0; font: 800 18px/1.05 var(--font-display); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pl-name small { display: block; margin-top: 3px; font: 600 11px/1.2 var(--font-body); color: var(--muted); }
+.pl-tokens { flex: none; min-width: 44px; text-align: right; color: var(--accent-2); font: 800 26px/1 var(--font-display); }
+.pl-step.zero .pl-tokens { color: var(--muted); }
+.pl-what { margin: 0; font-size: 12px; line-height: 1.4; color: var(--muted); }
+.pl-step .bv-buys li { background: var(--surface-hi); }
+@media (max-width: 900px) {
+  .pl { grid-template-columns: minmax(0, 1fr); }
+  .pl-how { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) { .pl-step { animation: none; } }
+.bv-more { justify-self: start; border: 0; background: transparent; color: var(--accent-2); font: 800 11.5px/1 var(--font-body); cursor: pointer; padding: 4px 0; }
+.bv-more:hover { color: var(--text); }
