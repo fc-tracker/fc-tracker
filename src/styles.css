@@ -401,3 +401,26 @@ html[data-view="launcher"] :focus-visible { outline: 2px solid var(--accent-2); 
 @media (prefers-reduced-motion: reduce) {
   .cs *, .cs *::after, .help-preview *, .help-eyebrow::before { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition: none !important; }
 }
+
+/* Champions leaderboard name (Settings) */
+html[data-view="launcher"] .ln-input { width: 150px; padding: 9px 10px; font: 700 14px var(--font-body); color: var(--text); background: var(--surface-hi); border: 1px solid var(--line); }
+
+/* "New · Beta" – the Champions tracker announcement on the home view (it ships switched off) */
+.ln-news {
+  display: flex; gap: 14px; align-items: flex-start; margin-top: clamp(14px, 2.6vh, 22px); padding: 16px 18px;
+  background: color-mix(in srgb, var(--accent-2) 10%, var(--surface)); border-left: 3px solid var(--accent-2);
+  clip-path: polygon(0 0, calc(100% - var(--ln-cut)) 0, 100% var(--ln-cut), 100% 100%, 0 100%);
+  animation: ln-news-in 360ms var(--ease) both;
+}
+.ln-news > div { flex: 1; min-width: 0; }
+.ln-news p { margin: 0 0 8px; font-size: 14px; }
+.ln-news.on { align-items: center; }
+.ln-news.on p { flex: 1; margin: 0; }
+.ln-news.on b { color: var(--ln-ok); }
+.ln-news-mark { flex: none; width: 14px; height: 14px; margin-top: 4px; background: var(--accent-2); transform: rotate(45deg); box-shadow: 0 0 12px var(--accent-2); }
+.ln-news.on .ln-news-mark { margin-top: 0; }
+.ln-news-eyebrow { margin: 0 0 2px !important; color: var(--accent-2); font: 800 11px/1 var(--font-body) !important; letter-spacing: 0.12em; text-transform: uppercase; }
+.ln-news-title { display: block; margin-bottom: 4px; font: 700 24px/1.1 var(--font-display); text-transform: uppercase; }
+.ln-news-small { color: var(--muted); font-size: 13px !important; }
+@keyframes ln-news-in { from { opacity: 0; transform: translateY(6px); } }
+@media (prefers-reduced-motion: reduce) { .ln-news { animation: none; } }

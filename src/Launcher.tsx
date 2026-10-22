@@ -6,6 +6,7 @@ import { SupportButton } from "./Support";
 import Speed from "./Speed";
 import { THEMES, useTheme, type Theme } from "./theme";
 import { initUsage, onlineNow, setUsageEnabled, startPresence, track, trackOnce, usageEnabled } from "./usage";
+import { boardName, champsNewsState, NAME_RE, setBoardName, setChampsNewsState, uploadWeekend, type ChampsNews } from "./championsBoard";
 import { startPrices } from "./prices";
 
 // Usage statistics run in the real app only (the launcher window lives as long as the app does).
@@ -46,6 +47,19 @@ export default function Launcher() {
   const [missingSide, setMissingSide] = useState<"left" | "right">("left");
   const [autostart, setAutostart] = useState<boolean | null>(null);
   const [usageOn, setUsageOn] = useState(usageEnabled);
+  const [champsOn, setChampsOn] = useState<boolean | null>(null);
+  const [champsNews, setChampsNews] = useState<ChampsNews | "on">(champsNewsState);
+  const [champsCleared, setChampsCleared] = useState(false);
+  const [boardOn, setBoardOn] = useState(() => boardName());
+  const [boardDraft, setBoardDraft] = useState(() => boardName() ?? "");
+  // Champions leaderboard (opt-in): the weekend record goes up when the hub counts a match
+  useEffect(() => {
+    api.championsData().then(uploadWeekend).catch(() => {});
+    const un = events.onChampions((d) => void uploadWeekend(d));
+    return () => {
+      un.then((u) => u());
+    };
+  }, [boardOn]);
   // "N online now" (our own counter) – shown once enough people are online
   const [online, setOnline] = useState<number | null>(null);
   useEffect(() => {
@@ -64,9 +78,22 @@ export default function Launcher() {
       .then((p) => {
         setAfterPlay(p.after_play);
         setMissingSide(p.missing_side);
+        setChampsOn(p.champions === true);
       })
       .catch(() => {});
   }, []);
+  const switchChampsOn = () =>
+    api
+      .setChampionsTracking(true)
+      .then((p) => {
+        setChampsOn(p.champions === true);
+        setChampsNews("on");
+      })
+      .catch(() => {});
+  const closeChampsNews = (v: ChampsNews) => {
+    setChampsNewsState(v);
+    setChampsNews(v);
+  };
   // The game was started together with the sync: shown as a step until it runs.
   const launched = useRef(false);
 
@@ -326,6 +353,7 @@ export default function Launcher() {
                 </Hero>
               )}
               {message && <p className={`ln-message ${message.kind}`}>{message.text()}</p>}
+              {!syncing && <ChampsNewsCard on={champsOn} news={champsNews} onSwitch={switchChampsOn} onClose={closeChampsNews} />}
             </section>
 
             {!syncing && (
@@ -457,6 +485,63 @@ export default function Launcher() {
               </div>
               <div className="ln-row">
                 <div>
+                  <b>{t("settings.champions")}</b>
+                  <p>{t("settings.championsText")}</p>
+                </div>
+                <div className="ln-seg">
+                  <button
+                    className={`ln-btn small ${champsOn ? "" : "ghost"}`}
+                    aria-pressed={champsOn === true}
+                    onClick={() => api.setChampionsTracking(!champsOn).then((p) => setChampsOn(p.champions === true)).catch(() => {})}
+                  >
+                    {champsOn ? t("settings.on") : t("settings.off")}
+                  </button>
+                  <button
+                    className="ln-btn small ghost"
+                    disabled={champsCleared}
+                    onClick={() => api.clearChampions().then(() => setChampsCleared(true)).catch(() => {})}
+                  >
+                    {champsCleared ? t("settings.championsCleared") : t("settings.championsClear")}
+                  </button>
+                </div>
+              </div>
+              <div className="ln-row">
+                <div>
+                  <b>{t("settings.championsBoard")}</b>
+                  <p>{t("settings.championsBoardText")}</p>
+                </div>
+                <div className="ln-seg">
+                  {boardOn ? (
+                    <>
+                      <span className="ln-btn small ghost" aria-live="polite">{boardOn}</span>
+                      <button className="ln-btn small ghost" onClick={() => { setBoardName(null); setBoardOn(null); }}>
+                        {t("settings.championsBoardLeave")}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <input
+                        className="ln-input"
+                        value={boardDraft}
+                        maxLength={16}
+                        placeholder={t("settings.championsBoardName")}
+                        aria-label={t("settings.championsBoardName")}
+                        title={t("settings.championsBoardHint")}
+                        onChange={(e) => setBoardDraft(e.target.value)}
+                      />
+                      <button
+                        className="ln-btn small"
+                        disabled={!NAME_RE.test(boardDraft.trim())}
+                        onClick={() => { setBoardName(boardDraft); setBoardOn(boardName()); }}
+                      >
+                        {t("settings.championsBoardJoin")}
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+              <div className="ln-row">
+                <div>
                   <b>{t("settings.usage")}</b>
                   <p>{t("settings.usageText")}</p>
                 </div>
@@ -534,6 +619,42 @@ export default function Launcher() {
           </section>
         )}
       </main>
+    </div>
+  );
+}
+
+/** The Champions tracker ships switched off: announced here until switched on or put off. */
+function ChampsNewsCard({ on, news, onSwitch, onClose }: { on: boolean | null; news: ChampsNews | "on"; onSwitch: () => void; onClose: (v: ChampsNews) => void }) {
+  if (news === "on")
+    return (
+      <div className="ln-news on" role="status">
+        <span className="ln-news-mark" aria-hidden="true" />
+        <p>
+          <b>{t("champs.news.onTitle")}</b> {t("champs.news.onText")}
+        </p>
+        <button className="ln-suggest-x" aria-label={t("ln.suggest.dismiss")} onClick={() => onClose("done")}>
+          ×
+        </button>
+      </div>
+    );
+  if (on !== false || news !== "open") return null;
+  return (
+    <div className="ln-news" role="region" aria-label={t("champs.news.title")}>
+      <span className="ln-news-mark" aria-hidden="true" />
+      <div>
+        <p className="ln-news-eyebrow">{t("champs.news.eyebrow")}</p>
+        <b className="ln-news-title">{t("champs.news.title")}</b>
+        <p>{t("champs.news.text")}</p>
+        <p className="ln-news-small">{t("champs.news.how")}</p>
+        <div className="ln-seg">
+          <button className="ln-btn small" onClick={onSwitch}>
+            {t("champs.news.switch")}
+          </button>
+          <button className="ln-btn small ghost" onClick={() => onClose("later")}>
+            {t("champs.news.later")}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

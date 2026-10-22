@@ -15,6 +15,11 @@
   --grade-s: #a86bff;
   --gem: #3fe0b8;
 
+  /* match results (Champions tracker) – the same in every theme, like the game's WIN / LOSS */
+  --result-win: #3fe0b8;
+  --result-loss: #ff5a6a;
+  --result-quit: #f2a33a;
+
   /* "$ Support me" – Ultimate Team coin gold, the same in every theme */
   --support-gold: #f2c94c;
   --support-gold-hi: #ffe28a;

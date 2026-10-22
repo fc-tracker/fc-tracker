@@ -4,6 +4,7 @@ import { getVersion } from "@tauri-apps/api/app";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { browserPad } from "./browserPad";
 import { getLocale, t } from "./i18n";
+import type { ChampsData } from "./championsData";
 
 export type DisplayMode = "fullscreen" | "borderless" | "windowed" | "unknown";
 
@@ -204,6 +205,10 @@ export interface ShoppingList {
   /** The best value next grade of this set (within the coins). */
   next_grade?: GradePlan | null;
   tokens_have?: number;
+  /** Cards left out because no price was seen for them yet (rarely bought – unrealistic). */
+  unpriced?: number;
+  /** Every grade reached: buying adds score but no tokens, so nothing is suggested. */
+  top_reached?: boolean;
 }
 
 /** The best selection of a set from the cards the user has – one overview instead of swaps. */
@@ -283,6 +288,8 @@ export type ToastPayload =
   | { kind: "fill"; set_name: string; count: number; names: string[]; points: number | null }
   /** A game page is being read (every wait visible). */
   | { kind: "progress"; what: "set" | "swap" | "new_items" | "bidding"; name: string | null }
+  /** Champions: a match was counted by the hub. */
+  | { kind: "champions"; n: number | null; outcome: "win" | "loss" | "quit" | null; score: [number, number] | null; when_left: [number, number] | null; minute: number | null; aet: boolean; opponent: string | null; wins: number; losses: number; remaining: number }
   /** A page was read and needs nothing from the user. */
   | { kind: "read"; state: "best" | "read" | "unclear" | "nothing_new" | "swap"; set_name: string; cards: number; identified: number; total: number | null };
 
@@ -300,6 +307,8 @@ export interface TrackingPrefs {
   still_ms: number;
   animated_ms: number;
   market_ms: number;
+  /** In a match (Champions tracker): one look at the scoreboard this often. */
+  match_ms: number;
 }
 
 export interface TrackingInfo {
@@ -309,7 +318,7 @@ export interface TrackingInfo {
 }
 
 const DEMO_SPEED: TrackingInfo = (() => {
-  const p: TrackingPrefs = { preset: "auto", continuous: true, watch_ms: 100, same_for_all: false, all_ms: 1000, still_ms: 150, animated_ms: 1000, market_ms: 500 };
+  const p: TrackingPrefs = { preset: "auto", continuous: true, watch_ms: 100, same_for_all: false, all_ms: 1000, still_ms: 150, animated_ms: 1000, market_ms: 500, match_ms: 1000 };
   return { prefs: p, effective: { ...p }, specs: { threads: 16, ram_gb: 32, gpu: "NVIDIA GeForce RTX 4070", on_battery: false, recommended: "fast" } };
 })();
 
@@ -320,6 +329,8 @@ export interface UiPrefs {
   missing_side: "left" | "right";
   /** FC 27 closed after Ultimate Team: remind to sync (default), sync by itself, or nothing. */
   after_play: AfterPlay;
+  /** Champions tracker (beta) on / off. */
+  champions?: boolean;
 }
 
 export interface GalleryTag {
@@ -500,6 +511,12 @@ const appApi = {
   setDiagnostics: (on: boolean) =>
     browserDev ? Promise.resolve({ remaining: on ? 1800 : null }) : invoke<{ remaining: number | null }>("set_diagnostics", { on }),
   openDiagnostics: () => invoke<void>("open_diagnostics"),
+  /** Champions tracker (beta): everything read from Champions matches (local data). */
+  championsData: () =>
+    browserDev ? import("./devMock").then((m) => (new URLSearchParams(location.search).has("champs-empty") ? m.mockChampionsEmpty : m.mockChampions)) : invoke<ChampsData>("champions_data"),
+  setChampionsTracking: (on: boolean) =>
+    browserDev ? Promise.resolve<UiPrefs>({ mode: "panel", missing_side: "left", after_play: "remind", champions: on }) : invoke<UiPrefs>("set_champions_tracking", { on }),
+  clearChampions: () => (browserDev ? import("./devMock").then((m) => m.mockChampionsEmpty) : invoke<ChampsData>("clear_champions")),
 };
 
 // The browser version: the gallery comes from the screen read in this tab (src/web/backend.ts).
@@ -535,6 +552,7 @@ function withWeb(a: typeof appApi): typeof appApi {
     openHelp: () => Promise.resolve(void window.open("/faq", "_blank", "noopener")),
     openSite: (path: string) => Promise.resolve(void window.open(path, "_blank", "noopener")),
     hideOverlay: () => Promise.resolve(),
+    championsData: () => import("./championsData").then((m) => m.emptyChamps),
   };
 }
 export const api = IS_WEB ? withWeb(appApi) : appApi;
@@ -547,7 +565,7 @@ const webListen = <T,>(pick: (b: WebBackend) => (cb: (v: T) => void) => () => vo
 function mockToast(cb: (t: ToastPayload) => void): Promise<UnlistenFn> {
   const demo = new URLSearchParams(location.search).get("demo");
   import("./devMock").then((m) =>
-    cb(demo === "pack" ? m.mockPackToast : demo === "swap" ? m.mockSwapToast : demo === "login" ? { kind: "sync", state: "login", reason: "not_signed_in" } : demo === "welcome" ? { kind: "welcome", players: 529 } : demo === "suggest" ? { kind: "sync", state: "suggest" } : demo === "fill" ? { kind: "fill", set_name: "Newcastle United", count: 3, names: ["Barnes", "Wissa", "Murphy"], points: 520 } : demo === "recording" ? { kind: "recording" } : demo === "progress" ? { kind: "progress", what: "set", name: "Premier League" } : demo === "read" ? { kind: "read", state: "best", set_name: "Arsenal", cards: 20, identified: 20, total: 114873 } : demo === "syncing" ? { kind: "sync", state: "running", phase: "gallery", count: 186, done: 3, total: 16, set: "Premier League" } : m.mockBetterToast),
+    cb(demo === "pack" ? m.mockPackToast : demo === "swap" ? m.mockSwapToast : demo === "login" ? { kind: "sync", state: "login", reason: "not_signed_in" } : demo === "welcome" ? { kind: "welcome", players: 529 } : demo === "suggest" ? { kind: "sync", state: "suggest" } : demo === "fill" ? { kind: "fill", set_name: "Newcastle United", count: 3, names: ["Barnes", "Wissa", "Murphy"], points: 520 } : demo === "champions" ? { kind: "champions", n: 3, outcome: "loss", score: [4, 5], when_left: null, minute: null, aet: true, opponent: "Basprovol", wins: 1, losses: 2, remaining: 12 } : demo === "recording" ? { kind: "recording" } : demo === "progress" ? { kind: "progress", what: "set", name: "Premier League" } : demo === "read" ? { kind: "read", state: "best", set_name: "Arsenal", cards: 20, identified: 20, total: 114873 } : demo === "syncing" ? { kind: "sync", state: "running", phase: "gallery", count: 186, done: 3, total: 16, set: "Premier League" } : m.mockBetterToast),
   );
   return noListen();
 }
@@ -601,6 +619,8 @@ const appEvents = {
     browserDev ? noListen() : listen<boolean>("missing-visible", (e) => cb(e.payload)),
   onScanFailed: (cb: (code: string) => void) =>
     browserDev ? noListen() : listen<string>("scan-failed", (e) => cb(e.payload)),
+  /** Champions tracker: a match / the hub was read. */
+  onChampions: (cb: (d: ChampsData) => void) => (browserDev ? noListen() : listen<ChampsData>("champions", (e) => cb(e.payload))),
 };
 
 export const events: typeof appEvents = IS_WEB
@@ -614,6 +634,7 @@ export const events: typeof appEvents = IS_WEB
       onGameSession: (cb: (s: GameSession) => void) =>
         webListen((b) => b.webEvents.onStatus, (st) => cb(st.phase === "off" ? "closed" : "in_ultimate_team")),
       onToast: () => noListen(),
+      onChampions: () => noListen(),
     }
   : appEvents;
 

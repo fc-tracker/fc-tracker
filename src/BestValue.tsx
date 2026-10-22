@@ -143,8 +143,9 @@ export function GradeCosts({ value, compactView = false }: { value: SetValue; co
           <button key={g.grade} role="tab" aria-selected={i === pick} className={`bv-tab state-${g.state} ${i === pick ? "active" : ""} ${g === top ? "top" : ""}`} onClick={() => setPick(i)}>
             <GradeDiamond grade={g.grade} size={26} />
             <span className="bv-tab-cost">
-              {g.state === "reached" ? "✓" : g.state === "buy" ? <Coins value={g.coins_needed} approx /> : t(STATE_KEY[g.state])}
+              {g.state === "reached" ? "✓" : g.state === "buy" ? <Coins value={g.tax} approx /> : t(STATE_KEY[g.state])}
             </span>
+            {g.state === "buy" && <span className="bv-tab-sub">{t("value.afterTax")}</span>}
             <span className="bv-tab-tokens">{g.tokens_total > 0 ? t("overlay.tokens", { count: g.tokens_total }) : " "}</span>
           </button>
         ))}

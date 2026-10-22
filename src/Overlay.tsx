@@ -24,6 +24,8 @@ import { SupportButton } from "./Support";
 import MissingList from "./MissingList";
 import { GradeCosts, Planner, ValueList, rankByValue, useBestValue, useSetValue } from "./BestValue";
 import { PadButton, useInputMode } from "./padGlyphs";
+import Champions from "./Champions";
+import { champsTabSeen } from "./championsBoard";
 import "./overlay.css";
 
 /** Angular grade badge (D/C/B/A/S). Unknown grade renders as an empty outline. */
@@ -392,9 +394,9 @@ function SetCosts({ setKey, name }: { setKey: string; name: string }) {
 
 // Main menu → tabs → categories. Today the main menu has one entry (Gallery); its tabs are the
 // sets, Best value (sets ranked by what the next grade costs) and the token Planner.
-const SECTIONS = ["sets", "value", "planner"] as const;
+const SECTIONS = ["sets", "value", "planner", "champions"] as const;
 type Section = (typeof SECTIONS)[number];
-const SECTION_LABEL: Record<Section, MessageKey> = { sets: "section.sets", value: "section.value", planner: "section.planner" };
+const SECTION_LABEL: Record<Section, MessageKey> = { sets: "section.sets", value: "section.value", planner: "section.planner", champions: "section.champions" };
 const readPref = (k: string, d: string) => {
   try {
     return localStorage.getItem(k) ?? d;
@@ -809,6 +811,13 @@ export default function Overlay() {
         } else if (action === "back") api.hideOverlay();
         return;
       }
+      if (section === "champions") {
+        // up/down scroll the weekend
+        if (action === "up" || action === "down") document.querySelector(".planner-body .detail-wrap")?.scrollBy({ top: action === "down" ? 240 : -240, behavior: "smooth" });
+        else if (action === "select") window.dispatchEvent(new Event("fct:champions-switch")); // switches the tracker on while it is off
+        else if (action === "back") api.hideOverlay();
+        return;
+      }
       if (section === "planner") {
         // L1/R1 (Q/E) switch the goal, up/down scroll the plan
         if (action === "prev_category" || action === "next_category") window.dispatchEvent(new CustomEvent("fct:planner-goal", { detail: action === "next_category" ? 1 : -1 }));
@@ -905,7 +914,7 @@ export default function Overlay() {
       q: "prev_category", e: "next_category",
       arrowup: "up", arrowdown: "down", arrowleft: "left", arrowright: "right",
       enter: "select", " ": "select", escape: "back", backspace: "back", i: "info",
-      "1": "section_sets", "2": "section_value", "3": "section_planner",
+      "1": "section_sets", "2": "section_value", "3": "section_planner", "4": "section_champions",
     };
     const onKey = (e: KeyboardEvent) => {
       // typing in a field (the planner's budget) is not navigation
@@ -954,6 +963,8 @@ export default function Overlay() {
   const embedded = IS_WEB || mode === "full";
   const input = useInputMode();
   const pad = input === "keyboard" ? null : input;
+  // "New" on the Champions tab until it has been opened once (the tracker ships switched off)
+  const champsNew = section !== "champions" && !champsTabSeen();
   const syncedAt = sync?.synced_at ?? null;
   const nextTheme = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
 
@@ -971,6 +982,7 @@ export default function Overlay() {
             {SECTIONS.map((s) => (
               <button key={s} className={`sec-tab ${section === s ? "active" : ""}`} aria-pressed={section === s} onClick={() => setSection(s)}>
                 {t(SECTION_LABEL[s])}
+                {s === "champions" && <span className={`sec-badge ${champsNew ? "new" : ""}`}>{t(champsNew ? "champs.news.badge" : "champs.beta")}</span>}
               </button>
             ))}
             {pad ? <PadButton id="r2" layout={pad} size={18} /> : null}
@@ -1109,6 +1121,12 @@ export default function Overlay() {
               )}
             </div>
           </>
+        ) : section === "champions" ? (
+          <div className="ov-body zone-list planner-body">
+            <main className="detail-wrap">
+              <Champions keys={pad ? <PadButton id="south" layout={pad} size={18} /> : <kbd className="key-hint">Enter</kbd>} />
+            </main>
+          </div>
         ) : section === "planner" ? (
           <div className="ov-body zone-list planner-body">
             <main className="detail-wrap">

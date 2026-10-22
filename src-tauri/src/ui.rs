@@ -28,6 +28,10 @@ pub struct UiPrefs {
     /// Tracking speed (Settings → Tracking speed).
     #[serde(default)]
     pub tracking: crate::speed::TrackingPrefs,
+    /// Champions tracker (beta): read Champions matches (Settings → Champions tracker). Off until the
+    /// user switches it on – the launcher and the overlay's Champions tab announce it.
+    #[serde(default)]
+    pub champions: bool,
 }
 
 fn remind() -> String {
@@ -40,7 +44,7 @@ fn default_side() -> String {
 
 impl Default for UiPrefs {
     fn default() -> Self {
-        Self { mode: "panel".into(), panel: None, missing_side: default_side(), after_play: remind(), game_exe: None, tracking: Default::default() }
+        Self { mode: "panel".into(), panel: None, missing_side: default_side(), after_play: remind(), game_exe: None, tracking: Default::default(), champions: false }
     }
 }
 

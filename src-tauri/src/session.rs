@@ -71,7 +71,8 @@ const MENU_WORDS: [&str; 6] = ["ULTIMATE", "MANAGER", "CAREER", "KICK", "PLAYER"
 /// Ultimate Team navigation (top bar of every UT screen).
 /// "Squad" / "Transfer" / "Market": the Squad screen's tab bar (Club · Squad · Transfer Market) –
 /// where a match usually ends, so match mode must see it as Ultimate Team.
-const UT_NAV: [&str; 12] = ["Club", "Gallery", "Squad", "Squads", "Transfer", "Transfers", "Market", "Store", "Objectives", "Evolutions", "Home", "SBC"];
+/// "Rivals" / "Champions": the Play → Rivals tab bar (the Champions hub, where a Champions match ends).
+const UT_NAV: [&str; 14] = ["Club", "Gallery", "Squad", "Squads", "Transfer", "Transfers", "Market", "Store", "Objectives", "Evolutions", "Home", "SBC", "Rivals", "Champions"];
 
 pub fn classify(frame: &Frame, page: &Page) -> Screen {
     let has = |t: &str| frame.words.iter().any(|w| w.text == t);
@@ -81,6 +82,10 @@ pub fn classify(frame: &Frame, page: &Page) -> Screen {
         return Screen::PreMatch;
     }
     if !matches!(page, Page::Other) {
+        return Screen::UltimateTeam;
+    }
+    // The Champions hub (after a Champions match): its Performance panel
+    if has("Wins") && has("Losses") && has("Remaining") {
         return Screen::UltimateTeam;
     }
     if MENU_WORDS.iter().filter(|w| has(w)).count() >= 3 {

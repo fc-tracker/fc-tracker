@@ -199,6 +199,44 @@ impl Frame {
         let words = ocr(engine, &bitmap_from_bgra(&out, ow, oh)?)?;
         Ok(words.into_iter().map(|w| w.text).collect::<Vec<_>>().join(" "))
     }
+
+    /// OCR of a region with each word's box mapped back to frame pixels (Champions screens:
+    /// the scoreboard, the result card's score). `light_text`: binarise, bright pixels = ink.
+    pub fn ocr_words_in(&self, x: f32, y: f32, w: f32, h: f32, factor: u32, light_text: Option<u8>) -> Result<Vec<Word>, String> {
+        let (x0, y0) = (x.max(0.0) as u32, y.max(0.0) as u32);
+        if x0 >= self.width || y0 >= self.height {
+            return Ok(Vec::new());
+        }
+        let (cw, ch) = ((w.max(1.0) as u32).min(self.width - x0), (h.max(1.0) as u32).min(self.height - y0));
+        let factor = factor.max(1);
+        let pad = 16;
+        let (ow, oh) = (cw * factor + 2 * pad, ch * factor + 2 * pad);
+        let mut out = vec![0u8; (ow * oh * 4) as usize];
+        for oy in 0..oh {
+            for ox in 0..ow {
+                let sx = x0 + (ox.saturating_sub(pad) / factor).min(cw - 1);
+                let sy = y0 + (oy.saturating_sub(pad) / factor).min(ch - 1);
+                let si = ((sy * self.width + sx) * 4) as usize;
+                let di = ((oy * ow + ox) * 4) as usize;
+                match light_text {
+                    Some(t) => {
+                        let v = if self.luma(sx, sy) > t { 0 } else { 255 };
+                        out[di..di + 4].copy_from_slice(&[v, v, v, 255]);
+                    }
+                    None => {
+                        out[di..di + 4].copy_from_slice(&self.bgra[si..si + 4]);
+                        out[di + 3] = 255;
+                    }
+                }
+            }
+        }
+        let f = factor as f32;
+        let words = ocr(&ocr_engine()?, &bitmap_from_bgra(&out, ow, oh)?)?;
+        Ok(words
+            .into_iter()
+            .map(|w| Word { text: w.text, x: x0 as f32 + (w.x - pad as f32) / f, y: y0 as f32 + (w.y - pad as f32) / f, w: w.w / f, h: w.h / f })
+            .collect())
+    }
 }
 
 /// A selected card read from a set page (the in-game set grid – no names on these cards).

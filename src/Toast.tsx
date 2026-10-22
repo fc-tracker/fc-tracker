@@ -119,6 +119,25 @@ export default function Toast() {
     );
   }
 
+  if (toast.kind === "champions") {
+    const score = toast.score ? `${toast.score[0]}–${toast.score[1]}` : "";
+    const outcome = toast.outcome ? t(`champs.short.${toast.outcome}`) : "";
+    return (
+      <div className={`toast read ${toast.outcome === "win" ? "best" : ""}`} key={`champs-${toast.n}`} role="status">
+        <span className="toast-mark read" aria-hidden="true" />
+        <div className="toast-body">
+          <p className="toast-title">{t("champs.toastTitle", { n: toast.n ?? "?" })}</p>
+          <p className="toast-line">
+            {[`${outcome} ${score}${toast.aet ? ` ${t("champs.aet")}` : ""}`, toast.opponent, toast.when_left ? t("champs.whenLeft", { score: `${toast.when_left[0]}–${toast.when_left[1]}`, minute: toast.minute ?? 0 }) : null]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+          <p className="toast-line">{t("champs.toastRecord", { wins: toast.wins, losses: toast.losses, left: toast.remaining })}</p>
+        </div>
+      </div>
+    );
+  }
+
   if (toast.kind === "welcome") {
     return (
       <div className="toast read best" key="welcome" role="status">

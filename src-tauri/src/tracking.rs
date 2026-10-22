@@ -384,10 +384,40 @@ pub fn spawn(app: AppHandle) {
                 if *state.session.lock().unwrap() == GameSession::Closed {
                     set_session(&app, GameSession::Unknown);
                 }
-                // Match mode: nothing of ours on screen, no page reads – one cheap look every few
-                // seconds to see the menus again.
+                // Match mode: nothing of ours on screen, no page reads. The Champions tracker looks
+                // at the scoreboard once per `match_ms` (and reads every frame after full time);
+                // without it one cheap look every few seconds to see the menus again.
                 if *state.session.lock().unwrap() == GameSession::InMatch {
                     last_sig.clear();
+                    // Not a Champions match (Rivals, Squad Battles …): once it kicked off, the
+                    // tracker stops looking – only the cheap probe below runs.
+                    let other_match = !crate::champions::has_pending() && crate::champions::LIVE.lock().unwrap().as_ref().is_some_and(|l| l.kicked_off());
+                    if state.ui.lock().unwrap().champions && !other_match {
+                        let every = Duration::from_millis(crate::speed::effective(&state.ui.lock().unwrap().tracking).match_ms as u64);
+                        let interval = crate::champions::LIVE.lock().unwrap().get_or_insert_with(Default::default).interval(every);
+                        if last_probe.elapsed() >= interval {
+                            last_probe = std::time::Instant::now();
+                            match scan::capture_pixels_game() {
+                                Ok((w, h, px)) => {
+                                    let (seen, half) = crate::champions::LIVE.lock().unwrap().get_or_insert_with(Default::default).look(w, h, px, crate::store::now_ms());
+                                    for s in seen {
+                                        champions_feed(&app, s);
+                                    }
+                                    if let Some(frame) = half {
+                                        observe_screen(&app, session::classify(&frame, &Page::Other), &mut leave_votes);
+                                    }
+                                }
+                                Err(e) => {
+                                    if read_errors_logged < 3 {
+                                        read_errors_logged += 1;
+                                        log(&state.data_dir, &format!("champions: no picture in the match ({e})"));
+                                    }
+                                }
+                            }
+                        }
+                        std::thread::sleep(interval.min(TICK) / 2);
+                        continue;
+                    }
                     if last_probe.elapsed() >= MATCH_PROBE {
                         last_probe = std::time::Instant::now();
                         if let Ok((w2, h2, small)) = scan::capture_pixels_game().map(|(w, h, px)| scan::downscale2(w, h, &px)) {
@@ -510,6 +540,9 @@ pub fn spawn(app: AppHandle) {
                         gate.urgent = frame.has_word("TRANSFER")
                             || matches!(&page, Page::Bidding { .. } | Page::BuySuccess | Page::BuyConfirm { .. } | Page::Cards { context: "bought", .. });
                         observe_screen(&app, session::classify(&frame, &page), &mut leave_votes);
+                        if matches!(page, Page::Other) {
+                            champions_menu(&app, &frame);
+                        }
                         on_preview = matches!(&page, Page::Swap { preview: Some(_), .. });
                         // A notice belongs to its screen: hide it on any other page.
                         if !matches!(&page, Page::Cards { context: "pack" | "bought", .. } | Page::Set { .. }) {
@@ -666,6 +699,50 @@ pub fn probe_unknown(app: &AppHandle) {
     }
 }
 
+/// A whole-frame read in a menu or Ultimate Team: the Champions hub, the kit selection, a result
+/// card still on screen after match mode ended.
+fn champions_menu(app: &AppHandle, frame: &scan::Frame) {
+    if !app.state::<AppState>().ui.lock().unwrap().champions {
+        return;
+    }
+    if let Some(seen) = crate::champions::read_screen(&frame.words, Some(frame), crate::store::now_ms()) {
+        champions_feed(app, seen);
+    }
+}
+
+/// One Champions screen to the tracker: logged (no gamertags in the log), saved, sent to the UI.
+fn champions_feed(app: &AppHandle, seen: crate::champions::Seen) {
+    use crate::champions::Seen;
+    let what = match &seen {
+        Seen::Hub(h) => format!("hub {}W {}L {} left", h.wins, h.losses, h.remaining),
+        Seen::KitChampions => "kit selection".into(),
+        Seen::OpponentLeft => "opponent left before kickoff".into(),
+        Seen::Versus { home, away } => format!("versus {:?} – {:?}", home.abbr, away.abbr),
+        Seen::Board(b) => format!("score {} {}-{} {} at {:?}'", b.home_abbr, b.home, b.away, b.away_abbr, b.minute),
+        Seen::Pause(p) => format!("pause menu at {:?}'", p.minute),
+        Seen::Disconnect => "connection lost".into(),
+        Seen::Result(c) => format!("result card {:?} win {:?}", c.score, c.win),
+        Seen::RankWin => "rank screen: match win".into(),
+    };
+    let quiet = matches!(seen, Seen::Board(_) | Seen::Hub(_));
+    let counted = |d: &crate::champions::Data| d.runs.iter().map(|r| r.matches.len()).sum::<usize>();
+    let before = counted(&crate::champions::data());
+    if let Some(d) = crate::champions::feed(seen) {
+        log(&app.state::<AppState>().data_dir, &format!("champions: {what}"));
+        let _ = app.emit("champions", &d);
+        // a match was counted by the hub: say so there (never in a match)
+        if counted(&d) > before && *app.state::<AppState>().session.lock().unwrap() != GameSession::InMatch {
+            if let Some(run) = d.runs.last() {
+                if let Some(m) = run.matches.last().filter(|m| !m.hub_only) {
+                    crate::show_notice(app, crate::champions::notice(m, &run.hub), 8);
+                }
+            }
+        }
+    } else if !quiet {
+        log(&app.state::<AppState>().data_dir, &format!("champions: {what} (no change)"));
+    }
+}
+
 /// Updates the session from one classified screen. Leaving the main menu must be seen twice in a
 /// row (one OCR miss on an animated menu must not stop a sync); a real Ultimate Team screen counts
 /// at once.
@@ -701,6 +778,10 @@ pub fn set_session(app: &AppHandle, next: GameSession) {
     // the game started: remember where it runs from, for the launcher's next start
     if previous == GameSession::Closed && next != GameSession::Closed {
         crate::remember_game_exe(app);
+    }
+    // A new match (or its end): the Champions looks start over.
+    if next == GameSession::InMatch || previous == GameSession::InMatch {
+        *crate::champions::LIVE.lock().unwrap() = None;
     }
     // A match starts: step aside (no window of ours over the game – Windows can then present
     // it like fullscreen). After it: the missing list comes back if it was open.
@@ -1820,7 +1901,7 @@ mod tests {
     #[test]
     fn read_delays_count_in_the_real_tick_length() {
         // balanced: 1 s for animated screens; in 500 ms ticks that is 2 ticks, not 10
-        let p = crate::speed::TrackingPrefs { preset: "custom".into(), continuous: true, watch_ms: 100, same_for_all: false, all_ms: 500, still_ms: 150, animated_ms: 1000, market_ms: 500 };
+        let p = crate::speed::TrackingPrefs { preset: "custom".into(), continuous: true, watch_ms: 100, same_for_all: false, all_ms: 500, still_ms: 150, animated_ms: 1000, market_ms: 500, match_ms: 1000 };
         assert_eq!(crate::speed::gate_cfg_for(&p, 500).animated_ticks, 2);
         assert_eq!(crate::speed::gate_cfg_for(&p, 100).animated_ticks, 10);
     }

@@ -1157,6 +1157,12 @@ pub struct ShoppingList {
     /// The best value next grade of this set (cheapest tokens per tax coin within the coins).
     pub next_grade: Option<GradePlan>,
     pub tokens_have: u64,
+    /// Cards left out because nobody has seen a price for them yet (rarely bought – unrealistic).
+    #[serde(default)]
+    pub unpriced: usize,
+    /// Every grade of the set is reached: a bought card adds score but no tokens, so none is shown.
+    #[serde(default)]
+    pub top_reached: bool,
 }
 
 /// The whole best selection of a set from the cards the user has – one overview instead of a list
@@ -1359,11 +1365,21 @@ pub fn shopping_list(
             ShoppingEntry { card: view(c, &ctx), gain, got: false, got_source: None, tax, per_k: tax.map(|t| gain * 1000 / t.max(1)) }
         })
         .collect();
-    // Never a card the user can't pay for (a price above the coins).
+    // Only realistic buys: a known price (EA's market average), never above the coins, and none
+    // at all once every grade is reached (more score, no tokens). Best value first: points per
+    // 1,000 coins of tax – a cheap card that does the job beats a star that does a little more.
+    let unpriced = entries.iter().filter(|e| e.card.price.is_none()).count();
+    entries.retain(|e| e.card.price.is_some());
     let before = entries.len();
     entries.retain(|e| balance.is_none_or(|b| e.card.price.is_none_or(|p| p <= b)));
     let over_budget = before - entries.len();
-    entries.sort_by(|a, b| b.gain.cmp(&a.gain).then(b.card.score.cmp(&a.card.score)));
+    let value = value_of(set, cat, gallery, fo, links, observed, prices, balance, &BTreeSet::new());
+    let top_reached = !value.plans.is_empty() && value.plans.iter().all(|p| p.state == "reached");
+    if top_reached {
+        entries.clear();
+    }
+    entries.retain(|e| e.gain > 0);
+    entries.sort_by(|a, b| b.per_k.unwrap_or(0).cmp(&a.per_k.unwrap_or(0)).then(b.gain.cmp(&a.gain)));
     entries.truncate(SHOPPING_SHOWN);
 
     // Cards that arrived in the club since the set page was last read and are not placed yet.
@@ -1404,7 +1420,6 @@ pub fn shopping_list(
     let mut entries = got;
     entries.truncate(SHOPPING_SHOWN);
     let best = best_selection(key, &collected, gallery, observed, set.slots, &ctx);
-    let value = value_of(set, cat, gallery, fo, links, observed, prices, balance, &BTreeSet::new());
     let next_grade = value.best_step().map(|(i, _, _)| value.plans[i].clone());
     Some(ShoppingList {
         key: set.key.clone(),
@@ -1420,6 +1435,8 @@ pub fn shopping_list(
         balance,
         next_grade,
         tokens_have: value.tokens_have,
+        unpriced,
+        top_reached,
     })
 }
 
@@ -2110,8 +2127,12 @@ mod tests {
         }
     }
 
+    fn price(avg: u64) -> Price {
+        Price { bin: 0, listings: 0, at: 1, avg: Some(avg), shared: false }
+    }
+
     #[test]
-    fn shopping_list_ranks_by_gain_and_never_counts_first_owner() {
+    fn shopping_list_ranks_by_value_and_never_counts_first_owner() {
         let file = file();
         let pl = file.sets.iter().find(|s| s.name == "Premier League").unwrap();
         let league = pl.filter.league.unwrap();
@@ -2119,16 +2140,40 @@ mod tests {
         for i in 0..30 {
             g.insert(i, gc(i, league, 10, 100, true));
         }
-        g.insert(100, gc(100, league, 10, 5000, false));
-        g.insert(101, gc(101, league, 10, 50, false));
+        g.insert(100, gc(100, league, 10, 5000, false)); // a star: 100K
+        g.insert(102, gc(102, league, 10, 1000, false)); // does less, for 2K
+        g.insert(101, gc(101, league, 10, 50, false)); // adds nothing
+        g.insert(103, gc(103, league, 10, 90_000, false)); // no price seen – unrealistic
+        let prices: BTreeMap<u64, Price> = [(100, price(100_000)), (102, price(2_000)), (101, price(200))].into();
         let (k, mut m) = (BTreeSet::new(), BTreeMap::new());
         m.insert(100, true); // a manual mark must not make a bought card first owner
-        let list = shopping_list(&pl.key, &g, &FirstOwnerInfo { known: &k, manual: &m, scanned: &m, club_no: &EMPTY_SET }, &BTreeMap::new(), &BTreeMap::new(), &BTreeMap::new(), &BTreeMap::new(), None).unwrap();
-        assert_eq!(list.entries[0].card.def_id, 100);
+        let list = shopping_list(&pl.key, &g, &FirstOwnerInfo { known: &k, manual: &m, scanned: &m, club_no: &EMPTY_SET }, &BTreeMap::new(), &BTreeMap::new(), &prices, &BTreeMap::new(), None).unwrap();
+        let ids: Vec<u64> = list.entries.iter().map(|e| e.card.def_id).collect();
+        assert_eq!(ids, vec![102, 100], "best value first, nothing that adds nothing, nothing without a price");
+        assert_eq!(list.unpriced, 1);
         // 4,900 base (replaces a 100) plus the tag bonus on it – but no first-owner bonus.
-        let gain = list.entries[0].gain;
+        let gain = list.entries[1].gain;
         assert!(gain > 4900 && gain < 4900 * 2, "{gain}");
-        assert!(list.entries[1].gain < 100);
+    }
+
+    /// A set at its top grade suggests no buys: more score, no tokens.
+    #[test]
+    fn nothing_to_buy_once_every_grade_is_reached() {
+        let file = file();
+        let set = file.sets.iter().find(|s| s.name == "Premier League").unwrap();
+        let league = set.filter.league.unwrap();
+        let top = set.grades.iter().map(|g| g.score).max().unwrap();
+        let mut g = BTreeMap::new();
+        for i in 0..30 {
+            g.insert(i, gc(i, league, 10, top / 20 + 1, true));
+        }
+        g.insert(100, gc(100, league, 10, top, false));
+        let prices: BTreeMap<u64, Price> = [(100, price(1_000))].into();
+        let (k, m) = (BTreeSet::new(), BTreeMap::new());
+        let fo = FirstOwnerInfo { known: &k, manual: &m, scanned: &m, club_no: &EMPTY_SET };
+        let list = shopping_list(&set.key, &g, &fo, &BTreeMap::new(), &BTreeMap::new(), &prices, &BTreeMap::new(), None).unwrap();
+        assert!(list.top_reached);
+        assert!(list.entries.is_empty());
     }
 
     #[test]
@@ -2144,7 +2189,8 @@ mod tests {
         g.insert(101, gc(101, league, 10, 5000, false));
         let (k, m) = (BTreeSet::new(), BTreeMap::new());
         let fo = FirstOwnerInfo { known: &k, manual: &m, scanned: &m, club_no: &EMPTY_SET };
-        let list = shopping_list(&pl.key, &g, &fo, &BTreeMap::new(), &BTreeMap::new(), &BTreeMap::new(), &BTreeMap::new(), None).unwrap();
+        let prices: BTreeMap<u64, Price> = [(100, price(1_000)), (101, price(1_000))].into();
+        let list = shopping_list(&pl.key, &g, &fo, &BTreeMap::new(), &BTreeMap::new(), &prices, &BTreeMap::new(), None).unwrap();
         assert!(!list.entries.iter().any(|e| e.card.def_id == 100));
         assert_eq!(list.entries[0].card.def_id, 101);
     }
@@ -2447,6 +2493,14 @@ mod value_real_prices {
             println!("  {} → {}: +{} tokens, {} buys, tax {}", st.name, st.grade, st.tokens, st.buys.len(), st.tax);
         }
         assert!(five.steps.len() <= 5 && keys.len() == five.steps.len(), "five different sets");
+        // Buy next: only priced cards within the coins, best value first, nothing at the top grade.
+        for name in ["Starter Set", "TOTW", "Premier League", "Frauen-Bundesliga"] {
+            let key = super::file().sets.iter().find(|s| s.name == name).unwrap().key.clone();
+            let l = super::shopping_list(&key, &snap.gallery, &fo, &snap.team_links, &snap.set_obs, &snap.prices, &snap.acquired, balance).unwrap();
+            println!("buy next {name}: top {} unpriced {} over {} → {:?}", l.top_reached, l.unpriced, l.over_budget,
+                l.entries.iter().filter(|e| !e.got).take(5).map(|e| (e.card.name.clone(), e.card.price, e.gain)).collect::<Vec<_>>());
+            assert!(l.entries.iter().filter(|e| !e.got).all(|e| e.card.price.is_some_and(|p| p <= balance.unwrap())));
+        }
         assert!(five.coins_needed <= balance.unwrap());
     }
 }

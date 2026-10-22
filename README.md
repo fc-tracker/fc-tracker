@@ -20,8 +20,18 @@ Everything below can be checked in the code; the file is named for each point.
 - **Reads the screen, nothing else.** In the game's menus it looks at the game window the way a
   recording program does (Windows Graphics Capture, `src-tauri/src/watch.rs`, `src-tauri/src/wgc.rs`)
   and recognises text and numbers on it (`src-tauri/src/scan.rs`). It never opens the game process,
-  reads its memory, injects code or touches its network traffic. During a match it reads no pages –
-  it only takes one small look every few seconds to notice when you are back in the menus.
+  reads its memory, injects code or touches its network traffic. During a match it reads no pages.
+  The only exception is the **Champions tracker (beta)**, and only in Champions matches: one small
+  look at the scoreboard a second (score and clock) and the result screens right after full time
+  (`src-tauri/src/champions.rs`). It is off until you switch it on in *Settings → Champions
+  tracker* (and off again any time, even mid-match); without it, one look every few seconds notices
+  when you are back in the menus.
+- **Champions matches stay on your PC.** What the tracker reads (results, scores, the opponent's club,
+  record and gamertag) is kept in `%APPDATA%\dk.fctracker.app\champions.json` and is never sent
+  anywhere. Only if you join the **Champions leaderboard** yourself (*Settings → Champions
+  leaderboard*, a name you pick) does the app send your own weekend record – wins, losses, goals,
+  rank – to `https://www.fc-tracker.com/api/champions` (`src/championsBoard.ts`,
+  `site/api/champions.mjs`). Never an opponent, never a gamertag read from the screen.
 - **Saves no pictures or video.** Each picture is read in memory and dropped. Pictures are only saved
   if you switch on *Settings → Diagnostics* yourself: then for 30 minutes, on your own PC
   (`src-tauri/src/diag.rs`).

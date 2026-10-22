@@ -1,4 +1,5 @@
 mod bridge;
+mod champions;
 mod clock;
 mod diag;
 mod fcsetup;
@@ -753,6 +754,34 @@ fn set_overlay_mode(app: AppHandle, mode: String) -> Result<ui::UiPrefs, String>
     Ok(prefs)
 }
 
+/// Champions tracker (beta): everything read so far (runs, matches) – local data only.
+#[tauri::command]
+fn champions_data() -> champions::Data {
+    champions::data()
+}
+
+/// Settings → Champions: on / off.
+#[tauri::command]
+fn set_champions_tracking(app: AppHandle, on: bool) -> ui::UiPrefs {
+    let prefs = {
+        let state = app.state::<AppState>();
+        let mut p = state.ui.lock().unwrap();
+        p.champions = on;
+        p.clone()
+    };
+    save_ui(&app);
+    tracking::log(&app.state::<AppState>().data_dir, if on { "champions: tracking switched ON" } else { "champions: tracking switched OFF" });
+    prefs
+}
+
+/// Settings → Champions: forget every match read so far.
+#[tauri::command]
+fn clear_champions(app: AppHandle) -> champions::Data {
+    let d = champions::clear();
+    let _ = app.emit("champions", &d);
+    d
+}
+
 #[tauri::command]
 fn set_after_play(app: AppHandle, mode: String) -> Result<ui::UiPrefs, String> {
     if !matches!(mode.as_str(), "remind" | "auto" | "off") {
@@ -1218,6 +1247,7 @@ pub fn run() {
                     let _ = win.set_ignore_cursor_events(true);
                 }
             }
+            champions::init(&app.state::<AppState>().data_dir);
             tracking::spawn(app.handle().clone());
             model::spawn(app.handle().clone());
             // Notices every switch to another program (browser, editor …) within 0.2 s, so our
@@ -1247,6 +1277,16 @@ pub fn run() {
                     // a match), looking only every second: closing and reopening it is what disturbs a
                     // recording, and without it the screen probes can't see the game (live 2026-10-17:
                     // 20 minutes stuck in "other mode" while recording, every probe failed).
+                    // In a match only for the Champions tracker: one session stays open so a look is a
+                    // GPU copy, not a new capture each time (and the result card after full time
+                    // is read from frames already there). The scoreboard look itself is paced by
+                    // tracking.rs; the watcher only keeps the newest frame.
+                    if session == session::GameSession::InMatch {
+                        let on = state.ui.lock().unwrap().champions;
+                        // a Rivals / Squad Battles match after kickoff: closed again
+                        let tracking = champions::has_pending() || !champions::LIVE.lock().unwrap().as_ref().is_some_and(|l| l.kicked_off());
+                        return (on && tracking && e.continuous).then(|| std::time::Duration::from_millis(e.match_ms.min(1000) as u64));
+                    }
                     let steady = scan::STEADY.load(Ordering::Relaxed) && session != session::GameSession::InMatch && session != session::GameSession::Closed;
                     if steady && !menus {
                         return Some(std::time::Duration::from_millis(1000));
@@ -1328,6 +1368,9 @@ pub fn run() {
             set_diagnostics,
             open_diagnostics,
             set_after_play,
+            champions_data,
+            set_champions_tracking,
+            clear_champions,
             sync_suggested,
             dismiss_sync_suggestion,
             tracking_speed,

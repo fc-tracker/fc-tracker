@@ -28,7 +28,7 @@ const set = (k: string, v: string | null) => {
 export const usageEnabled = () => get(OFF_KEY) !== "1";
 export const setUsageEnabled = (on: boolean) => set(OFF_KEY, on ? null : "1");
 
-function installId(): string {
+export function installId(): string {
   let id = get(ID_KEY);
   if (!id) {
     id = crypto.randomUUID();

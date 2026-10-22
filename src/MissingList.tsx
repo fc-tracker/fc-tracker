@@ -273,7 +273,9 @@ function BuyNext({ list }: { list: ShoppingList }) {
       </header>
 
       {rows.length === 0 ? (
-        <p className="ml-empty">{t("missing.complete")}</p>
+        <p className="ml-empty">
+          {t(list.top_reached ? "missing.topReached" : list.missing === 0 ? "missing.complete" : (list.unpriced ?? 0) > 0 ? "missing.nonePriced" : "missing.noValue")}
+        </p>
       ) : (
         <ol className="ml-list">
           {rows.map((e, i) => (
@@ -313,6 +315,7 @@ function BuyNext({ list }: { list: ShoppingList }) {
       <footer className="ml-foot">
         {list.entries.some((e) => e.got) && <span className="ml-got-hint">✓ {t("missing.gotHint")}</span>}
         {(list.over_budget ?? 0) > 0 && list.balance != null && <span>{t("missing.overBudget", { count: list.over_budget ?? 0, coins: num(list.balance) })}</span>}
+        {!list.top_reached && (list.unpriced ?? 0) > 0 && <span>{t("missing.unpricedOut", { count: list.unpriced ?? 0 })}</span>}
         {rows.some((e) => !e.got && e.card.price) && <span>{t("missing.priceNote")}</span>}
         <span>{t("missing.note")}</span>
       </footer>
