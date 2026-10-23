@@ -280,7 +280,7 @@ fn side_switch_watch(app: AppHandle) {
                 }
                 let want = ui::cursor_in_top_strip(&win, 52.0);
                 if clickable != Some(want) {
-                    let _ = win.set_ignore_cursor_events(!want);
+                    ui::set_click_through(&win, !want);
                     clickable = Some(want);
                 }
             }
@@ -297,7 +297,7 @@ fn toggle_missing(app: &AppHandle) {
         ui::hide(&win);
     } else {
         ui::place_missing(&win, &app.state::<AppState>().ui.lock().unwrap());
-        let _ = win.set_ignore_cursor_events(true);
+        ui::set_click_through(&win, true);
         ui::show_without_focus(&win);
         // The list follows the set on screen, even one switched to a moment ago.
         if scan::game_in_view() {

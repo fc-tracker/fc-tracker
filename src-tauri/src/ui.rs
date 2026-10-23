@@ -121,6 +121,25 @@ pub fn cursor_in_top_strip(win: &WebviewWindow, h: f64) -> bool {
     p.x >= x0 && p.x < right && p.y >= pos.y && p.y < y1
 }
 
+/// Lets mouse clicks through a window, or not, without Tauri: its `set_ignore_cursor_events`
+/// re-applies every window flag, and a window shown with `show_without_focus` is hidden in its
+/// books – so it hid the side panel each time the cursor reached its top strip (live 2026-10-23).
+/// The window keeps `WS_EX_LAYERED` (set once at start); only `WS_EX_TRANSPARENT` changes.
+pub fn set_click_through(win: &WebviewWindow, through: bool) {
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::UI::WindowsAndMessaging::{GetWindowLongPtrW, SetWindowLongPtrW, GWL_EXSTYLE, WS_EX_LAYERED, WS_EX_TRANSPARENT};
+    let Ok(hwnd) = win.hwnd() else { return };
+    let hwnd = HWND(hwnd.0 as *mut _);
+    // SAFETY: hwnd belongs to a live Tauri window; only its extended style changes.
+    unsafe {
+        let style = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
+        let new = if through { style | (WS_EX_TRANSPARENT.0 | WS_EX_LAYERED.0) as isize } else { style & !(WS_EX_TRANSPARENT.0 as isize) };
+        if new != style {
+            SetWindowLongPtrW(hwnd, GWL_EXSTYLE, new);
+        }
+    }
+}
+
 /// Shows a window without activating it (`SW_SHOWNOACTIVATE`): the game stays the foreground
 /// window and keeps keyboard, mouse and controller. Tauri's `show()` would activate it.
 pub fn show_without_focus(win: &WebviewWindow) {
