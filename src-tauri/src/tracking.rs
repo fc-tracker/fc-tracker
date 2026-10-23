@@ -1292,7 +1292,14 @@ pub fn process_page(store: &mut crate::store::Store, page: Page) -> Option<Curre
         Page::SetList { tiles } => {
             let mut read = 0;
             for t in &tiles {
-                let Some(set) = gallery_sets::find_set_by_title(&t.title) else { continue };
+                let Some(set) = gallery_sets::find_set_by_title(&t.title) else {
+                    // A real tile (a score or filled/slots under it) with a name the list doesn't
+                    // have: a Gallery set EA added since the list was written.
+                    if (t.score.is_some() || t.filled.is_some()) && !gallery_sets::is_category_name(&t.title) && store.note_unknown_set(&t.title) {
+                        log(store.dir(), &format!("unknown Gallery set on a category page: {:?} (set list revision {})", t.title, gallery_sets::revision()));
+                    }
+                    continue;
+                };
                 // A score no lineup of this set can reach is a misread: the bonus never reaches
                 // 4× the base (Premier League: 69,302 base, 149,939 bonus).
                 let cap = gallery_sets::base_cap(&set, &store.snapshot.gallery, &store.snapshot.team_links) * 4;
@@ -2319,6 +2326,19 @@ mod tests {
     /// End to end on the user's own screenshots against a *copy* of their real snapshot:
     /// set page → swap page → identification, first-owner facts and swap suggestions.
     /// `FCT_SCAN_FIXTURES=… cargo test --lib tracking -- --ignored --nocapture`
+    #[test]
+    fn a_category_tile_with_an_unknown_name_is_noted_once() {
+        let tmp = std::env::temp_dir().join(format!("fct-unknown-{}", crate::store::now_ms()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        let mut store = crate::store::Store::load(tmp.clone());
+        let tile = |title: &str, score: Option<u32>| scan::ListTile { title: title.into(), score, filled: None };
+        let page = || Page::SetList { tiles: vec![tile("Wrexham AFC", Some(1200)), tile("MLS", Some(5000)), tile("Gallery Level", None), tile("Arsenal", Some(900))] };
+        process_page(&mut store, page());
+        process_page(&mut store, page());
+        assert_eq!(store.unknown_new, vec!["Wrexham AFC".to_string()]);
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
     #[test]
     #[ignore]
     fn pl_set_then_swap_page_end_to_end() {

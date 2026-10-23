@@ -202,6 +202,10 @@ pub struct Store {
     pub pending_buy: Option<PendingBuy>,
     /// The coin balance last read (top-right of Ultimate Team screens).
     pub last_coins: Option<u32>,
+    /// Set names on category pages that no set in the list has (a Gallery set EA added): logged
+    /// and handed to the frontend once each (`take_unknown_sets`), which reports them anonymously.
+    pub unknown_sets: BTreeSet<String>,
+    pub unknown_new: Vec<String>,
     /// Everything else the Web App tells us (webdata.json): SBCs, objectives, hubs, club record.
     pub web: crate::webdata::WebData,
     web_dirty: bool,
@@ -261,7 +265,7 @@ impl Store {
         // A copy written while the app ran from a packaged (MSIX) app joins the real data (it is
         // migrated on its own first, so neither side's versions can re-run old migrations).
         let absorbed = crate::merge::absorb_redirected(&dir, &mut snapshot);
-        let mut store = Self { dir, snapshot, sync_active: false, sync_missed: Vec::new(), sync_abort: false, sync_blocked: None, sync_never_owned: BTreeMap::new(), sync_sets_read: BTreeSet::new(), club_read_started: None, revision: Default::default(), focus_set: None, dirty: false, pending_buy: None, last_coins: None, web: crate::webdata::WebData::default(), web_dirty: false, sync_last_set: None };
+        let mut store = Self { dir, snapshot, sync_active: false, sync_missed: Vec::new(), sync_abort: false, sync_blocked: None, sync_never_owned: BTreeMap::new(), sync_sets_read: BTreeSet::new(), club_read_started: None, revision: Default::default(), focus_set: None, dirty: false, pending_buy: None, last_coins: None, web: crate::webdata::WebData::default(), web_dirty: false, sync_last_set: None, unknown_sets: BTreeSet::new(), unknown_new: Vec::new() };
         store.web = crate::webdata::WebData::load(&store.dir);
         if store.replay_card_database_captures() > 0 || !absorbed.is_empty() {
             store.save();
@@ -304,6 +308,21 @@ impl Store {
 
     fn bump(&self) {
         self.revision.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    }
+
+    /// The set list changed (a newer one from fc-tracker.com): every overview is computed again.
+    pub fn sets_changed(&self) {
+        self.bump();
+    }
+
+    /// A tile title on a category page that is no set in the list (and no category).
+    pub fn note_unknown_set(&mut self, title: &str) -> bool {
+        let title = title.trim().to_string();
+        if title.len() < 3 || !self.unknown_sets.insert(crate::scan::normalise_name(&title)) {
+            return false;
+        }
+        self.unknown_new.push(title);
+        true
     }
 
     /// Stores the lowest Buy Now price per card from one transfer market response.

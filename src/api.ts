@@ -488,6 +488,11 @@ const appApi = {
     browserDev ? Promise.resolve<PriceShare>({ platform: null, prices: [] }) : invoke<PriceShare>("price_share", { since }),
   pricePool: (platform: string, prices: Record<string, [number, number]>) =>
     browserDev ? Promise.resolve(0) : invoke<number>("price_pool", { platform, prices }),
+  /** The Gallery set list (src/gallerySets.ts): the revision in use, and a newer one to use. */
+  gallerySetsRevision: () => (browserDev ? Promise.resolve(Number.MAX_SAFE_INTEGER) : invoke<number>("gallery_sets_revision")),
+  useGallerySets: (json: string) => (browserDev ? Promise.resolve(0) : invoke<number>("use_gallery_sets", { json })),
+  /** Set names seen in-game that the list doesn't have yet (each once). */
+  takeUnknownSets: () => (browserDev ? Promise.resolve<string[]>([]) : invoke<string[]>("take_unknown_sets")),
   /** The card menu's choice: true = first owner, false = purchased, null = automatic. */
   setFirstOwner: (defId: number, value: boolean | null) =>
     browserDev ? Promise.resolve() : invoke<void>("set_first_owner", { defId, value }),
@@ -547,6 +552,8 @@ function withWeb(a: typeof appApi): typeof appApi {
     bestValue: (budget: number | null = null, target: number | null = null, steps: number | null = null) => wb((b) => b.webApi.bestValue(budget, target, steps)),
     setValue: (key: string) => wb((b) => b.webApi.setValue(key)),
     pricePool: (platform: string, prices: Record<string, [number, number]>) => wb((b) => b.webApi.pricePool(platform, prices)),
+    gallerySetsRevision: () => wb((b) => b.webApi.gallerySetsRevision()),
+    useGallerySets: (json: string) => wb((b) => b.webApi.useGallerySets(json)),
     gameSession: () => wb((b) => (b.webStream() ? "in_ultimate_team" : "closed") as GameSession),
     autoScan: () => wb((b) => b.webStream() != null),
     setAutoScan: (enabled: boolean) => wb((b) => (enabled ? undefined : b.stopCapture())),

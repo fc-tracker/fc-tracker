@@ -672,6 +672,29 @@ fn price_pool(state: State<AppState>, platform: String, prices: std::collections
     state.store.lock().unwrap().apply_price_pool(&platform, &prices)
 }
 
+/// The revision of the Gallery set list in use (the launcher compares fc-tracker.com's with it).
+#[tauri::command]
+fn gallery_sets_revision() -> u64 {
+    gallery_sets::revision()
+}
+
+/// A newer set list from fc-tracker.com: used from now on (kept in app data for the next start),
+/// every overview is computed again and the next sync reads the leagues it adds.
+#[tauri::command]
+fn use_gallery_sets(state: State<AppState>, json: String) -> Result<u64, String> {
+    let rev = gallery_sets::use_remote(&json)?;
+    let _ = std::fs::write(state.data_dir.join("gallery-sets.json"), &json);
+    state.store.lock().unwrap().sets_changed();
+    tracking::log(&state.data_dir, &format!("gallery sets: revision {rev} from fc-tracker.com in use"));
+    Ok(rev)
+}
+
+/// Set names seen on category pages that the list doesn't have – each once, for the anonymous report.
+#[tauri::command]
+fn take_unknown_sets(state: State<AppState>) -> Vec<String> {
+    std::mem::take(&mut state.store.lock().unwrap().unknown_new)
+}
+
 #[tauri::command]
 fn current_page(state: State<AppState>) -> Option<tracking::CurrentPage> {
     state.current_page.lock().unwrap().clone()
@@ -1099,6 +1122,10 @@ pub fn run() {
             }
 
             let data_dir = app.path().app_data_dir()?;
+            // a set list from fc-tracker.com newer than the built-in one (an older one is ignored)
+            if let Ok(json) = std::fs::read_to_string(data_dir.join("gallery-sets.json")) {
+                let _ = gallery_sets::use_remote(&json);
+            }
             let store = Arc::new(Mutex::new(Store::load(data_dir.clone())));
             let dropped = tracking::revalidate(&mut store.lock().unwrap());
             if dropped > 0 {
@@ -1374,6 +1401,9 @@ pub fn run() {
             clear_champions,
             sync_suggested,
             dismiss_sync_suggestion,
+            gallery_sets_revision,
+            use_gallery_sets,
+            take_unknown_sets,
             tracking_speed,
             set_tracking_speed,
             sync_summary,

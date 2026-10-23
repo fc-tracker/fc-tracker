@@ -460,6 +460,8 @@ fn dispatch(req: Value) -> Result<Value, String> {
                 Ok(json!(types::apply_pool(&mut w.prices, &pool)))
             }
             "ingest_sync" => Ok(ingest_sync(&mut w, serde_json::from_value(arg("sync")).map_err(|e| e.to_string())?)),
+            "gallery_sets_revision" => Ok(json!(gallery_sets::revision())),
+            "use_gallery_sets" => Ok(json!(gallery_sets::use_remote(arg("json").as_str().unwrap_or_default())?)),
             "sync_filters" => Ok(json!(gallery_sets::sync_filters().into_iter().map(|(key, filter)| json!({ "key": key, "filter": filter })).collect::<Vec<_>>())),
             "observe_set" => Ok(observe_set(&mut w, serde_json::from_value(arg("read")).map_err(|e| e.to_string())?)),
             "observe_swap" => Ok(observe_swap(&mut w, serde_json::from_value(arg("read")).map_err(|e| e.to_string())?)),

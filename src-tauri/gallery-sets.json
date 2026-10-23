@@ -1,6 +1,7 @@
 {
- "$comment": "FC27 Gallery set definitions (128 sets), first written 2026-10-13 – every set has source + verified so in-game screen reading can replace numbers. filter: league | club (+ EA-linked women/men team, limited to the category clubLeagues) | rarity. grades: score thresholds = the numbers on the in-game Rewards screen; tokens = Gallery Tokens for that grade (cumulative). syncLeagues: leagues whose card database the extension reads.",
+ "$comment": "FC27 Gallery set definitions (195 sets), first written 2026-10-13 – every set has source + verified so in-game screen reading can replace numbers. filter: league | club (+ EA-linked women/men team, limited to the category clubLeagues) | rarity. grades: score thresholds = the numbers on the in-game Rewards screen; tokens = Gallery Tokens for that grade (cumulative). syncLeagues: leagues whose card database the extension reads. revision: bump whenever the list changes – the app and FC-Tracker Web use fc-tracker.com/gallery-sets.json when its revision is newer than the built-in one.",
  "version": 3,
+ "revision": 20261023,
  "tagCap": 10,
  "syncLeagues": [
   13,
@@ -12,7 +13,10 @@
   31,
   2236,
   16,
-  2218
+  2218,
+  350,
+  39,
+  2221
  ],
  "categories": [
   {
@@ -57,6 +61,27 @@
    "clubLeagues": [
     16,
     2218
+   ]
+  },
+  {
+   "key": "roshn",
+   "name": "ROSHN Saudi League",
+   "clubLeagues": [
+    350
+   ]
+  },
+  {
+   "key": "mls",
+   "name": "MLS",
+   "clubLeagues": [
+    39
+   ]
+  },
+  {
+   "key": "nwsl",
+   "name": "National Women's Soccer League",
+   "clubLeagues": [
+    2221
    ]
   },
   {
@@ -2495,6 +2520,1279 @@
     { "grade": "S", "score": 3500000, "tokens": 100 }
    ],
    "source": "initial-2026-10-13",
+   "verified": false
+  },
+  {
+   "key": "set-130",
+   "name": "Al Faisaly",
+   "category": "roshn",
+   "kind": "club",
+   "filter": {
+    "club": 112389
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 300, "tokens": 0 },
+    { "grade": "B", "score": 400, "tokens": 5 },
+    { "grade": "A", "score": 600, "tokens": 8 },
+    { "grade": "S", "score": 900, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-131",
+   "name": "Al Qadsiah",
+   "category": "roshn",
+   "kind": "club",
+   "filter": {
+    "club": 112391
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1200, "tokens": 0 },
+    { "grade": "B", "score": 1700, "tokens": 5 },
+    { "grade": "A", "score": 2700, "tokens": 8 },
+    { "grade": "S", "score": 4000, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-132",
+   "name": "Diriyah",
+   "category": "roshn",
+   "kind": "club",
+   "filter": {
+    "club": 113224
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 600, "tokens": 0 },
+    { "grade": "B", "score": 800, "tokens": 5 },
+    { "grade": "A", "score": 1300, "tokens": 8 },
+    { "grade": "S", "score": 1900, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-133",
+   "name": "Al Hilal",
+   "category": "roshn",
+   "kind": "club",
+   "filter": {
+    "club": 605
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 3000, "tokens": 0 },
+    { "grade": "B", "score": 7500, "tokens": 8 },
+    { "grade": "A", "score": 11000, "tokens": 10 },
+    { "grade": "S", "score": 15500, "tokens": 20 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-134",
+   "name": "Al Fateh",
+   "category": "roshn",
+   "kind": "club",
+   "filter": {
+    "club": 112390
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 400, "tokens": 0 },
+    { "grade": "B", "score": 500, "tokens": 5 },
+    { "grade": "A", "score": 800, "tokens": 8 },
+    { "grade": "S", "score": 1200, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-135",
+   "name": "Al Hazem",
+   "category": "roshn",
+   "kind": "club",
+   "filter": {
+    "club": 113222
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 300, "tokens": 0 },
+    { "grade": "B", "score": 400, "tokens": 5 },
+    { "grade": "A", "score": 600, "tokens": 8 },
+    { "grade": "S", "score": 900, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-136",
+   "name": "Al Khaleej",
+   "category": "roshn",
+   "kind": "club",
+   "filter": {
+    "club": 112883
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 400, "tokens": 0 },
+    { "grade": "B", "score": 500, "tokens": 5 },
+    { "grade": "A", "score": 800, "tokens": 8 },
+    { "grade": "S", "score": 1200, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-137",
+   "name": "Abha",
+   "category": "roshn",
+   "kind": "club",
+   "filter": {
+    "club": 113058
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1100, "tokens": 8 },
+    { "grade": "S", "score": 1500, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-138",
+   "name": "Al Ettifaq",
+   "category": "roshn",
+   "kind": "club",
+   "filter": {
+    "club": 112096
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1100, "tokens": 8 },
+    { "grade": "S", "score": 1500, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-139",
+   "name": "Al Fayha",
+   "category": "roshn",
+   "kind": "club",
+   "filter": {
+    "club": 113057
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 400, "tokens": 0 },
+    { "grade": "B", "score": 500, "tokens": 5 },
+    { "grade": "A", "score": 800, "tokens": 8 },
+    { "grade": "S", "score": 1200, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-140",
+   "name": "Al Kholood",
+   "category": "roshn",
+   "kind": "club",
+   "filter": {
+    "club": 131735
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 400, "tokens": 0 },
+    { "grade": "B", "score": 500, "tokens": 5 },
+    { "grade": "A", "score": 800, "tokens": 8 },
+    { "grade": "S", "score": 1200, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-141",
+   "name": "Al Riyadh",
+   "category": "roshn",
+   "kind": "club",
+   "filter": {
+    "club": 113037
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 400, "tokens": 0 },
+    { "grade": "B", "score": 500, "tokens": 5 },
+    { "grade": "A", "score": 800, "tokens": 8 },
+    { "grade": "S", "score": 1200, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-142",
+   "name": "Al Shabab",
+   "category": "roshn",
+   "kind": "club",
+   "filter": {
+    "club": 111674
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 1000, "tokens": 5 },
+    { "grade": "A", "score": 1500, "tokens": 8 },
+    { "grade": "S", "score": 2500, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-143",
+   "name": "Al Taawoun",
+   "category": "roshn",
+   "kind": "club",
+   "filter": {
+    "club": 112393
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 600, "tokens": 0 },
+    { "grade": "B", "score": 800, "tokens": 5 },
+    { "grade": "A", "score": 1300, "tokens": 8 },
+    { "grade": "S", "score": 1900, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-144",
+   "name": "Neom SC",
+   "category": "roshn",
+   "kind": "club",
+   "filter": {
+    "club": 131798
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 800, "tokens": 5 },
+    { "grade": "A", "score": 1200, "tokens": 8 },
+    { "grade": "S", "score": 1800, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-145",
+   "name": "Al Ahli",
+   "category": "roshn",
+   "kind": "club",
+   "filter": {
+    "club": 112387
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1500, "tokens": 0 },
+    { "grade": "B", "score": 3500, "tokens": 8 },
+    { "grade": "A", "score": 5000, "tokens": 10 },
+    { "grade": "S", "score": 7500, "tokens": 20 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-146",
+   "name": "Al Ittihad",
+   "category": "roshn",
+   "kind": "club",
+   "filter": {
+    "club": 607
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 2500, "tokens": 0 },
+    { "grade": "B", "score": 3500, "tokens": 8 },
+    { "grade": "A", "score": 5500, "tokens": 10 },
+    { "grade": "S", "score": 8000, "tokens": 20 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-147",
+   "name": "Al Nassr",
+   "category": "roshn",
+   "kind": "club",
+   "filter": {
+    "club": 112139
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 3000, "tokens": 0 },
+    { "grade": "B", "score": 11500, "tokens": 8 },
+    { "grade": "A", "score": 17000, "tokens": 10 },
+    { "grade": "S", "score": 24000, "tokens": 20 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-148",
+   "name": "Kansas City Current",
+   "category": "nwsl",
+   "kind": "club",
+   "filter": {
+    "club": 116309
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 5000, "tokens": 0 },
+    { "grade": "B", "score": 16000, "tokens": 8 },
+    { "grade": "A", "score": 24000, "tokens": 10 },
+    { "grade": "S", "score": 34500, "tokens": 20 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-149",
+   "name": "Angel City FC",
+   "category": "nwsl",
+   "kind": "club",
+   "filter": {
+    "club": 116311
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1800, "tokens": 0 },
+    { "grade": "B", "score": 2500, "tokens": 5 },
+    { "grade": "A", "score": 3750, "tokens": 8 },
+    { "grade": "S", "score": 5500, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-150",
+   "name": "Boston Legacy FC",
+   "category": "nwsl",
+   "kind": "club",
+   "filter": {
+    "club": 132697
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1000, "tokens": 0 },
+    { "grade": "B", "score": 1250, "tokens": 5 },
+    { "grade": "A", "score": 2250, "tokens": 8 },
+    { "grade": "S", "score": 3000, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-151",
+   "name": "North Carolina Courage",
+   "category": "nwsl",
+   "kind": "club",
+   "filter": {
+    "club": 116303
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1100, "tokens": 0 },
+    { "grade": "B", "score": 1500, "tokens": 5 },
+    { "grade": "A", "score": 2500, "tokens": 8 },
+    { "grade": "S", "score": 3500, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-152",
+   "name": "Orlando Pride",
+   "category": "nwsl",
+   "kind": "club",
+   "filter": {
+    "club": 116307
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 2700, "tokens": 0 },
+    { "grade": "B", "score": 3750, "tokens": 5 },
+    { "grade": "A", "score": 6000, "tokens": 8 },
+    { "grade": "S", "score": 8750, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-153",
+   "name": "Portland Thorns FC",
+   "category": "nwsl",
+   "kind": "club",
+   "filter": {
+    "club": 116302
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 3800, "tokens": 0 },
+    { "grade": "B", "score": 5250, "tokens": 5 },
+    { "grade": "A", "score": 8250, "tokens": 8 },
+    { "grade": "S", "score": 12000, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-154",
+   "name": "San Diego Wave FC",
+   "category": "nwsl",
+   "kind": "club",
+   "filter": {
+    "club": 116312
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 2200, "tokens": 0 },
+    { "grade": "B", "score": 3000, "tokens": 5 },
+    { "grade": "A", "score": 4750, "tokens": 8 },
+    { "grade": "S", "score": 7000, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-155",
+   "name": "Washington Spirit",
+   "category": "nwsl",
+   "kind": "club",
+   "filter": {
+    "club": 116304
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 2500, "tokens": 0 },
+    { "grade": "B", "score": 4000, "tokens": 5 },
+    { "grade": "A", "score": 5500, "tokens": 8 },
+    { "grade": "S", "score": 7500, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-156",
+   "name": "Denver Summit FC",
+   "category": "nwsl",
+   "kind": "club",
+   "filter": {
+    "club": 132698
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 2500, "tokens": 0 },
+    { "grade": "B", "score": 3500, "tokens": 5 },
+    { "grade": "A", "score": 6000, "tokens": 8 },
+    { "grade": "S", "score": 8500, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-157",
+   "name": "Houston Dash",
+   "category": "nwsl",
+   "kind": "club",
+   "filter": {
+    "club": 116306
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1600, "tokens": 0 },
+    { "grade": "B", "score": 2250, "tokens": 5 },
+    { "grade": "A", "score": 3500, "tokens": 8 },
+    { "grade": "S", "score": 5250, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-158",
+   "name": "Racing Louisville FC",
+   "category": "nwsl",
+   "kind": "club",
+   "filter": {
+    "club": 116308
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1000, "tokens": 0 },
+    { "grade": "B", "score": 1250, "tokens": 5 },
+    { "grade": "A", "score": 2250, "tokens": 8 },
+    { "grade": "S", "score": 3000, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-159",
+   "name": "Chicago Stars FC",
+   "category": "nwsl",
+   "kind": "club",
+   "filter": {
+    "club": 116305
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 2700, "tokens": 0 },
+    { "grade": "B", "score": 3750, "tokens": 5 },
+    { "grade": "A", "score": 6000, "tokens": 8 },
+    { "grade": "S", "score": 8750, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-160",
+   "name": "Utah Royals FC",
+   "category": "nwsl",
+   "kind": "club",
+   "filter": {
+    "club": 131478
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1000, "tokens": 0 },
+    { "grade": "B", "score": 1500, "tokens": 5 },
+    { "grade": "A", "score": 2250, "tokens": 8 },
+    { "grade": "S", "score": 3250, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-161",
+   "name": "Gotham FC",
+   "category": "nwsl",
+   "kind": "club",
+   "filter": {
+    "club": 116310
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 4000, "tokens": 0 },
+    { "grade": "B", "score": 24500, "tokens": 8 },
+    { "grade": "A", "score": 37000, "tokens": 10 },
+    { "grade": "S", "score": 52500, "tokens": 20 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-162",
+   "name": "Bay Football Club",
+   "category": "nwsl",
+   "kind": "club",
+   "filter": {
+    "club": 131477
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1600, "tokens": 0 },
+    { "grade": "B", "score": 2250, "tokens": 5 },
+    { "grade": "A", "score": 3500, "tokens": 8 },
+    { "grade": "S", "score": 5000, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-163",
+   "name": "Seattle Reign FC",
+   "category": "nwsl",
+   "kind": "club",
+   "filter": {
+    "club": 116300
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1500, "tokens": 0 },
+    { "grade": "B", "score": 2000, "tokens": 5 },
+    { "grade": "A", "score": 3250, "tokens": 8 },
+    { "grade": "S", "score": 4750, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-164",
+   "name": "Inter Miami CF",
+   "category": "mls",
+   "kind": "club",
+   "filter": {
+    "club": 112893
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 2000, "tokens": 0 },
+    { "grade": "B", "score": 4000, "tokens": 8 },
+    { "grade": "A", "score": 5500, "tokens": 10 },
+    { "grade": "S", "score": 8000, "tokens": 20 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-165",
+   "name": "LAFC",
+   "category": "mls",
+   "kind": "club",
+   "filter": {
+    "club": 112996
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 1000, "tokens": 0 },
+    { "grade": "B", "score": 2000, "tokens": 8 },
+    { "grade": "A", "score": 3000, "tokens": 10 },
+    { "grade": "S", "score": 4000, "tokens": 20 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-166",
+   "name": "San Diego FC",
+   "category": "mls",
+   "kind": "club",
+   "filter": {
+    "club": 131439
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 18, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1100, "tokens": 8 },
+    { "grade": "S", "score": 1500, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-167",
+   "name": "Charlotte FC",
+   "category": "mls",
+   "kind": "club",
+   "filter": {
+    "club": 114640
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 11, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1100, "tokens": 8 },
+    { "grade": "S", "score": 1500, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-168",
+   "name": "Chicago Fire FC",
+   "category": "mls",
+   "kind": "club",
+   "filter": {
+    "club": 693
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1100, "tokens": 8 },
+    { "grade": "S", "score": 1500, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-169",
+   "name": "LA Galaxy",
+   "category": "mls",
+   "kind": "club",
+   "filter": {
+    "club": 697
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1100, "tokens": 8 },
+    { "grade": "S", "score": 1500, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-170",
+   "name": "Orlando City Soccer Club",
+   "category": "mls",
+   "kind": "club",
+   "filter": {
+    "club": 112606
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1100, "tokens": 8 },
+    { "grade": "S", "score": 1500, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-171",
+   "name": "Philadelphia Union",
+   "category": "mls",
+   "kind": "club",
+   "filter": {
+    "club": 112134
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1100, "tokens": 8 },
+    { "grade": "S", "score": 1500, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-172",
+   "name": "New York Red Bulls",
+   "category": "mls",
+   "kind": "club",
+   "filter": {
+    "club": 689
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1100, "tokens": 8 },
+    { "grade": "S", "score": 1500, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-173",
+   "name": "San Jose Earthquakes",
+   "category": "mls",
+   "kind": "club",
+   "filter": {
+    "club": 111928
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1100, "tokens": 8 },
+    { "grade": "S", "score": 1500, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-174",
+   "name": "Vancouver Whitecaps FC",
+   "category": "mls",
+   "kind": "club",
+   "filter": {
+    "club": 101112
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1100, "tokens": 8 },
+    { "grade": "S", "score": 1500, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-175",
+   "name": "Nashville SC",
+   "category": "mls",
+   "kind": "club",
+   "filter": {
+    "club": 114162
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1100, "tokens": 8 },
+    { "grade": "S", "score": 1500, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-176",
+   "name": "St. Louis CITY SC",
+   "category": "mls",
+   "kind": "club",
+   "filter": {
+    "club": 113018
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1100, "tokens": 8 },
+    { "grade": "S", "score": 1500, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-177",
+   "name": "Atlanta United",
+   "category": "mls",
+   "kind": "club",
+   "filter": {
+    "club": 112885
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1100, "tokens": 8 },
+    { "grade": "S", "score": 1500, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-178",
+   "name": "Austin FC",
+   "category": "mls",
+   "kind": "club",
+   "filter": {
+    "club": 114161
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1100, "tokens": 8 },
+    { "grade": "S", "score": 1500, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-179",
+   "name": "CF Montréal",
+   "category": "mls",
+   "kind": "club",
+   "filter": {
+    "club": 111139
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1100, "tokens": 8 },
+    { "grade": "S", "score": 1500, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-180",
+   "name": "Colorado Rapids",
+   "category": "mls",
+   "kind": "club",
+   "filter": {
+    "club": 694
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1100, "tokens": 8 },
+    { "grade": "S", "score": 1500, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-181",
+   "name": "Columbus Crew",
+   "category": "mls",
+   "kind": "club",
+   "filter": {
+    "club": 687
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1100, "tokens": 8 },
+    { "grade": "S", "score": 1500, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-182",
+   "name": "D.C. United",
+   "category": "mls",
+   "kind": "club",
+   "filter": {
+    "club": 688
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1100, "tokens": 8 },
+    { "grade": "S", "score": 1500, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-183",
+   "name": "FC Cincinnati",
+   "category": "mls",
+   "kind": "club",
+   "filter": {
+    "club": 113149
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1100, "tokens": 8 },
+    { "grade": "S", "score": 1500, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-184",
+   "name": "FC Dallas",
+   "category": "mls",
+   "kind": "club",
+   "filter": {
+    "club": 695
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1100, "tokens": 8 },
+    { "grade": "S", "score": 1500, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-185",
+   "name": "Houston Dynamo",
+   "category": "mls",
+   "kind": "club",
+   "filter": {
+    "club": 698
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1100, "tokens": 8 },
+    { "grade": "S", "score": 1500, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-186",
+   "name": "Minnesota United",
+   "category": "mls",
+   "kind": "club",
+   "filter": {
+    "club": 111138
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1100, "tokens": 8 },
+    { "grade": "S", "score": 1500, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-187",
+   "name": "New England Revolution",
+   "category": "mls",
+   "kind": "club",
+   "filter": {
+    "club": 691
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1100, "tokens": 8 },
+    { "grade": "S", "score": 1500, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-188",
+   "name": "New York City FC",
+   "category": "mls",
+   "kind": "club",
+   "filter": {
+    "club": 112828
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1100, "tokens": 8 },
+    { "grade": "S", "score": 1500, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-189",
+   "name": "Portland Timbers",
+   "category": "mls",
+   "kind": "club",
+   "filter": {
+    "club": 111140
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1100, "tokens": 8 },
+    { "grade": "S", "score": 1500, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-190",
+   "name": "Real Salt Lake",
+   "category": "mls",
+   "kind": "club",
+   "filter": {
+    "club": 111065
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1100, "tokens": 8 },
+    { "grade": "S", "score": 1500, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-191",
+   "name": "Seattle Sounders FC",
+   "category": "mls",
+   "kind": "club",
+   "filter": {
+    "club": 111144
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1100, "tokens": 8 },
+    { "grade": "S", "score": 1500, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-192",
+   "name": "Toronto FC",
+   "category": "mls",
+   "kind": "club",
+   "filter": {
+    "club": 111651
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1100, "tokens": 8 },
+    { "grade": "S", "score": 1500, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-193",
+   "name": "Sporting Kansas City",
+   "category": "mls",
+   "kind": "club",
+   "filter": {
+    "club": 696
+   },
+   "slots": 15,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 0 },
+    { "grade": "C", "score": 500, "tokens": 0 },
+    { "grade": "B", "score": 700, "tokens": 5 },
+    { "grade": "A", "score": 1100, "tokens": 8 },
+    { "grade": "S", "score": 1500, "tokens": 15 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-194",
+   "name": "MLS",
+   "category": "leagues",
+   "kind": "league",
+   "filter": {
+    "league": 39
+   },
+   "slots": 30,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 10 },
+    { "grade": "C", "score": 15000, "tokens": 35 },
+    { "grade": "B", "score": 30000, "tokens": 50 },
+    { "grade": "A", "score": 500000, "tokens": 70 },
+    { "grade": "S", "score": 1500000, "tokens": 100 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-195",
+   "name": "National Women's Soccer League",
+   "category": "leagues",
+   "kind": "league",
+   "filter": {
+    "league": 2221
+   },
+   "slots": 30,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 10 },
+    { "grade": "C", "score": 65000, "tokens": 35 },
+    { "grade": "B", "score": 330000, "tokens": 50 },
+    { "grade": "A", "score": 1600000, "tokens": 70 },
+    { "grade": "S", "score": 4000000, "tokens": 100 }
+   ],
+   "source": "public-2026-10-23",
+   "verified": false
+  },
+  {
+   "key": "set-196",
+   "name": "ROSHN Saudi Pro League",
+   "category": "leagues",
+   "kind": "league",
+   "filter": {
+    "league": 350
+   },
+   "slots": 30,
+   "grades": [
+    { "grade": "D", "score": 10, "tokens": 10 },
+    { "grade": "C", "score": 35000, "tokens": 35 },
+    { "grade": "B", "score": 135000, "tokens": 50 },
+    { "grade": "A", "score": 1000000, "tokens": 70 },
+    { "grade": "S", "score": 2500000, "tokens": 100 }
+   ],
+   "source": "public-2026-10-23",
    "verified": false
   }
  ]

@@ -131,6 +131,13 @@ export const webApi = {
     await restored;
     return call<SetValue | null>("set_value", { key, exclude: excludedIds() });
   },
+  /** The Gallery set list from fc-tracker.com (src/gallerySets.ts). */
+  gallerySetsRevision: (): Promise<number> => call<number>("gallery_sets_revision"),
+  useGallerySets: async (json: string): Promise<number> => {
+    const rev = await call<number>("use_gallery_sets", { json });
+    changed();
+    return rev;
+  },
   /** The shared price pool: what this browser saw (from a club sync), and the pool coming back. */
   priceShare: async (since: number): Promise<PriceShare> => {
     await restored;

@@ -1,7 +1,9 @@
 //! Gallery set definitions (`gallery-sets.json`) and the per-set overview shown in the overlay.
 //!
-//! All 128 in-game sets are listed explicitly (see the file's `$comment`; each set records
-//! `source` + `verified` so screen reading can replace numbers).
+//! All in-game sets are listed explicitly (see the file's `$comment`; each set records
+//! `source` + `verified` so screen reading can replace numbers). The list built into the app can be
+//! replaced by a newer one from fc-tracker.com (`use_remote`, the file's `revision`), so a new
+//! Gallery set reaches every user with the next sync, no app release needed.
 //! Club sets match the badge team plus its EA-linked team (men's ↔ women's, from
 //! `chemistry/teamlinks`), limited to the leagues of the set's category – this reproduces the
 //! in-game rules "Requires 15 Aston Villa Mens or Womens players" and, because Birmingham's men
@@ -76,13 +78,56 @@ struct CategoryDef {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct SetsFile {
+    #[serde(default)]
+    revision: u64,
     sync_leagues: Vec<u64>,
     categories: Vec<CategoryDef>,
     sets: Vec<SetDef>,
 }
 
+/// A newer set list than the built-in one (from fc-tracker.com, kept in app data).
+static REMOTE: std::sync::RwLock<Option<String>> = std::sync::RwLock::new(None);
+
 fn file() -> SetsFile {
+    if let Some(json) = REMOTE.read().unwrap().as_deref() {
+        if let Ok(f) = serde_json::from_str(json) {
+            return f;
+        }
+    }
     serde_json::from_str(SETS_JSON).expect("gallery-sets.json is invalid")
+}
+
+/// The revision of the set list in use.
+pub fn revision() -> u64 {
+    file().revision
+}
+
+/// Uses `json` as the set list when it is valid and newer than the one in use; returns its
+/// revision. A list must keep every set the built-in one has (keys are what the user's readings
+/// are stored under) and give each set a filter, a category and five grades.
+pub fn use_remote(json: &str) -> Result<u64, String> {
+    let f: SetsFile = serde_json::from_str(json).map_err(|e| format!("sets_invalid:{e}"))?;
+    let current = file();
+    if f.revision <= current.revision {
+        return Err("sets_not_newer".into());
+    }
+    let keys: BTreeSet<&str> = f.sets.iter().map(|s| s.key.as_str()).collect();
+    let builtin: SetsFile = serde_json::from_str(SETS_JSON).expect("gallery-sets.json is invalid");
+    let ok = keys.len() == f.sets.len()
+        && builtin.sets.iter().all(|s| keys.contains(s.key.as_str()))
+        && f.sets.iter().all(|s| s.grades.len() == 5 && s.slots > 0 && !s.filter.is_empty() && f.categories.iter().any(|c| c.key == s.category));
+    if !ok {
+        return Err("sets_invalid".into());
+    }
+    *REMOTE.write().unwrap() = Some(json.to_string());
+    Ok(f.revision)
+}
+
+/// Category names as the game shows them on its tiles ("MLS", "Rarities") – a tile with such a
+/// name is a category, not an unknown set.
+pub fn is_category_name(title: &str) -> bool {
+    let t = crate::scan::normalise_name(title);
+    file().categories.iter().any(|c| crate::scan::normalise_name(&c.name) == t)
 }
 
 /// What the extension must read from EA's card database: one search per league and per
@@ -2259,12 +2304,42 @@ mod tests {
     }
 
     #[test]
-    fn file_has_128_sets_with_unique_keys_and_ladders() {
+    fn file_has_195_sets_with_unique_keys_and_ladders() {
         let f = file();
-        assert_eq!(f.sets.len(), 128);
+        assert_eq!(f.sets.len(), 195);
         let keys: BTreeSet<&str> = f.sets.iter().map(|x| x.key.as_str()).collect();
-        assert_eq!(keys.len(), 128);
+        assert_eq!(keys.len(), 195);
         assert!(f.sets.iter().all(|s| s.grades.len() == 5 && f.categories.iter().any(|c| c.key == s.category)));
+    }
+
+    #[test]
+    fn new_sets_from_2026_10_23_are_found_by_their_titles() {
+        let name = |t: &str| find_set_by_title(t).map(|s| (s.name, s.category));
+        assert_eq!(name("Inter Miami CF"), Some(("Inter Miami CF".into(), "mls".into())));
+        assert_eq!(name("Al Hilal"), Some(("Al Hilal".into(), "roshn".into())));
+        assert_eq!(name("Gotham FC"), Some(("Gotham FC".into(), "nwsl".into())));
+        assert_eq!(name("ROSHN Saudi Pro League"), Some(("ROSHN Saudi Pro League".into(), "leagues".into())));
+        // a category tile is no unknown set
+        assert!(is_category_name("ROSHN Saudi League") && is_category_name("MLS") && !is_category_name("Inter Miami CF"));
+        let syncs: Vec<String> = sync_filters().into_iter().map(|(k, _)| k).collect();
+        assert!(["league-350", "league-39", "league-2221"].iter().all(|k| syncs.iter().any(|s| s == k)));
+    }
+
+    #[test]
+    fn a_remote_set_list_is_used_only_when_newer_and_complete() {
+        let rev = file().revision;
+        assert!(rev >= 20261023);
+        assert_eq!(use_remote(SETS_JSON).unwrap_err(), "sets_not_newer");
+        let mut f: serde_json::Value = serde_json::from_str(SETS_JSON).unwrap();
+        f["revision"] = (rev + 1).into();
+        let mut missing = f.clone();
+        missing["sets"].as_array_mut().unwrap().remove(0);
+        assert_eq!(use_remote(&missing.to_string()).unwrap_err(), "sets_invalid");
+        assert!(use_remote("not json").is_err());
+        // the same sets under a newer revision: used (harmless for the other tests)
+        assert_eq!(use_remote(&f.to_string()), Ok(rev + 1));
+        assert_eq!(revision(), rev + 1);
+        assert_eq!(file().sets.len(), 195);
     }
 
     #[test]
