@@ -106,19 +106,18 @@ pub fn place_missing(win: &WebviewWindow, prefs: &UiPrefs) {
     let _ = win.set_position(PhysicalPosition::new(x, my + (mh as f64 * 0.13) as i32));
 }
 
-/// Is the mouse cursor inside the window's top strip (`h` CSS px tall, full width)?
-pub fn cursor_in_top_strip(win: &WebviewWindow, h: f64) -> bool {
+/// Is the mouse cursor inside the window?
+pub fn cursor_in_window(win: &WebviewWindow) -> bool {
     use windows::Win32::Foundation::POINT;
     use windows::Win32::UI::WindowsAndMessaging::GetCursorPos;
-    let (Ok(pos), Ok(size), Ok(scale)) = (win.outer_position(), win.outer_size(), win.scale_factor()) else { return false };
+    let (Ok(pos), Ok(size)) = (win.outer_position(), win.outer_size()) else { return false };
     let mut p = POINT::default();
     // SAFETY: plain out-parameter call.
     if unsafe { GetCursorPos(&mut p) }.is_err() {
         return false;
     }
     let right = pos.x + size.width as i32;
-    let (x0, y1) = (pos.x, pos.y + (h * scale) as i32);
-    p.x >= x0 && p.x < right && p.y >= pos.y && p.y < y1
+    p.x >= pos.x && p.x < right && p.y >= pos.y && p.y < pos.y + size.height as i32
 }
 
 /// Lets mouse clicks through a window, or not, without Tauri: its `set_ignore_cursor_events`

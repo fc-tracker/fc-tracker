@@ -239,9 +239,10 @@ fn save_ui(app: &AppHandle) {
     state.ui.lock().unwrap().save(&state.data_dir);
 }
 
-/// The side panel is click-through, except its top strip (tabs Best selection | Buy next, the
-/// Left/Right switch): while the cursor is over that strip the window takes mouse clicks (still never the focus –
-/// WS_EX_NOACTIVATE). Checked every 50 ms, only while the list is shown.
+/// The side panel lets the mouse through to the game until the cursor is over it: then it takes
+/// clicks (tabs, Left/Right) and the mouse wheel (the lists scroll) – still never the focus
+/// (WS_EX_NOACTIVATE), so keyboard and controller stay with the game. Checked every 50 ms, only
+/// while the list is shown.
 /// Every second: does a screen recorder show a window? Then our capture is held steady (scan::STEADY) and
 /// the change is logged, so a recording is never disturbed by us.
 fn recorder_watch(app: AppHandle) {
@@ -278,7 +279,7 @@ fn side_switch_watch(app: AppHandle) {
                     clickable = None;
                     continue;
                 }
-                let want = ui::cursor_in_top_strip(&win, 52.0);
+                let want = ui::cursor_in_window(&win);
                 if clickable != Some(want) {
                     ui::set_click_through(&win, !want);
                     clickable = Some(want);
