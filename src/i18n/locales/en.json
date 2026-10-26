@@ -652,7 +652,7 @@
   "champs.board.join": "Show your weekend on the weekly leaderboard: Settings → Champions leaderboard.",
   "champs.board.open": "See the leaderboard",
   "settings.championsBoard": "Champions leaderboard (opt-in)",
-  "settings.championsBoardText": "Shows your weekend record (wins, losses, goals, rank) under the name you pick on fc-tracker.com. Nothing else is sent – never your opponents or your gamertag.",
+  "settings.championsBoardText": "Shows your weekend under the name you pick on fc-tracker.com: record, rank, and each match's result, score and goal minutes. Nothing else is sent – never your opponents or your gamertag.",
   "settings.championsBoardName": "Your name on it",
   "settings.championsBoardHint": "3–16 letters, numbers, spaces, . _ -",
   "settings.championsBoardJoin": "Join",

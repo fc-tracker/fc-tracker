@@ -652,7 +652,7 @@
   "champs.board.join": "Muestra tu fin de semana en la clasificación semanal: Ajustes → Clasificación de Champions.",
   "champs.board.open": "Ver la clasificación",
   "settings.championsBoard": "Clasificación de Champions (opcional)",
-  "settings.championsBoardText": "Muestra tu balance del fin de semana (victorias, derrotas, goles, rango) con el nombre que elijas en fc-tracker.com. No se envía nada más: nunca tus rivales ni tu gamertag.",
+  "settings.championsBoardText": "Muestra tu fin de semana con el nombre que elijas en fc-tracker.com: balance, rango y de cada partido el resultado, el marcador y los minutos de los goles. No se envía nada más: nunca tus rivales ni tu gamertag.",
   "settings.championsBoardName": "Tu nombre",
   "settings.championsBoardHint": "3–16 letras, números, espacios, . _ -",
   "settings.championsBoardJoin": "Unirme",

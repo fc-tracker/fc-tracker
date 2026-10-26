@@ -30,8 +30,8 @@ Everything below can be checked in the code; the file is named for each point.
 - **Champions matches stay on your PC.** What the tracker reads (results, scores, the opponent's club,
   record and gamertag) is kept in `%APPDATA%\dk.fctracker.app\champions.json` and is never sent
   anywhere. Only if you join the **Champions leaderboard** yourself (*Settings → Champions
-  leaderboard*, a name you pick) does the app send your own weekend record – wins, losses, goals,
-  rank – to `https://www.fc-tracker.com/api/champions` (`src/championsBoard.ts`,
+  leaderboard*, a name you pick) does the app send your own weekend – wins, losses, goals, rank, and
+  each of your matches' result, score, extra time / lost connection and goal minutes – to `https://www.fc-tracker.com/api/champions` (`src/championsBoard.ts`,
   `site/api/champions.mjs`). Never an opponent, never a gamertag read from the screen.
 - **Saves no pictures or video.** Each picture is read in memory and dropped. Pictures are only saved
   if you switch on *Settings → Diagnostics* yourself: then for 30 minutes, on your own PC

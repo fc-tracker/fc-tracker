@@ -2,7 +2,7 @@
 // to fc-tracker.com/api/champions after the hub counts a match (site/api/champions.mjs). Nothing
 // else – never an opponent, never a gamertag read from the screen. Off until a name is set.
 import type { ChampsData } from "./championsData";
-import { shownScore } from "./championsData";
+import { goals, shownScore } from "./championsData";
 import { installId } from "./usage";
 
 const API = "https://www.fc-tracker.com/api/champions";
@@ -48,17 +48,35 @@ export async function uploadWeekend(d: ChampsData): Promise<void> {
   const name = boardName();
   const run = d.runs[d.runs.length - 1];
   if (!name || !run?.hub || !run.ends_at) return;
-  let gf = 0;
-  let ga = 0;
-  for (const m of run.matches) {
-    const s = shownScore(m);
-    if (s.score && m.outcome !== "quit") {
-      gf += s.score[0];
-      ga += s.score[1];
+  // every match as the player saw it – outcome, his score, extra time, a lost connection and the
+  // goal minutes; never the opponent
+  const matches = run.matches
+    .filter((m) => m.n != null && m.outcome)
+    .map((m) => {
+      const s = shownScore(m);
+      return {
+        n: m.n,
+        r: m.outcome === "win" ? "w" : m.outcome === "quit" ? "q" : "l",
+        s: m.outcome === "quit" ? null : s.score,
+        et: m.extra_time,
+        dnf: m.disconnect,
+        g: goals(m).map((g) => [g.minute, g.forMe ? 1 : 0]),
+      };
+    });
+  // the goal totals only when every counted match's score was read (else they would be too low)
+  const complete = matches.length === run.hub.wins + run.hub.losses && matches.every((m) => m.s || m.r === "q");
+  let gf: number | null = complete ? 0 : null;
+  let ga: number | null = complete ? 0 : null;
+  if (complete) {
+    for (const m of matches) {
+      if (m.s) {
+        gf! += m.s[0];
+        ga! += m.s[1];
+      }
     }
   }
-  const body = { id: installId(), name, platform: "pc", ends_at: run.ends_at, wins: run.hub.wins, losses: run.hub.losses, gf, ga, rank: run.hub.rank };
-  const key = JSON.stringify([name, run.ends_at, body.wins, body.losses, gf, ga, body.rank]);
+  const body = { id: installId(), name, platform: "pc", ends_at: run.ends_at, wins: run.hub.wins, losses: run.hub.losses, gf, ga, rank: run.hub.rank, matches };
+  const key = JSON.stringify([name, run.ends_at, body.wins, body.losses, gf, ga, body.rank, matches]);
   if (get(SENT_KEY) === key) return;
   try {
     const r = await fetch(API, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(body) });

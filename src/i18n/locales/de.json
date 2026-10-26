@@ -652,7 +652,7 @@
   "champs.board.join": "Zeig dein Wochenende in der wöchentlichen Rangliste: Einstellungen → Champions-Rangliste.",
   "champs.board.open": "Rangliste ansehen",
   "settings.championsBoard": "Champions-Rangliste (freiwillig)",
-  "settings.championsBoardText": "Zeigt deine Wochenend-Bilanz (Siege, Niederlagen, Tore, Rang) unter dem Namen, den du wählst, auf fc-tracker.com. Sonst wird nichts gesendet – nie deine Gegner oder dein Gamertag.",
+  "settings.championsBoardText": "Zeigt dein Wochenende unter dem Namen, den du wählst, auf fc-tracker.com: Bilanz, Rang und von jedem Spiel Ergebnis, Spielstand und Torminuten. Sonst wird nichts gesendet – nie deine Gegner oder dein Gamertag.",
   "settings.championsBoardName": "Dein Name",
   "settings.championsBoardHint": "3–16 Buchstaben, Ziffern, Leerzeichen, . _ -",
   "settings.championsBoardJoin": "Mitmachen",

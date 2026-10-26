@@ -652,7 +652,7 @@
   "champs.board.join": "Affiche ton week-end dans le classement : Paramètres → Classement Champions.",
   "champs.board.open": "Voir le classement",
   "settings.championsBoard": "Classement Champions (facultatif)",
-  "settings.championsBoardText": "Affiche ton bilan du week-end (victoires, défaites, buts, rang) sous le nom que tu choisis sur fc-tracker.com. Rien d'autre n'est envoyé – jamais tes adversaires ni ton gamertag.",
+  "settings.championsBoardText": "Affiche ton week-end sous le nom que tu choisis sur fc-tracker.com : bilan, rang et, pour chaque match, le résultat, le score et les minutes des buts. Rien d'autre n'est envoyé – jamais tes adversaires ni ton gamertag.",
   "settings.championsBoardName": "Ton nom",
   "settings.championsBoardHint": "3–16 lettres, chiffres, espaces, . _ -",
   "settings.championsBoardJoin": "Participer",

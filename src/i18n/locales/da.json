@@ -652,7 +652,7 @@
   "champs.board.join": "Vis din weekend på det ugentlige leaderboard: Indstillinger → Champions-leaderboard.",
   "champs.board.open": "Se leaderboardet",
   "settings.championsBoard": "Champions-leaderboard (frivilligt)",
-  "settings.championsBoardText": "Viser din weekend-record (sejre, tab, mål, rank) under det navn, du vælger, på fc-tracker.com. Intet andet sendes – aldrig dine modstandere eller dit gamertag.",
+  "settings.championsBoardText": "Viser din weekend under det navn, du vælger, på fc-tracker.com: record, rank og hver kamps resultat, score og målminutter. Intet andet sendes – aldrig dine modstandere eller dit gamertag.",
   "settings.championsBoardName": "Dit navn",
   "settings.championsBoardHint": "3–16 bogstaver, tal, mellemrum, . _ -",
   "settings.championsBoardJoin": "Deltag",
