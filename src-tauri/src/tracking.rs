@@ -391,7 +391,7 @@ pub fn spawn(app: AppHandle) {
                     last_sig.clear();
                     // Not a Champions match (Rivals, Squad Battles …): once it kicked off, the
                     // tracker stops looking – only the cheap probe below runs.
-                    let other_match = !crate::champions::has_pending() && crate::champions::LIVE.lock().unwrap().as_ref().is_some_and(|l| l.kicked_off());
+                    let other_match = !crate::champions::expects_match() && crate::champions::LIVE.lock().unwrap().as_ref().is_some_and(|l| l.kicked_off());
                     if state.ui.lock().unwrap().champions && !other_match {
                         let every = Duration::from_millis(crate::speed::effective(&state.ui.lock().unwrap().tracking).match_ms as u64);
                         let interval = crate::champions::LIVE.lock().unwrap().get_or_insert_with(Default::default).interval(every);
@@ -723,6 +723,7 @@ fn champions_feed(app: &AppHandle, seen: crate::champions::Seen) {
         Seen::Disconnect => "connection lost".into(),
         Seen::Result(c) => format!("result card {:?} win {:?}", c.score, c.win),
         Seen::RankWin => "rank screen: match win".into(),
+        Seen::OtherMode => "another mode (Rivals / Squad Battles)".into(),
     };
     let quiet = matches!(seen, Seen::Board(_) | Seen::Hub(_));
     let counted = |d: &crate::champions::Data| d.runs.iter().map(|r| r.matches.len()).sum::<usize>();

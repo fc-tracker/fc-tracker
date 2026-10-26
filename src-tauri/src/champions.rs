@@ -106,6 +106,10 @@ pub struct Match {
     /// A score read once that jumped (not one goal): taken when the next look reads it again.
     #[serde(skip)]
     pub candidate: Option<[u8; 2]>,
+    /// Started without its kit selection / versus card being read: the Champions hub was the last
+    /// mode screen before the match. Only the hub can make it count – never kept unconfirmed.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub inferred: bool,
 }
 
 impl Match {
@@ -146,6 +150,13 @@ pub struct Data {
     pub last_hub: Option<Hub>,
     /// The match being played (or just finished, waiting for the hub).
     pub pending: Option<Match>,
+    /// When the Champions hub was last read with no other mode's screen after it: a match that
+    /// starts soon after is a Champions match even if its kit selection wasn't read.
+    pub hub_seen: Option<u64>,
+    /// A hub reading that didn't fit the last one (record went down, the total changed): taken
+    /// once it is read again (or followed by a reading that fits it).
+    #[serde(skip)]
+    pub hub_candidate: Option<Hub>,
 }
 
 // --------------------------------------------------------------------------------- what is seen
@@ -192,6 +203,9 @@ pub enum Seen {
     Disconnect,
     Result(Card),
     RankWin,
+    /// Another mode's screen (Rivals / Squad Battles kit selection or hub): what follows is not a
+    /// Champions match.
+    OtherMode,
 }
 
 // -------------------------------------------------------------------------------------- helpers
@@ -379,6 +393,14 @@ pub fn read_hub(words: &[Word], now: u64) -> Option<Hub> {
 /// Kit selection of a Champions match ("CHAMPIONS" over "Select a kit for you and your opponent").
 pub fn is_kit_champions(words: &[Word]) -> bool {
     has(words, "CHAMPIONS") && has(words, "Select") && has(words, "kit")
+}
+
+/// The kit selection of another mode (Rivals, Squad Battles, Friendlies …), or the Rivals / Squad
+/// Battles hub.
+pub fn is_other_mode(words: &[Word]) -> bool {
+    let kit = has(words, "Select") && has(words, "kit") && !has(words, "CHAMPIONS");
+    let hub = (has(words, "RIVALS") && has(words, "Division")) || (has(words, "SQUAD") && has(words, "BATTLES"));
+    kit || hub
 }
 
 pub fn is_opponent_left(words: &[Word]) -> bool {
@@ -611,6 +633,9 @@ pub fn read_screen(words: &[Word], frame: Option<&Frame>, now: u64) -> Option<Se
     if is_kit_champions(words) {
         return Some(Seen::KitChampions);
     }
+    if is_other_mode(words) {
+        return Some(Seen::OtherMode);
+    }
     if is_disconnect(words) {
         return Some(Seen::Disconnect);
     }
@@ -632,13 +657,18 @@ pub fn read_screen(words: &[Word], frame: Option<&Frame>, now: u64) -> Option<Se
 // -------------------------------------------------------------------------------------- tracker
 
 const HOUR: u64 = 3_600_000;
+/// Two hub timers this close are the same event ("ends in" is read to the hour, and OCR can drop a
+/// "1 Day"): events are a week apart.
+const SAME_EVENT: u64 = 48 * HOUR;
+/// A match that starts this soon after the Champions hub was read is a Champions match.
+const HUB_TO_MATCH: u64 = 20 * 60_000;
 
 impl Data {
     /// The run of the event a hub reading belongs to (a new one for a new weekend).
     fn run_for(&mut self, h: &Hub) -> &mut Run {
         let same = |r: &Run| {
             let ends_close = match (r.ends_at, h.ends_at) {
-                (Some(a), Some(b)) => a.abs_diff(b) <= 12 * HOUR,
+                (Some(a), Some(b)) => a.abs_diff(b) <= SAME_EVENT,
                 _ => h.at.saturating_sub(r.hub.at) < 4 * 24 * HOUR,
             };
             ends_close && h.played() >= r.hub.played()
@@ -657,12 +687,23 @@ impl Data {
         self.pending.get_or_insert_with(|| Match::new(now))
     }
 
-    /// The Champions match in progress, if one was seen starting (and isn't stale).
+    /// The Champions match in progress, if one was seen starting (and isn't stale) – or, when its
+    /// kit selection / versus card was missed, one that starts right after the Champions hub.
     fn live_pending(&mut self, now: u64) -> Option<&mut Match> {
         if self.pending.as_ref().is_some_and(|m| now.saturating_sub(m.seen) > 3 * HOUR) {
             self.pending = None;
         }
+        if self.pending.is_none() && self.expects_match(now) {
+            self.hub_seen = None;
+            self.pending = Some(Match { inferred: true, ..Match::new(now) });
+        }
         self.pending.as_mut()
+    }
+
+    /// A Champions match is expected: one was seen starting, or the Champions hub was the last mode
+    /// screen read, a moment ago.
+    pub fn expects_match(&self, now: u64) -> bool {
+        self.pending.is_some() || self.hub_seen.is_some_and(|t| now.saturating_sub(t) < HUB_TO_MATCH)
     }
 
     /// Which side of a match is the user, from what we know about him.
@@ -703,11 +744,17 @@ impl Data {
         let before = self.clone();
         match seen {
             Seen::KitChampions => {
-                // a previous match that never got its hub reading is kept as it was read
+                // a previous match that never got its hub reading is kept as it was read (the next
+                // hub confirms it); one only guessed from the hub is dropped
                 if self.pending.as_ref().is_some_and(|m| m.played()) {
                     let m = self.pending.take().unwrap();
-                    self.commit_unconfirmed(m);
+                    if !m.inferred {
+                        self.commit_unconfirmed(m);
+                    }
+                } else if self.pending.as_ref().is_some_and(|m| m.inferred) {
+                    self.pending = None;
                 }
+                self.hub_seen = None;
                 let m = self.pending(now);
                 m.seen = now;
             }
@@ -810,20 +857,43 @@ impl Data {
                 }
                 self.pending = Some(m);
             }
-            Seen::Hub(h) => self.on_hub(h, now),
+            Seen::OtherMode => {
+                // Rivals / Squad Battles next: no match is expected; a guessed one is dropped
+                self.hub_seen = None;
+                if self.pending.as_ref().is_some_and(|m| m.inferred || !m.played()) {
+                    self.pending = None;
+                }
+            }
+            Seen::Hub(h) => {
+                self.hub_seen = Some(now);
+                if self.hub_fits(&h) {
+                    self.hub_candidate = None;
+                    self.on_hub(h, now);
+                } else if self.hub_candidate.as_ref().is_some_and(|c| same_reading(c, &h) || follows(c, &h)) {
+                    // read twice (or followed by a reading that fits it): it is real
+                    self.hub_candidate = None;
+                    self.on_hub(h, now);
+                } else {
+                    self.hub_candidate = Some(h);
+                }
+            }
         }
         *self != before
     }
 
+    /// The hub reading fits the last one: the same event with a record that only went up (or a new
+    /// event). A misread (6 read as 8, a dropped digit) doesn't – it waits for a second reading.
+    fn hub_fits(&self, h: &Hub) -> bool {
+        let Some(p) = &self.last_hub else { return true };
+        if !same_event(p, h) {
+            return true;
+        }
+        follows(p, h) || same_reading(p, h)
+    }
+
     fn on_hub(&mut self, h: Hub, now: u64) {
         let prev = self.last_hub.clone();
-        let prev_same_event = prev.as_ref().is_some_and(|p| {
-            let ends_close = match (p.ends_at, h.ends_at) {
-                (Some(a), Some(b)) => a.abs_diff(b) <= 12 * HOUR,
-                _ => true,
-            };
-            ends_close && h.played() >= p.played()
-        });
+        let prev_same_event = prev.as_ref().is_some_and(|p| same_event(p, &h) && h.played() >= p.played());
         let (dw, dl) = match &prev {
             Some(p) if prev_same_event => (h.wins.saturating_sub(p.wins) as u32, h.losses.saturating_sub(p.losses) as u32),
             // a new weekend: it started 0–0, so every game on this hub is new
@@ -831,47 +901,82 @@ impl Data {
             // the very first reading: its games are unknown to us
             None => (0, 0),
         };
-        let mut new_games = dw + dl;
-        let mut committed = None;
-        if let Some(mut m) = self.pending.take() {
-            if new_games >= 1 {
-                // the latest of the new games is the pending one
-                let outcome = if dw >= 1 && (dl == 0 || m.card_win == Some(true)) {
-                    Outcome::Win
-                } else if m.score.is_none() && m.card_win.is_none() && m.paused_at.is_some_and(|p| now.saturating_sub(p) < 15 * 60_000) {
-                    Outcome::Quit
-                } else {
-                    Outcome::Loss
-                };
-                m.outcome = Some(outcome);
-                m.confirmed = true;
-                m.n = Some(h.played() as u8);
-                new_games -= 1;
-                committed = Some(m);
-            } else if m.left_before_kickoff && !m.played() {
-                // no match: dropped
-            } else if m.played() && prev.is_none() {
-                // no earlier hub to compare with: keep it as read
-                committed = Some({
-                    let mut m = m;
-                    m.outcome = m.card_win.map(|w| if w { Outcome::Win } else { Outcome::Loss });
-                    m.n = Some(h.played() as u8);
-                    m
-                });
-            } else {
-                // the hub hasn't counted it yet (shown before the update) – wait for the next one
-                self.pending = Some(m);
+        let new_games = (dw + dl) as usize;
+        // The matches waiting for the hub: kept unconfirmed (no hub read between two matches),
+        // then the pending one – the latest of the new games.
+        let mut waiting: Vec<Match> = Vec::new();
+        if new_games > 0 && prev_same_event {
+            if let Some(run) = self.runs.last_mut() {
+                let first = run.matches.iter().rposition(|m| m.confirmed || m.hub_only).map_or(0, |i| i + 1);
+                waiting = run.matches.split_off(first);
             }
         }
-        let run = self.run_for(&h);
-        // games the hub counted that we never saw (app closed, another PC)
-        let base = h.played() as u8 - new_games as u8 - committed.is_some() as u8;
-        for i in 0..new_games {
-            let n = base + 1 + i as u8;
-            let won = (i as u32) < dw.saturating_sub(committed.as_ref().is_some_and(|m| m.outcome == Some(Outcome::Win)) as u32);
-            run.matches.push(Match { started: now, seen: now, n: Some(n), outcome: Some(if won { Outcome::Win } else { Outcome::Loss }), confirmed: true, hub_only: true, ..Default::default() });
+        match self.pending.take() {
+            Some(m) if m.left_before_kickoff && !m.played() => {}
+            Some(m) if new_games > 0 && (m.played() || !m.inferred) => waiting.push(m),
+            Some(mut m) if m.played() && prev.is_none() => {
+                // no earlier hub to compare with: keep it as read
+                m.outcome = m.card_win.map(|w| if w { Outcome::Win } else { Outcome::Loss });
+                m.n = Some(h.played() as u8);
+                self.run_for(&h).matches.push(m);
+            }
+            // the hub hasn't counted it yet (shown before the update) – wait for the next one
+            Some(m) if new_games == 0 => self.pending = Some(m),
+            _ => {}
         }
-        if let Some(m) = committed {
+        // more waiting matches than new games: the oldest stay as they were read
+        let keep = waiting.len().saturating_sub(new_games);
+        let older: Vec<Match> = waiting.drain(..keep).collect();
+        let (mut wins, mut losses) = (dw, dl);
+        // first the matches whose own result card / score says how they ended, then the rest
+        let mut decided: Vec<Option<Outcome>> = vec![None; waiting.len()];
+        for (i, m) in waiting.iter().enumerate() {
+            match my_result(m) {
+                Some(true) if wins > 0 => {
+                    wins -= 1;
+                    decided[i] = Some(Outcome::Win);
+                }
+                Some(false) if losses > 0 => {
+                    losses -= 1;
+                    decided[i] = Some(Outcome::Loss);
+                }
+                _ => {}
+            }
+        }
+        for (i, m) in waiting.iter_mut().enumerate() {
+            let outcome = match decided[i] {
+                Some(o) => o,
+                None => {
+                    let o = if losses > 0 {
+                        losses -= 1;
+                        Outcome::Loss
+                    } else {
+                        wins = wins.saturating_sub(1);
+                        Outcome::Win
+                    };
+                    // the hub says otherwise than the score: the sides were read the wrong way round
+                    if m.card_win.is_none() && my_result(m).is_some_and(|w| w != (o == Outcome::Win)) {
+                        m.me_home = m.me_home.map(|home| !home);
+                    }
+                    o
+                }
+            };
+            let quit = outcome == Outcome::Loss && m.score.is_none() && m.card_win.is_none() && m.paused_at.is_some_and(|p| now.saturating_sub(p) < 15 * 60_000);
+            m.outcome = Some(if quit { Outcome::Quit } else { outcome });
+            m.confirmed = true;
+            m.inferred = false;
+        }
+        let run = self.run_for(&h);
+        run.matches.extend(older);
+        // games the hub counted that we never saw (app closed, another PC)
+        let unseen = new_games - waiting.len();
+        let base = (h.played() as usize).saturating_sub(new_games);
+        for i in 0..unseen {
+            let won = (i as u32) < wins;
+            run.matches.push(Match { started: now, seen: now, n: Some((base + 1 + i) as u8), outcome: Some(if won { Outcome::Win } else { Outcome::Loss }), confirmed: true, hub_only: true, ..Default::default() });
+        }
+        for (i, mut m) in waiting.into_iter().enumerate() {
+            m.n = Some((base + unseen + 1 + i) as u8);
             run.matches.push(m);
         }
         run.hub = h.clone();
@@ -882,13 +987,42 @@ impl Data {
     }
 
     fn commit_unconfirmed(&mut self, mut m: Match) {
-        m.outcome = m.card_win.map(|w| if w { Outcome::Win } else { Outcome::Loss });
+        m.outcome = my_result(&m).map(|w| if w { Outcome::Win } else { Outcome::Loss });
         if let Some(run) = self.runs.last_mut() {
             run.matches.push(m);
         } else {
             self.runs.push(Run { id: m.started, ends_at: None, hub: Hub::default(), matches: vec![m] });
         }
     }
+}
+
+fn same_event(a: &Hub, b: &Hub) -> bool {
+    match (a.ends_at, b.ends_at) {
+        (Some(x), Some(y)) => x.abs_diff(y) <= SAME_EVENT,
+        _ => true,
+    }
+}
+
+fn same_reading(a: &Hub, b: &Hub) -> bool {
+    (a.wins, a.losses, a.remaining) == (b.wins, b.losses, b.remaining)
+}
+
+/// `b` can come after `a` in one event: wins and losses only go up, and the games of the run stay
+/// the same in total (wins + losses + remaining).
+fn follows(a: &Hub, b: &Hub) -> bool {
+    b.wins >= a.wins && b.losses >= a.losses && a.wins as u32 + a.losses as u32 + a.remaining as u32 == b.wins as u32 + b.losses as u32 + b.remaining as u32
+}
+
+/// How the match ended for the user by its own screens: the result card's WIN / LOSS, else the
+/// final (or last read) score with the user's side known. None = can't tell (level, or no side).
+fn my_result(m: &Match) -> Option<bool> {
+    if let Some(w) = m.card_win {
+        return Some(w);
+    }
+    let home = m.me_home?;
+    let s = m.score.or(m.last.map(|l| [l[1] as u8, l[2] as u8]))?;
+    let (me, them) = if home { (s[0], s[1]) } else { (s[1], s[0]) };
+    (me != them).then_some(me > them)
 }
 
 /// The notice after a match was counted (shown in the hub): outcome, the user's score, the record.
@@ -931,8 +1065,9 @@ pub fn init(dir: &Path) {
 }
 
 /// A Champions match was seen starting (kit selection titled CHAMPIONS / the versus card).
-pub fn has_pending() -> bool {
-    STORE.lock().unwrap().as_ref().is_some_and(|s| s.data.pending.is_some())
+/// A Champions match is in progress or about to start (seen starting, or right after the hub).
+pub fn expects_match() -> bool {
+    STORE.lock().unwrap().as_ref().is_some_and(|s| s.data.expects_match(now_ms()))
 }
 
 pub fn data() -> Data {
@@ -1334,6 +1469,7 @@ mod tests {
         let mut next = Hub { at: 7 * 24 * HOUR, wins: 0, losses: 0, remaining: 15, ends_at: Some(7 * 24 * HOUR + 72 * HOUR), ..Default::default() };
         d.observe(Seen::Hub(next.clone()), next.at);
         next.wins = 1;
+        next.remaining = 14;
         d.observe(Seen::Hub(next), 7 * 24 * HOUR + 1);
         assert_eq!(d.runs.len(), 2);
         assert_eq!(d.runs[1].matches.len(), 1);
@@ -1388,12 +1524,127 @@ mod tests {
     fn a_rivals_match_is_not_tracked() {
         let mut d = Data::default();
         d.observe(hub(2, 0), 0);
-        // no Champions kit selection / versus card: a Rivals match
-        assert!(!d.observe(board(1, 0, 10), 1));
+        // the Rivals kit selection after the Champions hub: not a Champions match
+        d.observe(Seen::OtherMode, 1);
+        assert!(!d.expects_match(2));
+        assert!(!d.observe(board(1, 0, 10), 2));
         let mut card = Card::default();
         card.win = Some(true);
         assert!(!d.observe(Seen::Result(card), 2));
         assert!(d.pending.is_none());
+    }
+
+    #[test]
+    fn a_match_right_after_the_hub_is_tracked_without_its_kit_selection() {
+        let mut d = Data::default();
+        d.observe(hub(4, 0), 0);
+        // the kit selection and the versus card were missed: straight to the scoreboard
+        assert!(d.expects_match(60_000));
+        d.observe(board(0, 0, 1), 60_000);
+        d.observe(board(4, 0, 80), 61_000);
+        d.observe(board(4, 0, 90), 62_000);
+        let mut card = Card::default();
+        card.sides[1].record = Some([3, 3]);
+        card.score = Some([4, 0]);
+        card.win = Some(true);
+        d.observe(Seen::Result(card), 63_000);
+        d.observe(hub(5, 0), 70_000);
+        let m = d.runs[0].matches.last().unwrap();
+        assert!(!m.hub_only, "read from the match itself, not only counted from the hub");
+        assert_eq!(m.outcome, Some(Outcome::Win));
+        assert_eq!(m.score, Some([4, 0]));
+        // long after the hub (and no hub since): not expected
+        assert!(!d.expects_match(70_000 + HUB_TO_MATCH + 1) || d.hub_seen == Some(70_000));
+    }
+
+    #[test]
+    fn a_guess_from_the_hub_that_never_gets_counted_is_dropped() {
+        let mut d = Data::default();
+        d.observe(hub(4, 0), 0);
+        d.observe(board(1, 0, 30), 1);
+        d.observe(board(1, 0, 31), 2);
+        // a Champions kit selection next, the hub never counted it: it wasn't a Champions match
+        d.observe(Seen::KitChampions, 3);
+        assert!(d.runs[0].matches.is_empty());
+    }
+
+    #[test]
+    fn the_match_score_decides_when_one_hub_counts_two_games() {
+        let mut d = Data::default();
+        d.observe(hub(3, 1), 0);
+        // match A: lost 1-2 (result card), no hub read before the next kit selection
+        d.observe(Seen::KitChampions, 10);
+        d.observe(board(1, 2, 90), 20);
+        d.observe(board(1, 2, 91), 21);
+        let mut a = Card::default();
+        a.sides[1].record = Some([5, 5]);
+        a.score = Some([1, 2]);
+        a.win = Some(false);
+        d.observe(Seen::Result(a), 22);
+        // match B: won 3-0
+        d.observe(Seen::KitChampions, 30);
+        d.observe(board(3, 0, 90), 40);
+        d.observe(board(3, 0, 91), 41);
+        let mut b = Card::default();
+        b.sides[1].record = Some([2, 2]);
+        b.score = Some([3, 0]);
+        b.win = Some(true);
+        d.observe(Seen::Result(b), 42);
+        d.observe(hub(4, 2), 50);
+        let ms = &d.runs[0].matches;
+        assert_eq!(ms.len(), 2, "two games, two rows – no placeholder on top");
+        assert_eq!(ms[0].outcome, Some(Outcome::Loss));
+        assert_eq!(ms[1].outcome, Some(Outcome::Win));
+        assert!(ms.iter().all(|m| m.confirmed && !m.hub_only));
+        assert_eq!(ms.iter().map(|m| m.n.unwrap()).collect::<Vec<_>>(), vec![5, 6]);
+    }
+
+    #[test]
+    fn a_score_read_the_wrong_way_round_is_turned_by_the_hub() {
+        let mut d = Data::default();
+        d.observe(hub(2, 0), 0);
+        d.observe(Seen::KitChampions, 10);
+        // the user was taken for the home side, but he is away: 2-1 for the opponent
+        d.pending.as_mut().unwrap().me_home = Some(true);
+        d.observe(board(2, 1, 90), 20);
+        d.observe(board(2, 1, 91), 21);
+        d.observe(hub(2, 1), 30);
+        let m = &d.runs[0].matches[0];
+        assert_eq!(m.outcome, Some(Outcome::Loss));
+        assert_eq!(m.me_home, Some(false), "the sides were turned so the score agrees with the loss");
+    }
+
+    #[test]
+    fn a_misread_hub_waits_for_a_second_reading() {
+        let mut d = Data::default();
+        d.observe(hub(6, 2), 0);
+        // "6" read as "8": doesn't fit (the total of the run changes) – not counted
+        let mut bad = Hub { at: 1, wins: 8, losses: 2, remaining: 7, ends_at: Some(72 * HOUR), ..Default::default() };
+        d.observe(Seen::Hub(bad.clone()), 1);
+        assert!(d.runs[0].matches.is_empty());
+        assert_eq!(d.last_hub.as_ref().unwrap().wins, 6);
+        // the real record keeps counting
+        d.observe(hub(7, 2), 2);
+        assert_eq!(d.runs[0].matches.len(), 1);
+        // a reading that goes down in the same event is a misread too
+        bad.wins = 3;
+        bad.remaining = 10;
+        d.observe(Seen::Hub(bad), 3);
+        d.observe(hub(8, 2), 4);
+        assert_eq!(d.runs.len(), 1);
+        assert_eq!(d.runs[0].matches.len(), 2);
+        assert_eq!(d.last_hub.as_ref().unwrap().wins, 8);
+    }
+
+    #[test]
+    fn a_timer_read_a_day_off_is_still_the_same_weekend() {
+        let mut d = Data::default();
+        d.observe(hub(6, 2), 0);
+        // "1 Day 18 Hours" read as "18 Hours": 24 h off – the same event, the record keeps counting
+        let h = Hub { at: 1, wins: 7, losses: 2, remaining: 6, ends_at: Some(48 * HOUR), ..Default::default() };
+        d.observe(Seen::Hub(h), 1);
+        assert_eq!(d.runs.len(), 1);
+        assert_eq!(d.runs[0].matches.len(), 1);
     }
 
     #[test]

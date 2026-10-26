@@ -1313,7 +1313,7 @@ pub fn run() {
                     if session == session::GameSession::InMatch {
                         let on = state.ui.lock().unwrap().champions;
                         // a Rivals / Squad Battles match after kickoff: closed again
-                        let tracking = champions::has_pending() || !champions::LIVE.lock().unwrap().as_ref().is_some_and(|l| l.kicked_off());
+                        let tracking = champions::expects_match() || !champions::LIVE.lock().unwrap().as_ref().is_some_and(|l| l.kicked_off());
                         return (on && tracking && e.continuous).then(|| std::time::Duration::from_millis(e.match_ms.min(1000) as u64));
                     }
                     let steady = scan::STEADY.load(Ordering::Relaxed) && session != session::GameSession::InMatch && session != session::GameSession::Closed;
