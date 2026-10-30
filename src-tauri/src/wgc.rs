@@ -6,7 +6,7 @@
 //! capture.
 
 use windows::core::Interface;
-use windows::Graphics::Capture::{Direct3D11CaptureFramePool, GraphicsCaptureItem};
+use windows::Graphics::Capture::{Direct3D11CaptureFramePool, GraphicsCaptureAccess, GraphicsCaptureAccessKind, GraphicsCaptureItem, GraphicsCaptureSession};
 use windows::Graphics::DirectX::Direct3D11::IDirect3DDevice;
 use windows::Graphics::DirectX::DirectXPixelFormat;
 use windows::Win32::Foundation::{HMODULE, HWND};
@@ -21,6 +21,39 @@ use windows::Win32::System::WinRT::Graphics::Capture::IGraphicsCaptureItemIntero
 
 fn err(e: windows::core::Error) -> String {
     format!("wgc:{e}")
+}
+
+/// What the first session said about Windows' yellow capture frame, once, for the log.
+static BORDER_NOTE: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
+
+/// No yellow "being captured" frame around the game and no cursor in the picture. Windows drops
+/// the frame only after the app asked for borderless capture (`GraphicsCaptureAccess`, Windows 11);
+/// without asking, some PCs kept showing it (user, 2026-10-27). Asked once per run; the outcome is
+/// logged once (`take_border_note`).
+pub fn borderless(session: &GraphicsCaptureSession) {
+    static ACCESS: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    let access = ACCESS.get_or_init(|| match GraphicsCaptureAccess::RequestAccessAsync(GraphicsCaptureAccessKind::Borderless).and_then(|op| op.join()) {
+        Ok(status) => ["denied by the system", "not declared", "denied by the user", "needs the user's ok", "allowed"]
+            .get(status.0 as usize)
+            .map_or_else(|| format!("status {}", status.0), |s| s.to_string()),
+        Err(e) => format!("not available ({e})"),
+    });
+    let _ = session.SetIsBorderRequired(false);
+    let _ = session.SetIsCursorCaptureEnabled(false);
+    static NOTED: std::sync::Once = std::sync::Once::new();
+    NOTED.call_once(|| {
+        let border = match session.IsBorderRequired() {
+            Ok(false) => "off",
+            Ok(true) => "still on",
+            Err(_) => "can't be changed on this Windows",
+        };
+        *BORDER_NOTE.lock().unwrap() = Some(format!("capture: borderless access {access} – Windows' yellow frame {border}"));
+    });
+}
+
+/// The borderless-capture outcome, once (for the tracking log).
+pub fn take_border_note() -> Option<String> {
+    BORDER_NOTE.lock().unwrap().take()
 }
 
 thread_local! {
@@ -70,11 +103,7 @@ pub fn capture_window(hwnd: HWND) -> Result<(u32, u32, Vec<u8>), String> {
         let size = item.Size().map_err(err)?;
         let pool = Direct3D11CaptureFramePool::CreateFreeThreaded(&d3d, DirectXPixelFormat::B8G8R8A8UIntNormalized, 1, size).map_err(err)?;
         let session = pool.CreateCaptureSession(&item).map_err(err)?;
-        // No yellow "being captured" frame around the game, no mouse cursor in the picture.
-        // (Windows 11 accepts this for desktop apps without asking: verified, the session then
-        // reports IsBorderRequired = false.)
-        let _ = session.SetIsBorderRequired(false);
-        let _ = session.SetIsCursorCaptureEnabled(false);
+        borderless(&session);
         session.StartCapture().map_err(err)?;
 
         let started = std::time::Instant::now();
@@ -164,6 +193,19 @@ mod tests {
             bmp.extend_from_slice(&px[y * row..(y + 1) * row]);
         }
         std::fs::write(out, bmp).unwrap();
+    }
+
+    /// `cargo test --lib borderless_capture -- --ignored --nocapture`: what Windows says about the
+    /// yellow frame on this PC.
+    #[test]
+    #[ignore]
+    fn borderless_capture_is_granted() {
+        // SAFETY: plain query of the foreground window handle.
+        let hwnd = unsafe { windows::Win32::UI::WindowsAndMessaging::GetForegroundWindow() };
+        super::capture_window(hwnd).expect("capture");
+        let note = super::take_border_note().expect("note");
+        println!("{note}");
+        assert!(note.ends_with("frame off"), "{note}");
     }
 }
 

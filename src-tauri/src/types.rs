@@ -70,6 +70,30 @@ pub fn own_prices_since(prices: &BTreeMap<u64, Price>, since: u64, max: usize) -
     v
 }
 
+/// A price paid for a card (Buy Now on the transfer market) – this user's own purchase, or the
+/// shared pool of purchases on the platform. Fills only cards without EA's average: EA's average
+/// stays first, a paid price is better than none (a card nobody had seen got a price at once –
+/// user 2026-10-27, Rodman bought for 6,800). Kept like a Buy Now seen (`bin`; `listings` = how
+/// many purchases agree). A newer price, or one more purchases agree on, replaces it – so one
+/// sniped bargain gives way to the price most people paid.
+pub fn apply_paid(prices: &mut BTreeMap<u64, Price>, id: u64, price: u64, at: u64, n: u32, shared: bool) -> bool {
+    let n = n.max(1);
+    match prices.get(&id) {
+        Some(p) if p.avg.is_some() || (p.at >= at && p.listings >= n) || (p.bin == price && p.listings == n) => false,
+        _ => {
+            prices.insert(id, Price { bin: price, listings: n, at, avg: None, shared });
+            true
+        }
+    }
+}
+
+/// Applies the shared pool of paid prices ({definition id: [price, newest purchase, purchases]}).
+pub fn apply_paid_pool(prices: &mut BTreeMap<u64, Price>, pool: &BTreeMap<u64, [u64; 3]>) -> usize {
+    pool.iter()
+        .filter(|(&id, &[price, at, n])| price > 0 && apply_paid(prices, id, price, at, n.min(u32::MAX as u64) as u32, true))
+        .count()
+}
+
 /// Applies the shared pool ({definition id: [average, seen at]}); returns how many changed.
 pub fn apply_pool(prices: &mut BTreeMap<u64, Price>, pool: &BTreeMap<u64, [u64; 2]>) -> usize {
     let mut n = 0;
@@ -167,4 +191,31 @@ pub struct Item {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub assists: Option<u64>,
     pub last_seen: u64,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_paid_price_fills_a_card_without_an_average_and_the_most_agreed_price_wins() {
+        let mut prices = BTreeMap::new();
+        // Rodman: no price anywhere, bought for 6,800 → priced at once
+        assert!(apply_paid(&mut prices, 1, 6_800, 100, 1, false));
+        assert_eq!(prices[&1].value(), Some(6_800));
+        // the pool: two purchases agreeing on 6,850 replace one alone
+        let pool = BTreeMap::from([(1u64, [6_850u64, 90, 2])]);
+        assert_eq!(apply_paid_pool(&mut prices, &pool), 1);
+        assert_eq!(prices[&1].value(), Some(6_850));
+        // this user snipes it for 1,200: their own price until the pool (which still agrees on
+        // 6,850 – the server picks the biggest group) comes back
+        assert!(apply_paid(&mut prices, 1, 1_200, 200, 1, false));
+        assert_eq!(apply_paid_pool(&mut prices, &pool), 1);
+        assert_eq!(prices[&1].value(), Some(6_850));
+        assert_eq!(apply_paid_pool(&mut prices, &pool), 0);
+        // EA's average always stays first
+        prices.insert(2, Price { bin: 0, listings: 0, at: 1, avg: Some(9_000), shared: false });
+        assert!(!apply_paid(&mut prices, 2, 6_000, 500, 3, true));
+        assert_eq!(prices[&2].value(), Some(9_000));
+    }
 }

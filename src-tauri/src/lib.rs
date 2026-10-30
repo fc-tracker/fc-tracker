@@ -1,6 +1,7 @@
 mod bridge;
 mod champions;
 mod clock;
+mod corners;
 mod diag;
 mod fcsetup;
 mod gallery;
@@ -673,6 +674,23 @@ fn price_pool(state: State<AppState>, platform: String, prices: std::collections
     state.store.lock().unwrap().apply_price_pool(&platform, &prices)
 }
 
+/// The prices this user paid since the last call (for the shared pool of paid prices):
+/// the platform and [definition id, price, at].
+#[tauri::command]
+fn paid_share(state: State<AppState>) -> PriceShare {
+    let mut store = state.store.lock().unwrap();
+    let platform = store.platform();
+    // kept until the market is known (the first sync)
+    let prices = if platform.is_some() { std::mem::take(&mut store.paid_new) } else { Vec::new() };
+    PriceShare { platform, prices }
+}
+
+/// The shared pool of paid prices ({definition id: [price, newest purchase, purchases]}).
+#[tauri::command]
+fn paid_pool(state: State<AppState>, platform: String, prices: std::collections::BTreeMap<u64, [u64; 3]>) -> usize {
+    state.store.lock().unwrap().apply_paid_pool(&platform, &prices)
+}
+
 /// The revision of the Gallery set list in use (the launcher compares fc-tracker.com's with it).
 #[tauri::command]
 fn gallery_sets_revision() -> u64 {
@@ -1293,6 +1311,9 @@ pub fn run() {
             side_switch_watch(app.handle().clone());
             recorder_watch(app.handle().clone());
 
+            // Corner marks on the game while it is watched (instead of Windows' yellow frame).
+            corners::spawn();
+
             // Continuous watching of the game window – only in the menus, never in a match.
             let watch_app = app.handle().clone();
             let watch_log = app.handle().clone();
@@ -1380,6 +1401,8 @@ pub fn run() {
             best_value,
             set_value,
             price_pool,
+            paid_share,
+            paid_pool,
             mark_swap_done,
             current_page,
             auto_scan,

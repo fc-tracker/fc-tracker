@@ -459,6 +459,14 @@ fn dispatch(req: Value) -> Result<Value, String> {
                 }
                 Ok(json!(types::apply_pool(&mut w.prices, &pool)))
             }
+            "paid_pool" => {
+                let platform = arg("platform").as_str().unwrap_or_default().to_string();
+                let pool: BTreeMap<u64, [u64; 3]> = serde_json::from_value(arg("prices")).map_err(|e| e.to_string())?;
+                if w.platform.as_deref() != Some(platform.as_str()) {
+                    return Ok(json!(0));
+                }
+                Ok(json!(types::apply_paid_pool(&mut w.prices, &pool)))
+            }
             "ingest_sync" => Ok(ingest_sync(&mut w, serde_json::from_value(arg("sync")).map_err(|e| e.to_string())?)),
             "gallery_sets_revision" => Ok(json!(gallery_sets::revision())),
             "use_gallery_sets" => Ok(json!(gallery_sets::use_remote(arg("json").as_str().unwrap_or_default())?)),

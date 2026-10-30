@@ -206,6 +206,8 @@ pub struct Store {
     /// and handed to the frontend once each (`take_unknown_sets`), which reports them anonymously.
     pub unknown_sets: BTreeSet<String>,
     pub unknown_new: Vec<String>,
+    /// Prices this user paid (Buy Now) not yet sent to the shared pool: [definition id, price, at].
+    pub paid_new: Vec<[u64; 3]>,
     /// Everything else the Web App tells us (webdata.json): SBCs, objectives, hubs, club record.
     pub web: crate::webdata::WebData,
     web_dirty: bool,
@@ -265,7 +267,7 @@ impl Store {
         // A copy written while the app ran from a packaged (MSIX) app joins the real data (it is
         // migrated on its own first, so neither side's versions can re-run old migrations).
         let absorbed = crate::merge::absorb_redirected(&dir, &mut snapshot);
-        let mut store = Self { dir, snapshot, sync_active: false, sync_missed: Vec::new(), sync_abort: false, sync_blocked: None, sync_never_owned: BTreeMap::new(), sync_sets_read: BTreeSet::new(), club_read_started: None, revision: Default::default(), focus_set: None, dirty: false, pending_buy: None, last_coins: None, web: crate::webdata::WebData::default(), web_dirty: false, sync_last_set: None, unknown_sets: BTreeSet::new(), unknown_new: Vec::new() };
+        let mut store = Self { dir, snapshot, sync_active: false, sync_missed: Vec::new(), sync_abort: false, sync_blocked: None, sync_never_owned: BTreeMap::new(), sync_sets_read: BTreeSet::new(), club_read_started: None, revision: Default::default(), focus_set: None, dirty: false, pending_buy: None, last_coins: None, web: crate::webdata::WebData::default(), web_dirty: false, sync_last_set: None, unknown_sets: BTreeSet::new(), unknown_new: Vec::new(), paid_new: Vec::new() };
         store.web = crate::webdata::WebData::load(&store.dir);
         if store.replay_card_database_captures() > 0 || !absorbed.is_empty() {
             store.save();
@@ -377,6 +379,29 @@ impl Store {
     /// What goes to the shared price pool: the EA averages this user saw after `since`.
     pub fn own_prices_since(&self, since: u64) -> Vec<[u64; 3]> {
         crate::types::own_prices_since(&self.snapshot.prices, since, POOL_MAX)
+    }
+
+    /// A purchase this user made (the Buy Now price the coins dropped by): the card's price when
+    /// EA's average is unknown, and queued for the shared pool of paid prices.
+    pub fn note_paid(&mut self, def_id: u64, price: u64) {
+        let now = now_ms();
+        crate::types::apply_paid(&mut self.snapshot.prices, def_id, price, now, 1, false);
+        self.paid_new.push([def_id, price, now]);
+        self.bump();
+        self.dirty = true;
+    }
+
+    /// Prices other users on the same platform paid (the shared pool of purchases).
+    pub fn apply_paid_pool(&mut self, platform: &str, pool: &BTreeMap<u64, [u64; 3]>) -> usize {
+        if self.snapshot.platform.as_deref() != Some(platform) {
+            return 0;
+        }
+        let n = crate::types::apply_paid_pool(&mut self.snapshot.prices, pool);
+        if n > 0 {
+            self.bump();
+            self.save();
+        }
+        n
     }
 
     /// Prices other users on the same platform saw (the shared pool); a price only replaces an older one.

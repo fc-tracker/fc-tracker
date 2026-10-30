@@ -55,6 +55,11 @@ fn wait(every: Duration) {
     *woken = false;
 }
 
+/// The continuous capture of the game window runs right now (for the corner marks).
+pub fn watching() -> bool {
+    LATEST.lock().unwrap().as_ref().is_some_and(|(_, at)| at.elapsed() <= Duration::from_secs(5))
+}
+
 /// The newest signature, if it is younger than `max_age` (the watcher is running and seeing frames).
 pub fn fresh_signature(max_age: Duration) -> Option<Vec<u8>> {
     LATEST.lock().unwrap().as_ref().filter(|(_, at)| at.elapsed() <= max_age).map(|(s, _)| s.clone())
@@ -86,8 +91,7 @@ impl Watch {
             let size = item.Size().map_err(err)?;
             let pool = Direct3D11CaptureFramePool::CreateFreeThreaded(&d3d, DirectXPixelFormat::B8G8R8A8UIntNormalized, 2, size).map_err(err)?;
             let session = pool.CreateCaptureSession(&item).map_err(err)?;
-            let _ = session.SetIsBorderRequired(false);
-            let _ = session.SetIsCursorCaptureEnabled(false);
+            crate::wgc::borderless(&session);
             session.StartCapture().map_err(err)?;
             Ok(Self { hwnd: hwnd.0 as isize, size, pool, session, mips: None, full: None })
         }
@@ -274,6 +278,9 @@ pub fn spawn(should_run: impl Fn() -> Option<Duration> + Send + 'static, log: im
                             if !running {
                                 running = true;
                                 log("watch: continuous watching of the game window started");
+                            }
+                            if let Some(note) = crate::wgc::take_border_note() {
+                                log(&note);
                             }
                             failures = 0;
                             since_open = 0;

@@ -37,11 +37,34 @@ async function round() {
   if (pool.d) await api.pricePool(p, pool.d);
 }
 
+// Paid prices (fc-tracker.com/api/paid): what users paid for a card on the transfer market – the
+// price of cards EA gives no average for. A purchase is sent within half a minute and reaches the
+// other users of the market at their next pool download (every 3 minutes, cached 1 minute).
+const PAID_URL = "https://www.fc-tracker.com/api/paid";
+const PAID_SEND_EVERY = 30 * 1000;
+const PAID_POOL_EVERY = 3 * 60 * 1000;
+let paidPoolAt = 0;
+
+async function paidRound() {
+  const share = await api.paidShare();
+  const p = share.platform;
+  if (!p) return;
+  if (usageEnabled() && share.prices.length) {
+    await fetch(PAID_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ p, v: share.prices }), keepalive: true });
+  }
+  if (Date.now() - paidPoolAt < PAID_POOL_EVERY) return;
+  paidPoolAt = Date.now();
+  const pool = (await (await fetch(`${PAID_URL}?p=${p}`)).json()) as { d?: Record<string, [number, number, number]> };
+  if (pool.d) await api.paidPool(p, pool.d);
+}
+
 let timer: ReturnType<typeof setInterval> | null = null;
-/** Starts the pool rounds: soon after start (a sync may be under way), then every 30 minutes. */
+/** Starts the pool rounds: soon after start (a sync may be under way), then every 30 minutes;
+ *  paid prices every half minute (sending) and 3 minutes (downloading). */
 export function startPrices() {
   if (timer) return;
   const run = () => round().catch(() => {});
   setTimeout(run, 20_000);
   timer = setInterval(run, EVERY);
+  setInterval(() => paidRound().catch(() => {}), PAID_SEND_EVERY);
 }

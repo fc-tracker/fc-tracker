@@ -1,6 +1,6 @@
 [package]
 name = "fc-tracker"
-version = "0.1.72"
+version = "0.1.73"
 description = "Launcher + overlay for EA SPORTS FC 27"
 authors = ["fc-tracker contributors"]
 edition = "2021"
@@ -56,6 +56,8 @@ windows = { version = "0.62", features = [
   "Win32_System_WinRT",
   "Win32_System_WinRT_Direct3D11",
   "Win32_System_WinRT_Graphics_Capture",
+  # borderless capture access (no yellow frame around the game)
+  "Security_Authorization_AppCapabilityAccess",
 ] }
 getrandom = "0.3"
 tauri-plugin-single-instance = "2"

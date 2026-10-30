@@ -1056,9 +1056,13 @@ pub fn process_page(store: &mut crate::store::Store, page: Page) -> Option<Curre
                         .filter_map(|c| Some(SlotObs { points: c.points?, rating: c.rating, position: c.position.clone(), first_owner: c.first_owner, flag: Some(c.flag.clone()), uncertain: !c.first_owner && c.marker_score >= scan::TRIANGLE_GRAY }))
                         .collect();
                     let unselected = store.snapshot.set_obs.get(&set.key).map(|o| o.unselected.clone()).unwrap_or_default();
-                    // No flag guesses here: only "the only card with these points + rating" counts
-                    // as proof, and only on a complete set (sum checked against the Base Grade).
-                    let id = lineup::identify(&slots, &all_cards, &unselected, false, &Default::default());
+                    // Proof is "the only card with these points + rating", or – for look-alikes from
+                    // different nations (Dro Fernández 🇪🇸 and Risser 🇫🇷, both 3,150 · 85) – the slot's
+                    // flag matching one learned nation while every other candidate's learned flag is
+                    // clearly different (`lineup::flag_unique`); never a guess between unlearned flags.
+                    let learned: std::collections::BTreeMap<u64, Vec<f32>> =
+                        store.snapshot.flags.iter().map(|(n, f)| (*n, f.sig.clone())).collect();
+                    let id = lineup::identify(&slots, &all_cards, &unselected, false, &learned);
                     // A complete set proves its chips by the Base Grade sum. An incomplete one
                     // (no Base Grade) only where the slot's rating was read too and matches the
                     // card – the only card with these points + rating (Nnadozie 2,100 · 85).
@@ -1368,7 +1372,7 @@ pub fn process_page(store: &mut crate::store::Store, page: Page) -> Option<Curre
         }
         Page::BuySuccess => {
             let pending = store.pending_buy.take().filter(|p| p.at.elapsed() < crate::store::PendingBuy::KEEP)?;
-            Some(bought_page(store, pending.def_id))
+            Some(bought_page(store, pending.def_id, pending.price))
         }
         // "Get this item for 700 FUT Coins?": the price the coins will drop by.
         Page::BuyConfirm { price } => {
@@ -1389,7 +1393,7 @@ pub fn process_page(store: &mut crate::store::Store, page: Page) -> Option<Curre
                 return None;
             }
             let p = store.pending_buy.take()?;
-            Some(bought_page(store, p.def_id))
+            Some(bought_page(store, p.def_id, p.price))
         }
         Page::Other | Page::AutoComplete => None,
     }
@@ -1407,12 +1411,19 @@ fn confirm_by_coins(store: &mut crate::store::Store, coins: u32) -> Option<Curre
         return None;
     }
     let p = store.pending_buy.take()?;
-    Some(bought_page(store, p.def_id))
+    Some(bought_page(store, p.def_id, Some(price)))
 }
 
+/// Purchases below the market's lowest price are misreads, not prices.
+const MIN_PAID: u32 = 150;
+
 /// A confirmed purchase: recorded like a bought card on New Items (collected, never first owner,
-/// ✓ in the missing list) with its Gallery impact for the toast.
-fn bought_page(store: &mut crate::store::Store, def_id: u64) -> CurrentPage {
+/// ✓ in the missing list) with its Gallery impact for the toast. The price paid becomes the card's
+/// price when EA's average is unknown, and goes to the shared pool of paid prices.
+fn bought_page(store: &mut crate::store::Store, def_id: u64, price: Option<u32>) -> CurrentPage {
+    if let Some(price) = price.filter(|p| *p >= MIN_PAID) {
+        store.note_paid(def_id, price as u64);
+    }
     let impacts = record_acquisitions(store, "bought", &[def_id]);
     let name = store.snapshot.gallery.get(&def_id).and_then(|c| c.name.clone()).unwrap_or_default();
     CurrentPage { kind: "bought", set_key: String::new(), set_name: name, verified: false, cards_read: 1, facts_changed: 0, identified: 1, ambiguous: 0, advice: None, impacts, better: None, fill: None }
@@ -1506,8 +1517,10 @@ fn cards_impact(store: &mut crate::store::Store, context: &str, cards: &[scan::S
     // Name ties ("Adli" 76 and 77, rating not read): the card of the set the user works on.
     let ids = match_cards(store, cards);
     // The purchase from Bidding Options shows up here: nothing pending any more.
-    if store.pending_buy.as_ref().is_some_and(|p| ids.contains(&p.def_id)) {
-        store.pending_buy = None;
+    if let Some(p) = store.pending_buy.take_if(|p| ids.contains(&p.def_id)) {
+        if let Some(price) = p.price.filter(|price| context == "bought" && *price >= MIN_PAID) {
+            store.note_paid(p.def_id, price as u64);
+        }
     }
     record_acquisitions(store, context, &ids)
 }

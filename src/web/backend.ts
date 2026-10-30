@@ -152,6 +152,16 @@ export const webApi = {
     }
     return n;
   },
+  /** The shared pool of paid prices (what users paid for cards EA gives no average for). */
+  paidPool: async (platform: string, prices: Record<string, [number, number, number]>): Promise<number> => {
+    await restored;
+    const n = await call<number>("paid_pool", { platform, prices });
+    if (n > 0) {
+      await persist();
+      changed();
+    }
+    return n;
+  },
   /** Forget everything this browser learned (the "Start over" button). */
   reset: async () => {
     await call("reset");
