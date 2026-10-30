@@ -17,6 +17,7 @@ import { initUsage, track } from "../usage";
 import { startPrices } from "../prices";
 import { startGallerySets } from "../gallerySets";
 import { startAccount, syncSoon } from "../account";
+import { afterSync as objectivesAfterSync, startObjectives } from "../objectives";
 import Dashboard from "./Dashboard";
 import "../overlay.css";
 import "../web/web.css";
@@ -35,6 +36,8 @@ startPrices();
 startGallerySets();
 void startAccount();
 backend.onClubSynced(() => syncSoon(2_000));
+startObjectives();
+backend.onClubSynced(() => void objectivesAfterSync());
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>

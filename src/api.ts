@@ -516,6 +516,10 @@ const appApi = {
     browserDev ? Promise.resolve<{ data: string; written_at: number } | null>(null) : invoke<{ data: string; written_at: number }>("sync_part_export", { part }),
   syncPartImport: (part: string, data: string, replace: boolean) =>
     browserDev ? Promise.resolve() : invoke<void>("sync_part_import", { part, data, replace }),
+  /** The shared objectives list (src/objectives.ts): this device's events without progress, and
+   *  the list from the server merged in (own progress wins). */
+  objectivesShare: () => (browserDev ? Promise.resolve<unknown>(null) : invoke<unknown>("objectives_share")),
+  applySharedObjectives: (catalog: unknown) => (browserDev ? Promise.resolve(false) : invoke<boolean>("apply_shared_objectives", { catalog })),
   /** Card definitions this PC knows (no ownership) – for FC-Tracker's card list. */
   cardDefs: () => (browserDev ? Promise.resolve<object[]>([]) : invoke<object[]>("card_defs")),
   /** The Gallery set list (src/gallerySets.ts): the revision in use, and a newer one to use. */
@@ -626,6 +630,8 @@ function withWeb(a: typeof appApi): typeof appApi {
       Promise.resolve(value == null ? localStorage.removeItem("fct.account") : localStorage.setItem("fct.account", value)),
     syncPartExport: (part: string) => wb((b) => b.syncPartExport(part)),
     syncPartImport: (part: string, data: string, replace: boolean) => wb((b) => b.syncPartImport(part, data, replace)),
+    objectivesShare: () => wb((b) => b.objectivesShare()),
+    applySharedObjectives: (catalog: unknown) => wb((b) => b.applySharedObjectives(catalog)),
   };
 }
 export const api = IS_WEB ? withWeb(appApi) : appApi;

@@ -693,6 +693,23 @@ fn card_defs(state: State<AppState>) -> Vec<serde_json::Value> {
         .collect()
 }
 
+/// The objective events this PC's Web App sync saw, without progress – for the shared list.
+#[tauri::command]
+fn objectives_share(state: State<AppState>) -> Option<serde_json::Value> {
+    webdata::objectives_for_sharing(&state.store.lock().unwrap().web)
+}
+
+/// The shared objectives list from api.fc-tracker.com: events this PC hasn't seen are added.
+#[tauri::command]
+fn apply_shared_objectives(state: State<AppState>, catalog: serde_json::Value) -> bool {
+    let mut store = state.store.lock().unwrap();
+    let changed = store.web.absorb_shared_objectives(&catalog);
+    if changed {
+        store.web_changed();
+    }
+    changed
+}
+
 /// The shared price pool of the user's platform ({definition id: [average, seen at]}).
 #[tauri::command]
 fn price_pool(state: State<AppState>, platform: String, prices: std::collections::BTreeMap<u64, [u64; 2]>) -> usize {
@@ -1570,6 +1587,8 @@ pub fn run() {
             sync_part_export,
             sync_part_import,
             card_defs,
+            objectives_share,
+            apply_shared_objectives,
             mark_swap_done,
             current_page,
             auto_scan,

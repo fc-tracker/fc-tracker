@@ -586,6 +586,55 @@ fn dispatch(req: Value) -> Result<Value, String> {
                 }
                 Ok(json!(true))
             }
+            // The shared objectives list (src/objectives.ts): what this browser's sync saw goes up
+            // without progress; events it hasn't seen come down. Its own progress always wins.
+            "objectives_share" => {
+                let Some((_, body)) = w.objectives.as_ref() else { return Ok(Value::Null) };
+                let groups: Vec<Value> = body
+                    .get("groups")
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flatten()
+                    .map(|g| {
+                        let objectives: Vec<Value> = g
+                            .get("objectives")
+                            .and_then(Value::as_array)
+                            .into_iter()
+                            .flatten()
+                            .map(|o| json!({ "id": o.get("id"), "name": o.get("name"), "description": o.get("description"), "target": o.get("target") }))
+                            .collect();
+                        json!({ "id": g.get("id"), "title": g.get("title"), "endTime": g.get("endTime"), "objectives": objectives })
+                    })
+                    .collect();
+                Ok(json!({ "groups": groups, "names": w.names, "formations": w.formations }))
+            }
+            "apply_shared_objectives" => {
+                let w: &mut Web = &mut w;
+                let cat = arg("catalog");
+                let at = cat.get("at").and_then(Value::as_u64).unwrap_or(0);
+                let mut changed = false;
+                let own = w.objectives.get_or_insert_with(|| (at, json!({ "groups": [] })));
+                if !own.1.get("groups").is_some_and(Value::is_array) {
+                    own.1["groups"] = json!([]);
+                }
+                let list = own.1["groups"].as_array_mut().unwrap();
+                for g in cat.get("groups").and_then(Value::as_array).cloned().unwrap_or_default() {
+                    let id = g.get("id").and_then(Value::as_u64);
+                    if id.is_some() && !list.iter().any(|m| m.get("id").and_then(Value::as_u64) == id) {
+                        list.push(g);
+                        changed = true;
+                    }
+                }
+                for (slot, key) in [(&mut w.names, "names"), (&mut w.formations, "formations")] {
+                    if slot.is_none() {
+                        if let Some(v) = cat.get(key).filter(|v| !v.is_null()) {
+                            *slot = Some(v.clone());
+                            changed = true;
+                        }
+                    }
+                }
+                Ok(json!(changed))
+            }
             "state" => {
                 let collected: Vec<u64> = w.gallery.values().filter(|c| c.collected).map(|c| c.def_id).collect();
                 let extra: Vec<&GalleryCard> = w.gallery.values().filter(|c| !w.base_ids.contains(&c.def_id)).collect();

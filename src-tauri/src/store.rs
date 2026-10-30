@@ -418,6 +418,13 @@ impl Store {
     }
 
     /// The Web App data another device of the account synced (merged, or – `replace` – taken).
+    /// The Web App data changed outside a sync (the shared objectives list): saved, overviews redone.
+    pub fn web_changed(&mut self) {
+        self.web_dirty = true;
+        self.bump();
+        self.save();
+    }
+
     pub fn absorb_synced_web(&mut self, other: crate::webdata::WebData, replace: bool) {
         if replace {
             self.web = other;

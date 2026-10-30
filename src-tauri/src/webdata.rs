@@ -90,7 +90,63 @@ pub struct WebData {
     pub attributes: Option<Latest>,
 }
 
+/// What goes to the shared objectives list after a sync (api.fc-tracker.com/v1/objectives): the
+/// events and objectives without progress or state, and EA's public name lists and formations.
+pub fn objectives_for_sharing(w: &WebData) -> Option<Value> {
+    let body = &w.objectives.as_ref()?.body;
+    let groups: Vec<Value> = body
+        .get("groups")?
+        .as_array()?
+        .iter()
+        .map(|g| {
+            let objectives: Vec<Value> = g
+                .get("objectives")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .map(|o| serde_json::json!({ "id": o.get("id"), "name": o.get("name"), "description": o.get("description"), "target": o.get("target") }))
+                .collect();
+            serde_json::json!({ "id": g.get("id"), "title": g.get("title"), "endTime": g.get("endTime"), "objectives": objectives })
+        })
+        .collect();
+    Some(serde_json::json!({
+        "groups": groups,
+        "names": w.names.as_ref().map(|l| &l.body),
+        "formations": w.formations.as_ref().map(|l| &l.body),
+    }))
+}
+
 impl WebData {
+    /// The shared objectives list (`{at, groups, names, formations}`): the user's own events, with
+    /// their progress, always win; events only the list has are added (no progress yet – the
+    /// user's next sync brings it). Name lists and formations fill in where this PC has none.
+    pub fn absorb_shared_objectives(&mut self, cat: &Value) -> bool {
+        let at = cat.get("at").and_then(Value::as_u64).unwrap_or(0);
+        let shared = cat.get("groups").and_then(Value::as_array).cloned().unwrap_or_default();
+        let mut changed = false;
+        let own = self.objectives.get_or_insert_with(|| Latest { at, body: serde_json::json!({ "groups": [] }) });
+        if !own.body.get("groups").is_some_and(Value::is_array) {
+            own.body["groups"] = serde_json::json!([]);
+        }
+        let list = own.body["groups"].as_array_mut().unwrap();
+        for g in shared {
+            let id = g.get("id").and_then(Value::as_u64);
+            if id.is_some() && !list.iter().any(|m| m.get("id").and_then(Value::as_u64) == id) {
+                list.push(g);
+                changed = true;
+            }
+        }
+        for (slot, key) in [(&mut self.names, "names"), (&mut self.formations, "formations")] {
+            if slot.is_none() {
+                if let Some(v) = cat.get(key).filter(|v| !v.is_null()) {
+                    *slot = Some(Latest { at, body: v.clone() });
+                    changed = true;
+                }
+            }
+        }
+        changed
+    }
+
     pub fn load(dir: &Path) -> Self {
         fs::read_to_string(dir.join("webdata.json")).ok().and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default()
     }
@@ -359,6 +415,23 @@ mod tests {
 
     fn v(s: &str) -> Value {
         serde_json::from_str(s).unwrap()
+    }
+
+    #[test]
+    fn one_sync_shares_the_objectives_and_own_progress_wins() {
+        // a user who synced: their events with progress
+        let mut a = WebData::default();
+        a.objectives = Some(Latest { at: 1, body: v(r#"{"groups":[{"id":1,"title":"Total Football","endTime":1948640399,"objectives":[{"id":11,"name":"Win","description":"Win %1","target":3,"progress":2,"state":"IN_PROGRESS"}]}]}"#) });
+        let shared = objectives_for_sharing(&a).unwrap();
+        assert!(!shared.to_string().contains("progress") && !shared.to_string().contains("IN_PROGRESS"));
+        // somebody who never synced gets the event
+        let mut b = WebData::default();
+        let cat = serde_json::json!({ "at": 5, "groups": shared["groups"] });
+        assert!(b.absorb_shared_objectives(&cat));
+        assert_eq!(crate::squads::groups_from_value(&b.objectives.as_ref().unwrap().body)[0].title, "Total Football");
+        // the user's own progress is never replaced by the shared copy, and nothing is added twice
+        assert!(!a.absorb_shared_objectives(&cat));
+        assert_eq!(crate::squads::groups_from_value(&a.objectives.as_ref().unwrap().body)[0].objectives[0].progress, 2);
     }
 
     #[test]

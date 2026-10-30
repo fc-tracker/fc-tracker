@@ -513,3 +513,19 @@ export async function syncPartImport(part: string, data: string, replace: boolea
   await persist();
   changed();
 }
+
+// ---------------------------------------------------------------- shared objectives (src/objectives.ts)
+export async function objectivesShare(): Promise<unknown> {
+  await restored;
+  return call("objectives_share");
+}
+
+export async function applySharedObjectives(catalog: unknown): Promise<boolean> {
+  await restored;
+  const added = await call<boolean>("apply_shared_objectives", { catalog });
+  if (added) {
+    await persist();
+    changed();
+  }
+  return added;
+}

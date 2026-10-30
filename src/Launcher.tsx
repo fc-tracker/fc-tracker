@@ -11,6 +11,7 @@ import { startPrices } from "./prices";
 import { startGallerySets } from "./gallerySets";
 import { Account } from "./AccountSettings";
 import { startAccount } from "./account";
+import { afterSync as objectivesAfterSync, startObjectives } from "./objectives";
 import SyncConflict from "./SyncConflict";
 import { RequiredUpdate, useUpdate } from "./UpdateRequired";
 
@@ -155,6 +156,9 @@ export default function Launcher() {
       startPrices();
       startGallerySets();
       void startAccount();
+      // the shared objectives list: in after every sync, out to everyone (src/objectives.ts)
+      startObjectives();
+      void events.onSyncDone(() => void objectivesAfterSync());
     })();
     const unlisten = [
       events.onPaired(() => trackOnce("extension-connected")),
