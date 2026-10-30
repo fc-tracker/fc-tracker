@@ -989,6 +989,7 @@ fn squads_input(store: &store::Store) -> squads::Input {
         formations: web.formations.as_ref().map(|f| squads::formations_from_value(&f.body)).unwrap_or_default(),
         team_links: snap.team_links.clone(),
         active: web.latest.iter().find(|(k, _)| k.ends_with("/usermassinfo")).map(|(_, v)| squads::active_squad(&v.body)).unwrap_or_default(),
+        active_formation: web.latest.iter().find(|(k, _)| k.ends_with("/usermassinfo")).and_then(|(_, v)| squads::active_formation(&v.body)),
         coins: snap.coins.map(|[c, _]| c),
         read_at: web.objectives.as_ref().map(|o| o.at),
         now_ms: now,
@@ -1632,4 +1633,43 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while starting fc-tracker");
+}
+
+#[cfg(test)]
+mod real_plan {
+    /// The objective squads on a copy of a real data folder: `FCT_REAL_DIR=<copy> cargo test --lib real_plan -- --ignored --nocapture`.
+    #[test]
+    #[ignore]
+    fn plan_on_real_data() {
+        let Ok(dir) = std::env::var("FCT_REAL_DIR") else { return };
+        let dir = std::path::PathBuf::from(dir);
+        let mut store = crate::store::Store::load(dir.clone());
+        // the full list folds in as it does when a sync brings it
+        if let Some(c) = store.web.latest.iter().find(|(k, _)| k.ends_with("/categories/all")).map(|(k, l)| (k.clone(), l.body.clone(), l.at)) {
+            store.web.ingest(&format!("https://utas.mob.v5.prd.futc-ext.gcp.ea.com{}", c.0), &c.1, c.2);
+        }
+        let ui: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(dir.join("ui.json")).unwrap()).unwrap();
+        let mut prefs: crate::squads::SquadPrefs = serde_json::from_value(ui["squads"].clone()).unwrap_or_default();
+        prefs.primary = std::env::var("FCT_PRIMARY").ok().and_then(|p| p.parse().ok());
+        let t = std::time::Instant::now();
+        let view = crate::squads::plan(&crate::squads_input(&store), &prefs);
+        if let Ok(out) = std::env::var("FCT_SQUADS_OUT") {
+            std::fs::write(out, serde_json::to_string_pretty(&view).unwrap()).unwrap();
+        }
+        println!("planned in {:?}: {} events, {} squads", t.elapsed(), view.events.len(), view.combos.len());
+        println!("places {:?} | primary {:?}", view.places.iter().map(|p| format!("{} ({})", p.name, p.objectives)).collect::<Vec<_>>(), view.primary);
+        for c in &view.combos {
+            println!("SESSION {} @ {} [{}] counted {}", c.id, c.place_name, c.title, c.counted);
+            for it in &c.items {
+                let r = it.req.map(|k| &c.reqs[k]);
+                println!("    {} {} | {} {}", if it.counts { "✓" } else { "✗" }, it.event_title, it.text.chars().take(90).collect::<String>(), r.map(|r| format!("[{}x{} have {}{}]", r.count, r.name, r.have, if it.scorer { " scorer" } else { "" })).unwrap_or_default());
+            }
+            if let Some(sq) = &c.squad {
+                println!("    {} chem {} changes {:?}: {}", sq.formation, sq.chem, sq.changes, sq.slots.iter().map(|s| format!("{} {}", s.name, s.rating)).collect::<Vec<_>>().join(", "));
+            }
+        }
+        for a in &view.apart {
+            println!("APART {} needs {:?}", a.title, a.places);
+        }
+    }
 }

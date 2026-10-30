@@ -8,7 +8,9 @@
 }
 .acct-dialog {
   --cut: 14px;
-  width: min(560px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: 22px 24px;
+  width: min(560px, 100%); max-height: calc(100vh - 32px); overflow: auto; overflow-x: hidden; padding: 22px 24px;
+  /* opened from the overlay header, which keeps its text on one line */
+  white-space: normal; text-align: left;
   background: var(--glow, none), var(--bg); color: var(--text); font-family: var(--font-body);
   box-shadow: 0 20px 60px color-mix(in srgb, var(--bg) 80%, transparent), inset 3px 0 0 var(--accent);
   clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));

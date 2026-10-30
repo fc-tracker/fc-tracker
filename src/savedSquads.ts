@@ -36,7 +36,7 @@ function write(list: SavedSquad[]) {
 }
 
 /** Saves the XI of an event as it is built now (a new entry each time). */
-export function saveSquad(e: EventPlan): SavedSquad | null {
+export function saveSquad(e: Pick<EventPlan, "id" | "title" | "squad" | "reqs">): SavedSquad | null {
   if (!e.squad) return null;
   const s: SavedSquad = {
     id: `${e.id}-${Date.now().toString(36)}`,

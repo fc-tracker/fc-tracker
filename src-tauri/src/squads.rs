@@ -40,6 +40,10 @@ pub struct SquadPrefs {
     /// only while it is newer than the objectives' last read: the next sync says what EA says, so
     /// a wrong mark is put right by itself.
     pub done_marks: Vec<DoneMark>,
+    /// "I'm playing …": the event the first session is built around; none = Auto (the most objectives).
+    pub primary: Option<u64>,
+    /// Where to play it, when the user picked a place; none = the best one.
+    pub place: Option<Mode>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -54,7 +58,7 @@ pub struct DoneMark {
 
 impl Default for SquadPrefs {
     fn default() -> Self {
-        Self { chem_target: 33, chem_first: false, hide_loans: true, budget: None, must: Vec::new(), must_cards: Vec::new(), done_marks: Vec::new() }
+        Self { chem_target: 33, chem_first: false, hide_loans: true, budget: None, must: Vec::new(), must_cards: Vec::new(), done_marks: Vec::new(), primary: None, place: None }
     }
 }
 
@@ -112,6 +116,8 @@ pub struct Names {
     pub nations: BTreeMap<u64, String>,
     /// id → (names, league)
     pub teams: BTreeMap<u64, (Vec<String>, Option<u64>)>,
+    /// Rarity / program names by EA's `rareflag` ("Ultimate Scream").
+    pub rarities: BTreeMap<u64, String>,
 }
 
 impl Names {
@@ -137,6 +143,11 @@ impl Names {
         for (k, x) in v.get("nations").and_then(Value::as_object).into_iter().flatten() {
             if let (Ok(id), Some(s)) = (k.parse(), strs(x).into_iter().next()) {
                 n.nations.insert(id, s);
+            }
+        }
+        for (k, x) in v.get("rarities").and_then(Value::as_object).into_iter().flatten() {
+            if let (Ok(id), Some(s)) = (k.parse(), strs(x).into_iter().next()) {
+                n.rarities.insert(id, s);
             }
         }
         for (k, x) in v.get("teams").and_then(Value::as_object).into_iter().flatten() {
@@ -214,6 +225,42 @@ pub fn groups_from_value(v: &Value) -> Vec<Group> {
         .collect()
 }
 
+/// EA's whole objectives list (`/scmp/objective/categories/all`, read by every sync) in the
+/// extension's `fct://webapp/objectives` shape – every event, not only the ones the extension
+/// opened (user 2026-10-30: "there are MANY objectives"). `text` turns EA text keys into words.
+pub fn groups_from_categories(v: &Value, text: &dyn Fn(&str) -> String) -> Vec<Value> {
+    let mut out = Vec::new();
+    for c in v.as_array().into_iter().flatten() {
+        for g in c.get("groupsList").and_then(Value::as_array).into_iter().flatten() {
+            let Some(id) = g.get("groupId").and_then(Value::as_u64) else { continue };
+            let objectives: Vec<Value> = g
+                .get("objectives")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .map(|o| {
+                    serde_json::json!({
+                        "id": o.get("objectiveId"),
+                        "name": text(o.get("name").and_then(Value::as_str).unwrap_or("")),
+                        "description": text(o.get("description").and_then(Value::as_str).unwrap_or("")),
+                        "progress": o.get("currentProgress").and_then(Value::as_u64).unwrap_or(0),
+                        "target": o.get("multiplier").and_then(Value::as_u64).unwrap_or(1),
+                        "state": o.get("state").and_then(Value::as_str).unwrap_or(""),
+                    })
+                })
+                .collect();
+            out.push(serde_json::json!({
+                "id": id,
+                "categoryId": c.get("categoryId"),
+                "title": text(g.get("title").and_then(Value::as_str).unwrap_or("")),
+                "endTime": g.get("endTime"),
+                "objectives": objectives,
+            }));
+        }
+    }
+    out
+}
+
 // ---------- requirements ----------
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq, PartialOrd, Ord)]
@@ -225,11 +272,28 @@ pub enum Need {
     Icon,
     Hero,
     Rating(u32),
+    /// Weak foot of at least this many stars ("with 4* or higher WF players").
+    WeakFoot(u32),
+    /// Skill moves of at least this many stars.
+    SkillMoves(u32),
+    /// The squad's chemistry ("with 30+ chemistry") – the squad's, not a card's.
+    Chemistry(u32),
+    /// A rarity / program (EA `rareflag`): "Ultimate Scream", "Future Stars Academy".
+    Rarity(u64),
+    /// AcceleRATE: "explosive" | "controlled" | "lengthy".
+    Accel(String),
+    /// A PlayStyle by its name as the text gives it ("finesse shot"); PlayStyle+ when asked for.
+    PlayStyle(String, bool),
 }
 
 impl Need {
     fn met_by(&self, p: &Player, _links: &BTreeMap<u64, u64>) -> bool {
         match *self {
+            Need::SkillMoves(min) => p.skill_moves >= min,
+            Need::Chemistry(_) => false,
+            Need::Rarity(r) => p.rareflag == r,
+            Need::Accel(ref kind) => accelerate(p) == Some(kind.as_str()),
+            Need::PlayStyle(ref name, plus) => p.playstyles.iter().any(|(n, pl)| norm(n) == norm(name) && (*pl || !plus)),
             Need::League(id) => p.league == id,
             // the club itself (its women's / men's team links count for chemistry only – "Real
             // Madrid (LALIGA)" is the LALIGA side)
@@ -238,6 +302,7 @@ impl Need {
             Need::Icon => p.is_icon(),
             Need::Hero => p.is_hero(),
             Need::Rating(min) => p.rating >= min,
+            Need::WeakFoot(min) => p.weak_foot >= min,
         }
     }
 }
@@ -332,7 +397,9 @@ fn find_league(phrase: &str, names: &Names) -> Option<u64> {
 
 fn find_nation(phrase: &str, names: &Names) -> Option<u64> {
     let p = phrase.trim().to_lowercase();
-    let wanted: Vec<String> = DEMONYMS.iter().filter(|(a, _)| *a == p).flat_map(|(_, n)| n.iter().map(|s| norm(s))).collect();
+    // "Mexican" and "USA" alike (EA names the nation "United States")
+    let np = norm(phrase);
+    let wanted: Vec<String> = DEMONYMS.iter().filter(|(a, n)| *a == p || n.iter().any(|x| norm(x) == np)).flat_map(|(_, n)| n.iter().map(|s| norm(s))).collect();
     let by_name = |want: &str| names.nations.iter().find(|(_, n)| norm(n) == want).map(|(&id, _)| id);
     wanted.iter().find_map(|w| by_name(w)).or_else(|| by_name(&norm(phrase)))
 }
@@ -349,8 +416,41 @@ fn find_club(phrase: &str, league: Option<u64>, names: &Names) -> Option<u64> {
 /// goals … while having Min. 1 French player" → the French player).
 pub fn parse_requirement(text: &str, names: &Names) -> Parsed {
     let lower = text.to_lowercase();
+    // "with 4* or higher WF players" / "4* or higher skill moves": one of them has to play
+    for (k, wf) in [("* or higher wf", true), ("* weak foot", true), ("* or higher weak foot", true), ("* or higher sm", false), ("* or higher skill", false), ("* skill move", false), ("* skiller", false)] {
+        if let Some(i) = lower.find(k) {
+            if let Some(n) = lower[..i].chars().last().and_then(|c| c.to_digit(10)) {
+                return Parsed::Squad(Req { need: if wf { Need::WeakFoot(n) } else { Need::SkillMoves(n) }, count: 1 });
+            }
+        }
+    }
+    // "with 30+ chemistry" / "min. 25 chemistry" (the squad's)
+    if let Some(i) = lower.find(" chemistry").filter(|_| !lower.starts_with("build")) {
+        let before: String = lower[..i].trim_end_matches('+').chars().rev().take_while(|c| c.is_ascii_digit()).collect::<Vec<_>>().into_iter().rev().collect();
+        if let Ok(n) = before.parse::<u32>() {
+            return Parsed::Squad(Req { need: Need::Chemistry(n.min(33)), count: 1 });
+        }
+    }
+    // AcceleRATE ("a player with Lengthy AcceleRATE", "Explosive running style")
+    if lower.contains("accelerate") || lower.contains("running style") {
+        for k in ["explosive", "controlled", "lengthy"] {
+            if lower.contains(k) {
+                return Parsed::Squad(Req { need: Need::Accel(k.to_string()), count: count_before(&lower, k).unwrap_or(1) });
+            }
+        }
+    }
+    // a PlayStyle ("a player with the Finesse Shot+ PlayStyle")
+    if let Some(i) = lower.find(" playstyle") {
+        let head = &lower[..i];
+        let start = ["the ", "a ", "with "].iter().filter_map(|k| head.rfind(k).map(|p| p + k.len())).max().unwrap_or(0);
+        let name = head[start..].trim();
+        if !name.is_empty() && name.split_whitespace().count() <= 4 {
+            let plus = name.ends_with('+');
+            return Parsed::Squad(Req { need: Need::PlayStyle(name.trim_end_matches('+').trim().to_string(), plus), count: count_before(&lower, name).unwrap_or(1) });
+        }
+    }
     let mut starts: Vec<(usize, usize)> =
-        ["min. ", "min ", "minimum ", "at least "].iter().flat_map(|k| lower.match_indices(k).map(move |(i, _)| (i, k.len()))).collect();
+        ["min. ", "min ", "minimum ", "at least ", "with ", "having "].iter().flat_map(|k| lower.match_indices(k).map(move |(i, _)| (i, k.len()))).collect();
     starts.sort();
     for (i, klen) in starts {
         let parsed = parse_at(&lower[i + klen..], names);
@@ -358,13 +458,80 @@ pub fn parse_requirement(text: &str, names: &Names) -> Parsed {
             return parsed;
         }
     }
+    // who scores or assists: "using a player from Germany", "with a Player Item from Bundesliga",
+    // "with a Future Stars Academy player" – one such card has to play
+    for k in ["using a player from ", "with a player item from ", "with a player from ", "by a player from "] {
+        if let Some(i) = lower.find(k) {
+            let tail = &lower[i + k.len()..];
+            let end = [" in ", ",", ".", " while", " on "].iter().filter_map(|x| tail.find(x)).min().unwrap_or(tail.len());
+            return named_need(tail[..end].trim(), 1, names);
+        }
+    }
+    for k in ["with a ", "using a ", "with an ", "using an "] {
+        let mut from = 0;
+        while let Some(i) = lower[from..].find(k) {
+            let start = from + i + k.len();
+            from = start;
+            let tail = &lower[start..];
+            if let Some(end) = tail.find(" player") {
+                let phrase = tail[..end].trim();
+                if !phrase.is_empty() && phrase.split_whitespace().count() <= 5 && !["goal", "match", "shot", "header", "ball", "kit"].iter().any(|w| phrase.contains(w)) {
+                    return named_need(phrase, 1, names);
+                }
+            }
+        }
+    }
     Parsed::None
+}
+
+/// The number right before a phrase ("2 players with …"), when there is one.
+fn count_before(text: &str, phrase: &str) -> Option<u32> {
+    let i = text.find(phrase)?;
+    text[..i].split_whitespace().rev().take(4).find_map(|w| w.trim_end_matches('+').parse::<u32>().ok()).filter(|n| (1..=11).contains(n))
+}
+
+/// A league / nation / club / rarity by its name, as a requirement of `count` cards.
+fn named_need(phrase: &str, count: u32, names: &Names) -> Parsed {
+    let req = |need| Parsed::Squad(Req { need, count });
+    if let (Some(open), true) = (phrase.find('('), phrase.ends_with(')')) {
+        let league = find_league(&phrase[open + 1..phrase.len() - 1], names);
+        return match find_club(phrase[..open].trim(), league, names) {
+            Some(id) => req(Need::Club(id)),
+            None => Parsed::Unknown(phrase.to_string()),
+        };
+    }
+    if let Some(id) = find_rarity(phrase, names) {
+        return req(Need::Rarity(id));
+    }
+    if let Some(id) = find_league(phrase, names) {
+        return req(Need::League(id));
+    }
+    if let Some(id) = find_nation(phrase, names) {
+        return req(Need::Nation(id));
+    }
+    if let Some(id) = find_club(phrase, None, names) {
+        return req(Need::Club(id));
+    }
+    Parsed::Unknown(phrase.to_string())
+}
+
+/// A program by its name ("Ultimate Scream" / "Future Stars Academy"), exact or its first words.
+fn find_rarity(phrase: &str, names: &Names) -> Option<u64> {
+    let p = norm(phrase);
+    if p.len() < 4 {
+        return None;
+    }
+    names.rarities.iter().find(|(_, n)| norm(n) == p).or_else(|| names.rarities.iter().find(|(_, n)| norm(n).len() >= 6 && (p.starts_with(&norm(n)) || norm(n).starts_with(&p)))).map(|(&id, _)| id)
 }
 
 /// "3 premier league players in your starting 11 …" (what follows "min.").
 fn parse_at(rest: &str, names: &Names) -> Parsed {
     let digits: String = rest.chars().take_while(|c| c.is_ascii_digit()).collect();
     let Ok(count) = digits.parse::<u32>() else { return Parsed::None };
+    // "4* or higher WF players" is no count of players
+    if !rest[digits.len()..].starts_with(' ') {
+        return Parsed::None;
+    }
     let after = rest[digits.len()..].trim_start();
     let req = |need| Parsed::Squad(Req { need, count });
     let first = after.split_whitespace().next().unwrap_or("").trim_end_matches([',', '.']);
@@ -378,14 +545,17 @@ fn parse_at(rest: &str, names: &Names) -> Parsed {
         // "player items from bundesliga in your starting 11"
         let Some(f) = after.find(" from ") else { return Parsed::None };
         let tail = &after[f + 6..];
-        let end = [" in your", " in the", " in a", ",", "."].iter().filter_map(|k| tail.find(k)).min().unwrap_or(tail.len());
-        tail[..end].trim()
+        let end = [" in your", " in the", " in a", " and ", ",", "."].iter().filter_map(|k| tail.find(k)).min().unwrap_or(tail.len());
+        // "from any premier league team"
+        let t = tail[..end].trim();
+        let t = t.strip_prefix("any ").unwrap_or(t);
+        t.strip_suffix(" teams").or_else(|| t.strip_suffix(" team")).unwrap_or(t).trim()
     } else {
         let Some(end) = after.find(" player") else { return Parsed::None };
         after[..end].trim()
     };
     // the counted thing is a short name – "goals in one match while having …" is not
-    if phrase.is_empty() || phrase.split_whitespace().count() > 7 || ["goal", "match", "assist", "min.", "while"].iter().any(|w| phrase.contains(w)) {
+    if phrase.is_empty() || phrase.split_whitespace().count() > 7 || ["goal", "match", "assist", "min.", "while", "different", "separate", "time"].iter().any(|w| phrase.contains(w)) {
         return Parsed::None;
     }
     // "rated 85+" / "85+ rated"
@@ -402,6 +572,9 @@ fn parse_at(rest: &str, names: &Names) -> Parsed {
             Some(id) => req(Need::Club(id)),
             None => Parsed::Unknown(phrase.to_string()),
         };
+    }
+    if let Some(id) = find_rarity(phrase, names) {
+        return req(Need::Rarity(id));
     }
     if let Some(id) = find_league(phrase, names) {
         return req(Need::League(id));
@@ -749,6 +922,9 @@ struct Ctx<'a> {
     prefs: &'a SquadPrefs,
     links: &'a BTreeMap<u64, u64>,
     active: &'a BTreeSet<u64>,
+    active_formation: Option<&'a str>,
+    /// How much each requirement weighs (the picked event's most); empty = 1 each.
+    weights: &'a [f64],
     /// player → requirements it meets
     meets: Vec<Vec<usize>>,
     /// "Has to include" players (indices).
@@ -778,17 +954,33 @@ impl Ctx<'_> {
                 have[r] += 1;
             }
         }
-        let reqs: f64 = self.reqs.iter().zip(&have).map(|(r, &h)| h.min(r.count) as f64 / r.count as f64 + if h >= r.count { 1.0 } else { 0.0 }).sum();
         let chem = chemistry(&chosen, self.links);
         let total: u32 = chem.iter().sum::<u32>() + 3 * (11 - chosen.len() as u32);
+        for (r, h) in self.reqs.iter().zip(have.iter_mut()) {
+            if let Need::Chemistry(min) = r.need {
+                *h = u32::from(total >= min);
+            }
+        }
+        let reqs: f64 = self
+            .reqs
+            .iter()
+            .zip(&have)
+            .enumerate()
+            .map(|(k, (r, &h))| self.weights.get(k).copied().unwrap_or(1.0) * (h.min(r.count) as f64 / r.count as f64 + if h >= r.count { 1.0 } else { 0.0 }))
+            .sum();
         let short = self.prefs.chem_target.min(33).saturating_sub(total) as f64;
         let mut power = 0.0;
         for (&s, pos) in slots.iter().zip(&f.slots) {
             let Some(i) = s else { continue };
             power += strength(&self.players[i], pos);
+            // the squad the user plays stays unless a change is clearly better (user 2026-10-30:
+            // "10 changes from your squad" is not an objective squad)
             if self.active.contains(&self.players[i].key) {
-                power += 0.05;
+                power += 2000.0;
             }
+        }
+        if self.active_formation == Some(f.name.as_str()) {
+            power += 4000.0;
         }
         power += 0.35 * chem.iter().sum::<u32>() as f64;
         // "has to include" comes before everything
@@ -817,6 +1009,21 @@ impl Ctx<'_> {
             if let Some(k) = (0..11).filter(free).find(|&k| Some(&f.slots[k]) == own).or_else(|| (0..11).find(free)) {
                 if !Self::used(&slots, p, self.players) {
                     slots[k] = Some(p);
+                }
+            }
+        }
+        // the squad the user plays, in its own formation: the search starts from it and changes only
+        // what helps
+        if self.active_formation == Some(f.name.as_str()) {
+            let mut act: Vec<usize> = (0..self.players.len()).filter(|&i| self.active.contains(&self.players[i].key)).collect();
+            act.sort_by_key(|&p| f.slots.iter().filter(|pos| self.eligible(p, pos)).count());
+            for p in act {
+                let own = self.players[p].positions.first();
+                let free = |k: &usize| slots[*k].is_none() && self.eligible(p, &f.slots[*k]);
+                if let Some(k) = (0..11).filter(free).find(|&k| Some(&f.slots[k]) == own).or_else(|| (0..11).find(free)) {
+                    if !Self::used(&slots, p, self.players) {
+                        slots[k] = Some(p);
+                    }
                 }
             }
         }
@@ -889,10 +1096,16 @@ impl Ctx<'_> {
 
 /// The best XI over all formations. `players` = the candidates (the club, loans already left out
 /// when the user wants that).
-fn solve(players: &[Player], reqs: &[Req], formations: &[Formation], prefs: &SquadPrefs, links: &BTreeMap<u64, u64>, active: &BTreeSet<u64>) -> Option<(usize, Pick)> {
+#[cfg(test)]
+fn solve(players: &[Player], reqs: &[Req], formations: &[Formation], prefs: &SquadPrefs, links: &BTreeMap<u64, u64>, active: &BTreeSet<u64>, active_formation: Option<&str>) -> Option<(usize, Pick)> {
+    solve_weighted(players, reqs, &[], formations, prefs, links, active, active_formation)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn solve_weighted(players: &[Player], reqs: &[Req], weights: &[f64], formations: &[Formation], prefs: &SquadPrefs, links: &BTreeMap<u64, u64>, active: &BTreeSet<u64>, active_formation: Option<&str>) -> Option<(usize, Pick)> {
     let meets: Vec<Vec<usize>> = players.iter().map(|p| reqs.iter().enumerate().filter(|(_, r)| r.need.met_by(p, links)).map(|(i, _)| i).collect()).collect();
     let must = (0..players.len()).filter(|&i| prefs.must.contains(&players[i].key)).collect();
-    let ctx = Ctx { players, reqs, prefs, links, active, meets, must };
+    let ctx = Ctx { players, reqs, prefs, links, active, active_formation, weights, meets, must };
     let mut best: Option<(usize, Pick)> = None;
     // the strongest per position + everyone who meets a requirement (keeps the search small)
     let mut results: Vec<(usize, Pick, Vec<Vec<usize>>)> = Vec::new();
@@ -939,6 +1152,14 @@ fn solve(players: &[Player], reqs: &[Req], formations: &[Formation], prefs: &Squ
 #[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct SquadsView {
     pub events: Vec<EventPlan>,
+    /// Play sessions: the user's pick (or the most objectives) first, then what's left.
+    pub combos: Vec<ComboPlan>,
+    /// Events the first session can't play for (another mode or live event).
+    pub apart: Vec<Apart>,
+    /// Where the picked event can be played.
+    pub places: Vec<PlaceOption>,
+    /// The picked event, when it still has open match objectives.
+    pub primary: Option<u64>,
     /// The sync hasn't brought objectives yet (extension older than 0.13 or never synced).
     pub needs_sync: bool,
     /// Requirements can't be read without the names (a sync with the new extension brings them).
@@ -978,6 +1199,8 @@ pub struct EventPlan {
     pub objectives: Vec<ObjectiveView>,
     pub reqs: Vec<ReqView>,
     pub squad: Option<SquadView>,
+    /// The session (`ComboPlan::id`) shown for this event.
+    pub combo: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -1089,6 +1312,8 @@ pub struct Input {
     pub team_links: BTreeMap<u64, Vec<u64>>,
     /// Item ids of the user's active squad.
     pub active: BTreeSet<u64>,
+    /// Its formation (EA's name, "f4312").
+    pub active_formation: Option<String>,
     pub coins: Option<u64>,
     pub read_at: Option<u64>,
     pub now_ms: u64,
@@ -1100,7 +1325,10 @@ fn need_name(need: &Need, names: &Names) -> String {
         Need::Club(id) => names.team_name(id).map(str::to_string).unwrap_or_else(|| format!("#{id}")),
         Need::Nation(id) => names.nations.get(&id).cloned().unwrap_or_else(|| format!("#{id}")),
         Need::Icon | Need::Hero => String::new(),
-        Need::Rating(min) => min.to_string(),
+        Need::Rating(min) | Need::WeakFoot(min) | Need::SkillMoves(min) | Need::Chemistry(min) => min.to_string(),
+        Need::Rarity(r) => names.rarities.get(&r).cloned().unwrap_or_else(|| format!("#{r}")),
+        Need::Accel(ref k) => k.clone(),
+        Need::PlayStyle(ref n, _) => n.clone(),
     }
 }
 
@@ -1168,6 +1396,386 @@ pub fn search(input: &Input, q: &str, limit: usize) -> Vec<ClubEntry> {
     out
 }
 
+// ---------- where an objective counts ----------
+
+/// Where a match counts for an objective (user 2026-10-30: objectives that need different modes –
+/// the Ghoul Fest live event and an FC Heritage event – can never be played together).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+#[serde(tag = "kind", content = "name", rename_all = "snake_case")]
+pub enum Mode {
+    SquadBattles,
+    Rivals,
+    Champions,
+    Rush,
+    Draft,
+    CoOp,
+    /// Any live event ("… or Live Events").
+    LiveEvents,
+    /// One named live event or tournament, lower case ("ghoul fest", "fc heritage circuit tournament").
+    Event(String),
+    /// "in any FUT game mode" – and a match objective that names no place.
+    Any,
+}
+
+/// Where an objective's matches count, read from its text. None = not played in a match (SBCs,
+/// the market, the Gallery, the club, building a squad): it never shapes a play session.
+pub fn objective_modes(text: &str) -> Option<Vec<Mode>> {
+    let l = text.to_lowercase();
+    let matchy = ["match", "goal", "score", "assist", "win ", "clean sheet", "header", "points", "division", "tournament"].iter().any(|k| l.contains(k));
+    // "Complete the … objective 5 times" moves on by itself
+    if !matchy || l.starts_with("complete ") || l.contains("squad building challenge") || l.contains(" sbc") || l.contains("transfer market") {
+        return None;
+    }
+    if l.contains("any fut game mode") || l.contains("any football ultimate team game mode") || l.contains("any game mode") {
+        return Some(vec![Mode::Any]);
+    }
+    let mut out: Vec<Mode> = Vec::new();
+    // a named event: "in the Ghoul Fest Live Event", "Win the FC Heritage Circuit Tournament 3 times"
+    for key in ["in the ", "win the "] {
+        let mut from = 0;
+        while let Some(i) = l[from..].find(key) {
+            let start = from + i + key.len();
+            from = start;
+            let rest = &l[start..];
+            let stop = [" while", " and ", ",", ".", " (", " with ", " on ", " to "].iter().filter_map(|k| rest.find(k)).min().unwrap_or(rest.len());
+            let phrase = rest[..stop].trim();
+            // the name runs to its last "event" / "tournament" / "cup N"
+            let mut cut = None;
+            for kw in ["event", "tournament", "cup"] {
+                if let Some(p) = phrase.rfind(kw) {
+                    let mut end = p + kw.len();
+                    if kw == "cup" {
+                        end += phrase[end..].chars().take_while(|c| *c == ' ' || c.is_ascii_digit()).count();
+                    }
+                    cut = Some(cut.map_or(end, |c: usize| c.max(end)));
+                }
+            }
+            if let Some(c) = cut {
+                let name = phrase[..c].trim().trim_end_matches(" live event").trim().to_string();
+                if !name.is_empty() && !matches!(name.as_str(), "event" | "live event") && !out.contains(&Mode::Event(name.clone())) {
+                    out.push(Mode::Event(name));
+                }
+            }
+        }
+    }
+    let named = !out.is_empty();
+    for (k, m) in [("squad battle", Mode::SquadBattles), ("rivals", Mode::Rivals), ("champions", Mode::Champions), ("rush", Mode::Rush), ("draft", Mode::Draft), ("co-op", Mode::CoOp)] {
+        if l.contains(k) && !out.contains(&m) {
+            out.push(m);
+        }
+    }
+    if l.contains("live events") || (!named && l.contains("live event")) {
+        out.push(Mode::LiveEvents);
+    }
+    if out.is_empty() {
+        out.push(Mode::Any);
+    }
+    Some(out)
+}
+
+/// Does a match played at `place` count for an objective of these modes?
+pub fn plays_in(modes: &[Mode], place: &Mode) -> bool {
+    modes.iter().any(|m| match (m, place) {
+        // a drafted squad is not the user's: never a place for squad objectives by itself
+        (Mode::Any, Mode::Draft | Mode::CoOp) => false,
+        (Mode::Any, _) => true,
+        (Mode::LiveEvents, Mode::Event(_)) => true,
+        (a, b) => a == b,
+    })
+}
+
+// ---------- play sessions ----------
+
+/// One way to play right now: a place (mode or live event), the XI for it and every open
+/// objective a match there moves on – across events. The first is the user's own pick ("I'm
+/// playing Ghoul Fest") or, on Auto, the one that moves the most; the rest take what's left.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct ComboPlan {
+    /// 1, 2, 3 …
+    pub id: u64,
+    pub place: Mode,
+    /// The place as the game names it (a live event by its event's title).
+    pub place_name: String,
+    /// The events it plays for, soonest-ending first.
+    pub title: String,
+    pub ends_at: Option<u64>,
+    /// The squad requirements (an item's `req` points here).
+    pub reqs: Vec<ReqView>,
+    pub items: Vec<SessionItem>,
+    pub squad: Option<SquadView>,
+    /// Objectives a match here moves on with this squad.
+    pub counted: usize,
+    /// The event the user picked to play (this session is built around it).
+    pub primary: Option<u64>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct SessionItem {
+    pub event: u64,
+    pub event_title: String,
+    pub objective: u64,
+    pub name: String,
+    pub text: String,
+    pub progress: u32,
+    pub target: u32,
+    /// Index into the session's `reqs`; none = counts with any squad.
+    pub req: Option<usize>,
+    /// A squad part that could not be read (shown, never guessed).
+    pub unknown: Option<String>,
+    /// The requirement is about who scores / assists ("using a player from Germany").
+    pub scorer: bool,
+    /// Counts with this squad.
+    pub counts: bool,
+}
+
+/// An event with open match objectives that can't be played at the first session's place.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct Apart {
+    pub event: u64,
+    pub title: String,
+    pub places: Vec<String>,
+}
+
+/// A place the picked event can be played at, and how many open objectives count there.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct PlaceOption {
+    pub place: Mode,
+    pub name: String,
+    pub objectives: usize,
+}
+
+/// The XI as shown, with each requirement's count in it.
+fn squad_view(club: &[Player], f: &Formation, pick: &Pick, reqs: &[Req], prefs: &SquadPrefs, input: &Input, links: &BTreeMap<u64, u64>) -> (SquadView, Vec<ReqView>) {
+    let mut req_views: Vec<ReqView> = reqs
+        .iter()
+        .map(|r| ReqView { need: r.need.clone(), name: need_name(&r.need, &input.names), count: r.count, have: 0, met: false, players: vec![], options: vec![], unpriced: 0 })
+        .collect();
+    let xi: Vec<&Player> = pick.slots.iter().flatten().map(|&i| &club[i]).collect();
+    let chem = chemistry(&xi, links);
+    let mut slots = Vec::new();
+    for ((s, pos), c) in pick.slots.iter().zip(&f.slots).zip(chem.iter().copied().chain(std::iter::repeat(0))) {
+        let Some(i) = *s else { continue };
+        let p = &club[i];
+        let counts_for: Vec<usize> = reqs.iter().enumerate().filter(|(_, r)| r.need.met_by(p, links)).map(|(k, _)| k).collect();
+        for &k in &counts_for {
+            req_views[k].have += 1;
+            req_views[k].players.push(p.name.clone());
+        }
+        let key = playstyle_weights(pos);
+        let key_ps = p.playstyles.iter().filter(|(n, _)| key.iter().any(|(k, _)| k == n)).count() as u32;
+        let key_ps_plus = p.playstyles.iter().filter(|(n, plus)| *plus && key.iter().any(|(k, _)| k == n)).count() as u32;
+        slots.push(SlotView {
+            pos: pos.clone(),
+            name: p.name.clone(),
+            def_id: p.def_id,
+            rating: p.rating,
+            chem: c,
+            strength: round1(strength(p, pos)),
+            loan: p.loan,
+            counts_for,
+            accel: accelerate(p).map(str::to_string),
+            key_ps,
+            key_ps_plus,
+            full: p.stats.as_ref().is_some_and(|s| s.len() >= 20),
+            nation: p.nation,
+            nation_name: input.names.nations.get(&p.nation).cloned(),
+            foot: p.foot,
+            weak_foot: p.weak_foot,
+            skill_moves: p.skill_moves,
+            must: prefs.must.contains(&p.key) || (!p.owned && prefs.must_cards.contains(&p.def_id)),
+            owned: p.owned,
+            price: (!p.owned).then(|| fresh_price(input, p.def_id)).flatten(),
+        });
+    }
+    // a chemistry requirement is the squad's, not a card's
+    let total: u32 = chem.iter().sum();
+    for (k, r) in reqs.iter().enumerate() {
+        if let Need::Chemistry(min) = r.need {
+            req_views[k].have = u32::from(total >= min);
+        }
+    }
+    for r in &mut req_views {
+        r.met = r.have >= r.count;
+    }
+    let strength = if slots.is_empty() { 0.0 } else { round1(slots.iter().map(|s| s.strength).sum::<f64>() / slots.len() as f64) };
+    let changes = (!input.active.is_empty()).then(|| pick.slots.iter().flatten().filter(|&&i| !input.active.contains(&club[i].key)).count());
+    let placed: BTreeSet<u64> = pick.slots.iter().flatten().map(|&i| club[i].key).collect();
+    let must_missing = prefs
+        .must
+        .iter()
+        .filter(|k| !placed.contains(k))
+        .map(|k| input.club.iter().find(|p| p.key == *k).map(|p| p.name.clone()).unwrap_or_else(|| format!("#{k}")))
+        .collect();
+    let sq = SquadView { formation: f.label.clone(), chem: total, chem_target: prefs.chem_target.min(33), met: req_views.iter().filter(|r| r.met).count(), slots, strength, changes, must_missing };
+    (sq, req_views)
+}
+
+/// The most sessions shown, and the most places fully searched for one.
+const MAX_SESSIONS: usize = 5;
+const MAX_TRIES: usize = 2;
+
+/// An open objective a match moves on.
+struct Item {
+    ev: usize,
+    obj: usize,
+    modes: Vec<Mode>,
+    req: Option<Req>,
+    unknown: Option<String>,
+}
+
+/// One event's data for the plan.
+struct Ev {
+    g: Group,
+    marked: BTreeSet<u64>,
+    reqs: Vec<Req>,
+    per_obj: Vec<(Option<usize>, Option<String>)>,
+}
+
+/// What the plan works with for one session search.
+struct Planner<'a> {
+    input: &'a Input,
+    prefs: &'a SquadPrefs,
+    club: &'a [Player],
+    formations: &'a [Formation],
+    links: &'a BTreeMap<u64, u64>,
+    evs: &'a [Ev],
+    items: &'a [Item],
+    /// Searches already run (the same requirements give the same XI).
+    solved: std::cell::RefCell<BTreeMap<String, Option<(usize, Pick)>>>,
+}
+
+impl Planner<'_> {
+    /// The place as the game names it: a live event by its event's title.
+    fn place_name(&self, place: &Mode) -> String {
+        match place {
+            Mode::Event(name) => {
+                let n = norm(name);
+                self.evs
+                    .iter()
+                    .map(|e| &e.g.title)
+                    .find(|t| {
+                        let t = norm(t);
+                        !t.is_empty() && (t == n || n.contains(&t) || t.contains(&n))
+                    })
+                    .cloned()
+                    .unwrap_or_else(|| name.split(' ').map(|w| w.chars().next().map(|c| c.to_uppercase().collect::<String>() + &w[c.len_utf8()..]).unwrap_or_default()).collect::<Vec<_>>().join(" "))
+            }
+            other => serde_json::to_value(other).ok().and_then(|v| v.get("kind").and_then(Value::as_str).map(str::to_string)).unwrap_or_default(),
+        }
+    }
+
+    /// A session at `place` over the open objectives in `avail`; the picked event's
+    /// requirements weigh most.
+    fn session(&self, place: &Mode, avail: &[usize], primary: Option<u64>) -> (ComboPlan, Option<(usize, Pick)>) {
+        let here: Vec<usize> = avail.iter().copied().filter(|&i| plays_in(&self.items[i].modes, place)).collect();
+        let mut reqs: Vec<Req> = Vec::new();
+        let mut weights: Vec<f64> = Vec::new();
+        let mut req_of: Vec<Option<usize>> = Vec::new();
+        for &i in &here {
+            let it = &self.items[i];
+            req_of.push(it.req.as_ref().map(|r| {
+                reqs.push(r.clone());
+                weights.push(if primary == Some(self.evs[it.ev].g.id) { 20.0 } else { 1.0 });
+                reqs.len() - 1
+            }));
+        }
+        let solved = if self.club.len() >= 11 && !here.is_empty() {
+            let key = format!("{reqs:?}{weights:?}");
+            let hit = self.solved.borrow().get(&key).cloned();
+            hit.unwrap_or_else(|| {
+                let s = solve_weighted(self.club, &reqs, &weights, self.formations, self.prefs, self.links, &self.input.active, self.input.active_formation.as_deref());
+                self.solved.borrow_mut().insert(key, s.clone());
+                s
+            })
+        } else {
+            None
+        };
+        let (squad, req_views) = match &solved {
+            Some((fi, pick)) => {
+                let (sq, rv) = squad_view(self.club, &self.formations[*fi], pick, &reqs, self.prefs, self.input, self.links);
+                (Some(sq), rv)
+            }
+            None => (None, reqs.iter().map(|r| ReqView { need: r.need.clone(), name: need_name(&r.need, &self.input.names), count: r.count, have: 0, met: false, players: vec![], options: vec![], unpriced: 0 }).collect()),
+        };
+        let items: Vec<SessionItem> = here
+            .iter()
+            .zip(&req_of)
+            .map(|(&i, &r)| {
+                let it = &self.items[i];
+                let ev = &self.evs[it.ev];
+                let o = &ev.g.objectives[it.obj];
+                let counts = it.unknown.is_none() && r.is_none_or(|k| req_views[k].met);
+                SessionItem {
+                    event: ev.g.id,
+                    event_title: ev.g.title.clone(),
+                    objective: o.id,
+                    name: o.name.clone(),
+                    text: o.text.clone(),
+                    progress: o.progress.min(o.target),
+                    target: o.target,
+                    req: r,
+                    unknown: it.unknown.clone(),
+                    scorer: r.is_some() && !o.text.to_lowercase().contains("starting"),
+                    counts,
+                }
+            })
+            .collect();
+        let counted = items.iter().filter(|x| x.counts).count();
+        // the events it moves on (all of them when nothing counts yet)
+        let mut events_in: Vec<usize> = here.iter().zip(&items).filter(|(_, x)| x.counts || counted == 0).map(|(&i, _)| self.items[i].ev).collect();
+        events_in.sort();
+        events_in.dedup();
+        events_in.sort_by_key(|&e| (primary != Some(self.evs[e].g.id), self.evs[e].g.ends_at.unwrap_or(u64::MAX)));
+        let title = events_in.iter().map(|&e| self.evs[e].g.title.as_str()).collect::<Vec<_>>().join(" · ");
+        let ends_at = events_in.iter().filter_map(|&e| self.evs[e].g.ends_at).min();
+        let plan = ComboPlan { id: 0, place: place.clone(), place_name: self.place_name(place), title, ends_at, reqs: req_views, items, squad, counted, primary };
+        (plan, solved)
+    }
+
+    /// The places a match can be played at for these objectives (Any alone when nothing narrower).
+    fn places(&self, avail: &[usize]) -> Vec<Mode> {
+        let mut out: Vec<Mode> = Vec::new();
+        for &i in avail {
+            for m in &self.items[i].modes {
+                if !matches!(m, Mode::Any | Mode::LiveEvents) && !out.contains(m) {
+                    out.push(m.clone());
+                }
+            }
+        }
+        if avail.iter().any(|&i| self.items[i].modes.contains(&Mode::Any)) && !out.iter().any(|m| matches!(m, Mode::SquadBattles | Mode::Rivals | Mode::Champions | Mode::Event(_))) {
+            out.push(Mode::Any);
+        }
+        out
+    }
+
+    /// The best session over `places`: the most objectives counted. The places are tried in the
+    /// order of how many objectives could count there, a full search only while one could win.
+    fn best(&self, places: &[Mode], avail: &[usize], primary: Option<u64>) -> Option<(ComboPlan, Option<(usize, Pick)>)> {
+        let mut ranked: Vec<(usize, &Mode)> = places.iter().map(|p| (avail.iter().filter(|&&i| plays_in(&self.items[i].modes, p)).count(), p)).filter(|(n, _)| *n > 0).collect();
+        ranked.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.cmp(b.1)));
+        let mut best: Option<(ComboPlan, Option<(usize, Pick)>)> = None;
+        let mut seen: Vec<Vec<usize>> = Vec::new();
+        let mut tries = 0;
+        for (upper, place) in ranked {
+            if best.as_ref().is_some_and(|b| b.0.counted >= upper) || tries >= MAX_TRIES {
+                break;
+            }
+            // places where the same objectives count give the same session
+            let set: Vec<usize> = avail.iter().copied().filter(|&i| plays_in(&self.items[i].modes, place)).collect();
+            if seen.contains(&set) {
+                continue;
+            }
+            seen.push(set);
+            tries += 1;
+            let s = self.session(place, avail, primary);
+            if best.as_ref().is_none_or(|b| s.0.counted > b.0.counted) {
+                best = Some(s);
+            }
+        }
+        best
+    }
+}
+
 pub fn plan(input: &Input, prefs: &SquadPrefs) -> SquadsView {
     let links = link_map(&input.team_links);
     let formations = if input.formations.is_empty() { builtin_formations() } else { input.formations.clone() };
@@ -1191,113 +1799,177 @@ pub fn plan(input: &Input, prefs: &SquadPrefs) -> SquadsView {
     let prefs = &prefs;
     let owned_defs: BTreeSet<u64> = input.club.iter().map(|p| p.def_id).collect();
     let budget = prefs.budget.or(input.coins);
-    let mut events = Vec::new();
+    let now_s = input.now_ms / 1000;
     // the user's own marks, while newer than the last read (a later sync says what EA says)
     let read_at = input.read_at.unwrap_or(0);
     let marks: Vec<&DoneMark> = prefs.done_marks.iter().filter(|m| m.at > read_at).collect();
+
+    // 1. the open events a match moves on (or with a hand mark to take back)
+    let mut evs: Vec<Ev> = Vec::new();
     for g0 in &input.groups {
-        let mut g_owned = g0.clone();
-        let mut g_marked: BTreeSet<u64> = BTreeSet::new();
-        for o in &mut g_owned.objectives {
+        if g0.ends_at.is_some_and(|e| input.now_ms > 0 && e <= now_s) || evs.iter().any(|e| e.g.id == g0.id) {
+            continue;
+        }
+        let mut g = g0.clone();
+        let mut marked: BTreeSet<u64> = BTreeSet::new();
+        for o in &mut g.objectives {
             if let Some(m) = marks.iter().find(|m| m.group == g0.id && m.objective == o.id) {
                 o.done = m.done;
                 if m.done {
                     o.progress = o.target;
                 }
-                g_marked.insert(o.id);
+                marked.insert(o.id);
             }
         }
-        let g = &g_owned;
-        let (reqs, per_obj) = event_reqs(g, &input.names);
-        // an event with squad objectives stays, also when they are all done (or marked done – the
-        // mark must stay reachable to take it back)
-        let has_squad_part = per_obj.iter().any(|(r, u)| r.is_some() || u.is_some())
-            || g.objectives.iter().any(|o| !matches!(parse_requirement(&o.text, &input.names), Parsed::None));
-        if !has_squad_part {
-            continue;
+        let (reqs, per_obj) = event_reqs(&g, &input.names);
+        let open_match = g.objectives.iter().any(|o| !o.done && objective_modes(&o.text).is_some());
+        if open_match || !marked.is_empty() {
+            evs.push(Ev { g, marked, reqs, per_obj });
         }
-        let objectives = g
-            .objectives
-            .iter()
-            .zip(&per_obj)
-            .map(|(o, (r, u))| ObjectiveView { id: o.id, marked: g_marked.contains(&o.id), name: o.name.clone(), text: o.text.clone(), progress: o.progress.min(o.target), target: o.target, done: o.done, req: *r, unknown: u.clone() })
-            .collect();
-        let solved = if reqs.is_empty() && club.len() < 11 { None } else { solve(&club, &reqs, &formations, prefs, &links, &input.active) };
-        let mut req_views: Vec<ReqView> = reqs
-            .iter()
-            .map(|r| ReqView { need: r.need.clone(), name: need_name(&r.need, &input.names), count: r.count, have: 0, met: false, players: vec![], options: vec![], unpriced: 0 })
-            .collect();
-        let squad = solved.map(|(fi, pick)| {
-            let f = &formations[fi];
-            let xi: Vec<&Player> = pick.slots.iter().flatten().map(|&i| &club[i]).collect();
-            let chem = chemistry(&xi, &links);
-            let mut slots = Vec::new();
-            for ((s, pos), c) in pick.slots.iter().zip(&f.slots).zip(chem.iter().copied().chain(std::iter::repeat(0))) {
-                let Some(i) = *s else { continue };
-                let p = &club[i];
-                let counts_for: Vec<usize> = reqs.iter().enumerate().filter(|(_, r)| r.need.met_by(p, &links)).map(|(k, _)| k).collect();
-                for &k in &counts_for {
-                    req_views[k].have += 1;
-                    req_views[k].players.push(p.name.clone());
-                }
-                let key = playstyle_weights(pos);
-                let key_ps = p.playstyles.iter().filter(|(n, _)| key.iter().any(|(k, _)| k == n)).count() as u32;
-                let key_ps_plus = p.playstyles.iter().filter(|(n, plus)| *plus && key.iter().any(|(k, _)| k == n)).count() as u32;
-                slots.push(SlotView {
-                    pos: pos.clone(),
-                    name: p.name.clone(),
-                    def_id: p.def_id,
-                    rating: p.rating,
-                    chem: c,
-                    strength: round1(strength(p, pos)),
-                    loan: p.loan,
-                    counts_for,
-                    accel: accelerate(p).map(str::to_string),
-                    key_ps,
-                    key_ps_plus,
-                    full: p.stats.as_ref().is_some_and(|s| s.len() >= 20),
-                    nation: p.nation,
-                    nation_name: input.names.nations.get(&p.nation).cloned(),
-                    foot: p.foot,
-                    weak_foot: p.weak_foot,
-                    skill_moves: p.skill_moves,
-                    must: prefs.must.contains(&p.key) || (!p.owned && prefs.must_cards.contains(&p.def_id)),
-                    owned: p.owned,
-                    price: (!p.owned).then(|| fresh_price(input, p.def_id)).flatten(),
-                });
-            }
-            for r in &mut req_views {
-                r.met = r.have >= r.count;
-            }
-            let strength = if slots.is_empty() { 0.0 } else { round1(slots.iter().map(|s| s.strength).sum::<f64>() / slots.len() as f64) };
-            let changes = (!input.active.is_empty()).then(|| pick.slots.iter().flatten().filter(|&&i| !input.active.contains(&club[i].key)).count());
-            let placed: BTreeSet<u64> = pick.slots.iter().flatten().map(|&i| club[i].key).collect();
-            let must_missing = prefs
-                .must
-                .iter()
-                .filter(|k| !placed.contains(k))
-                .map(|k| input.club.iter().find(|p| p.key == *k).map(|p| p.name.clone()).unwrap_or_else(|| format!("#{k}")))
-                .collect();
-            SquadView { formation: f.label.clone(), chem: chem.iter().sum(), chem_target: prefs.chem_target.min(33), met: req_views.iter().filter(|r| r.met).count(), slots, strength, changes, must_missing }
-        });
-        // what to get for each requirement the squad doesn't meet
-        if let Some(sq) = &squad {
-            for (k, r) in reqs.iter().enumerate() {
-                if req_views[k].met {
-                    continue;
-                }
-                let (options, unpriced) = options_for(r, sq, input, &owned_defs, &links, budget);
-                req_views[k].options = options;
-                req_views[k].unpriced = unpriced;
-            }
-        }
-        let done = g.objectives.iter().filter(|o| o.done).count();
-        events.push(EventPlan { id: g.id, title: g.title.clone(), ends_at: g.ends_at, done, total: g.objectives.len(), objectives, reqs: req_views, squad });
     }
-    // the soonest-ending first
-    events.sort_by_key(|e| e.ends_at.unwrap_or(u64::MAX));
+    evs.sort_by_key(|e| e.g.ends_at.unwrap_or(u64::MAX));
+    let items: Vec<Item> = evs
+        .iter()
+        .enumerate()
+        .flat_map(|(e, ev)| {
+            ev.g.objectives.iter().enumerate().filter(|(_, o)| !o.done).filter_map(move |(k, o)| {
+                let modes = objective_modes(&o.text)?;
+                let (r, u) = &ev.per_obj[k];
+                Some(Item { ev: e, obj: k, modes, req: r.map(|r| ev.reqs[r].clone()), unknown: u.clone() })
+            })
+        })
+        .collect();
+    let pl = Planner { input, prefs, club: &club, formations: &formations, links: &links, evs: &evs, items: &items, solved: Default::default() };
+
+    // 2. sessions: the user's pick first (at the place they chose, else the best one for it), then
+    // the most objectives with what's left
+    let mut avail: Vec<usize> = (0..items.len()).collect();
+    let mut sessions: Vec<(ComboPlan, Option<(usize, Pick)>)> = Vec::new();
+    let primary = prefs.primary.filter(|p| evs.iter().any(|e| e.g.id == *p && items.iter().any(|i| evs[i.ev].g.id == *p)));
+    let mut place_options: Vec<PlaceOption> = Vec::new();
+    if let Some(p) = primary {
+        let mine: Vec<usize> = avail.iter().copied().filter(|&i| evs[items[i].ev].g.id == p).collect();
+        let mut places = pl.places(&mine);
+        // "any mode" objectives can be played wherever the rest can
+        if places == [Mode::Any] {
+            places = pl.places(&avail);
+            if !places.contains(&Mode::Any) {
+                places.push(Mode::Any);
+            }
+        }
+        place_options = places
+            .iter()
+            .filter(|m| mine.iter().any(|&i| plays_in(&items[i].modes, m)))
+            .map(|m| PlaceOption { place: m.clone(), name: pl.place_name(m), objectives: avail.iter().filter(|&&i| plays_in(&items[i].modes, m)).count() })
+            .collect();
+        place_options.sort_by(|a, b| b.objectives.cmp(&a.objectives));
+        let chosen: Vec<Mode> = match &prefs.place {
+            Some(m) if place_options.iter().any(|o| &o.place == m) => vec![m.clone()],
+            _ => place_options.iter().map(|o| o.place.clone()).collect(),
+        };
+        if let Some(s) = pl.best(&chosen, &avail, Some(p)) {
+            avail.retain(|i| !s.0.items.iter().any(|x| x.counts && x.event == evs[items[*i].ev].g.id && x.objective == evs[items[*i].ev].g.objectives[items[*i].obj].id));
+            sessions.push(s);
+        }
+    }
+    while sessions.len() < MAX_SESSIONS && !avail.is_empty() {
+        let places = pl.places(&avail);
+        let Some(s) = pl.best(&places, &avail, None) else { break };
+        if s.0.counted == 0 {
+            // what no squad of the club can clear yet: one last session shows what to get
+            if s.0.reqs.iter().any(|r| !r.met) && sessions.iter().all(|x| x.0.place != s.0.place || x.0.counted > 0) {
+                sessions.push(s);
+            }
+            break;
+        }
+        avail.retain(|i| !s.0.items.iter().any(|x| x.counts && x.event == evs[items[*i].ev].g.id && x.objective == evs[items[*i].ev].g.objectives[items[*i].obj].id));
+        sessions.push(s);
+    }
+    // what no squad clears yet is shown once, in the first session it belongs to
+    let mut shown: BTreeSet<(u64, u64)> = BTreeSet::new();
+    for (s, _) in sessions.iter_mut() {
+        s.items.retain(|x| x.counts || shown.insert((x.event, x.objective)));
+    }
+    // what to get for the requirements a session's squad misses
+    for (k, (s, _)) in sessions.iter_mut().enumerate() {
+        s.id = k as u64 + 1;
+        let Some(sq) = s.squad.clone() else { continue };
+        let reqs: Vec<Req> = s.reqs.iter().map(|r| Req { need: r.need.clone(), count: r.count }).collect();
+        for (r, view) in reqs.iter().zip(s.reqs.iter_mut()) {
+            if !view.met {
+                let (options, unpriced) = options_for(r, &sq, input, &owned_defs, &links, budget);
+                view.options = options;
+                view.unpriced = unpriced;
+            }
+        }
+    }
+    // events the first session can't play for (they need another place)
+    let apart: Vec<Apart> = match sessions.first() {
+        Some((s, _)) => evs
+            .iter()
+            .enumerate()
+            .filter(|(e, _)| items.iter().any(|i| i.ev == *e) && !items.iter().any(|i| i.ev == *e && plays_in(&i.modes, &s.place)))
+            .map(|(e, ev)| {
+                let mut places: Vec<String> = Vec::new();
+                for i in items.iter().filter(|i| i.ev == e) {
+                    for m in &i.modes {
+                        let n = pl.place_name(m);
+                        if !places.contains(&n) {
+                            places.push(n);
+                        }
+                    }
+                }
+                Apart { event: ev.g.id, title: ev.g.title.clone(), places }
+            })
+            .collect(),
+        None => Vec::new(),
+    };
+
+    // 3. each event shows the session that moves it on most
+    let events = evs
+        .iter()
+        .map(|ev| {
+            let objectives = ev
+                .g
+                .objectives
+                .iter()
+                .zip(&ev.per_obj)
+                .map(|(o, (r, u))| ObjectiveView { id: o.id, marked: ev.marked.contains(&o.id), name: o.name.clone(), text: o.text.clone(), progress: o.progress.min(o.target), target: o.target, done: o.done, req: *r, unknown: u.clone() })
+                .collect();
+            let best = sessions
+                .iter()
+                .filter(|(s, _)| s.items.iter().any(|x| x.event == ev.g.id))
+                .max_by(|a, b| {
+                    let n = |s: &ComboPlan| s.items.iter().filter(|x| x.event == ev.g.id && x.counts).count();
+                    n(&a.0).cmp(&n(&b.0)).then(b.0.id.cmp(&a.0.id))
+                });
+            let (combo, squad, mut reqs) = match best {
+                Some((s, Some((fi, pick)))) if !ev.reqs.is_empty() => {
+                    let (sq, rv) = squad_view(&club, &formations[*fi], pick, &ev.reqs, prefs, input, &links);
+                    (Some(s.id), Some(sq), rv)
+                }
+                Some((s, _)) => (Some(s.id), None, ev.reqs.iter().map(|r| ReqView { need: r.need.clone(), name: need_name(&r.need, &input.names), count: r.count, have: 0, met: false, players: vec![], options: vec![], unpriced: 0 }).collect()),
+                None => (None, None, ev.reqs.iter().map(|r| ReqView { need: r.need.clone(), name: need_name(&r.need, &input.names), count: r.count, have: 0, met: false, players: vec![], options: vec![], unpriced: 0 }).collect()),
+            };
+            if let Some(sq) = &squad {
+                for (k, r) in ev.reqs.iter().enumerate() {
+                    if !reqs[k].met {
+                        let (options, unpriced) = options_for(r, sq, input, &owned_defs, &links, budget);
+                        reqs[k].options = options;
+                        reqs[k].unpriced = unpriced;
+                    }
+                }
+            }
+            let done = ev.g.objectives.iter().filter(|o| o.done).count();
+            EventPlan { id: ev.g.id, title: ev.g.title.clone(), ends_at: ev.g.ends_at, done, total: ev.g.objectives.len(), objectives, reqs, squad, combo }
+        })
+        .collect();
     SquadsView {
         events,
+        combos: sessions.into_iter().map(|(c, _)| c).collect(),
+        apart,
+        places: place_options,
+        primary,
         needs_sync: input.groups.is_empty(),
         names_missing: !input.names_known,
         club_players: input.club.iter().filter(|p| !p.positions.is_empty()).count(),
@@ -1473,6 +2145,10 @@ pub fn club_player(item: &crate::types::Item, catalog: &BTreeMap<u64, crate::typ
     }
     let play = item.play.as_ref();
     let def_id = play.and_then(|p| p.def_id).or(item.asset_id).unwrap_or(0);
+    // a card from a dream squad or an opponent's squad carries its card id as item id: not owned
+    if Some(item.id) == item.asset_id || item.id == def_id {
+        return None;
+    }
     let card = catalog.get(&def_id);
     let positions = play.map(|p| p.positions.clone()).filter(|v| !v.is_empty()).or_else(|| card.map(|c| c.positions.clone()).filter(|v| !v.is_empty())).unwrap_or_default();
     let face = play
@@ -1541,6 +2217,11 @@ pub fn catalog_player(c: &crate::types::GalleryCard, attrs: &Attributes) -> Opti
 }
 
 /// Item ids of the active squad (`/usermassinfo` → `squad.players[].itemData.id`).
+/// The active squad's formation (EA's name).
+pub fn active_formation(usermassinfo: &Value) -> Option<String> {
+    usermassinfo.pointer("/squad/formation").and_then(Value::as_str).map(str::to_string)
+}
+
 pub fn active_squad(usermassinfo: &Value) -> BTreeSet<u64> {
     usermassinfo
         .pointer("/squad/players")
@@ -1639,7 +2320,7 @@ mod tests {
         club.push(pl(90, "Mc Geady", 70, &["RW", "RM"], 13, 2, 30));
         club.push(pl(91, "Bonmati", 72, &["CM", "CAM"], 53, 3, 45));
         let prefs = SquadPrefs { must: vec![90, 91], ..Default::default() };
-        let (_, pick) = solve(&club, &[Req { need: Need::League(13), count: 3 }], &builtin_formations(), &prefs, &BTreeMap::new(), &BTreeSet::new()).unwrap();
+        let (_, pick) = solve(&club, &[Req { need: Need::League(13), count: 3 }], &builtin_formations(), &prefs, &BTreeMap::new(), &BTreeSet::new(), None).unwrap();
         let keys: Vec<u64> = pick.slots.iter().flatten().map(|&i| club[i].key).collect();
         assert!(keys.contains(&90) && keys.contains(&91), "both favourites play");
         assert_eq!(keys.len(), 11);
@@ -1678,7 +2359,7 @@ mod tests {
         club.push(pl(103, "French LB", 78, &["LB"], 16, 73, 18));
         let reqs = vec![Req { need: Need::League(13), count: 3 }, Req { need: Need::Nation(18), count: 1 }, Req { need: Need::Nation(7), count: 1 }];
         let prefs = SquadPrefs { chem_target: 0, ..Default::default() };
-        let (fi, pick) = solve(&club, &reqs, &builtin_formations(), &prefs, &BTreeMap::new(), &BTreeSet::new()).unwrap();
+        let (fi, pick) = solve(&club, &reqs, &builtin_formations(), &prefs, &BTreeMap::new(), &BTreeSet::new(), None).unwrap();
         let f = &builtin_formations()[fi];
         let xi: Vec<&Player> = pick.slots.iter().flatten().map(|&i| &club[i]).collect();
         assert_eq!(xi.len(), 11);
@@ -1703,6 +2384,61 @@ mod tests {
     /// A striker to buy: PAC SHO PAS DRI DEF PHY.
     fn st(key: u64, rating: u32, league: u64, face: [u32; 6]) -> Player {
         Player { owned: false, face: Some(face), ..pl(key, &letters(key), rating, &["ST"], league, 200 + key, 30) }
+    }
+
+    #[test]
+    fn where_an_objective_counts_decides_what_plays_together() {
+        let m = |t: &str| objective_modes(t);
+        let ghoul = m("Score at least 1 goal in 13 separate matches in the Ghoul Fest Live Event.").unwrap();
+        assert_eq!(ghoul, vec![Mode::Event("ghoul fest".into())]);
+        let heritage = m("Win 3 matches while having Min. 3 player items from Bundesliga in your starting 11 in the FC Heritage Circuit World Class Event.").unwrap();
+        assert_eq!(heritage, vec![Mode::Event("fc heritage circuit world class event".into())]);
+        assert_eq!(m("Win the Season 2 Daily Knockout Tournament five times.").unwrap(), vec![Mode::Event("season 2 daily knockout tournament".into())]);
+        let phantom = m("Score 10 headers while having Min. 1 USA player in your starting XI in Squad Battles on Min. Semi-Pro difficulty (or Rivals/Live Events/Rush/Champions).").unwrap();
+        let any = m("Win 3 matches in any FUT game mode while having min. 1 player from Bundesliga in your starting 11.").unwrap();
+        assert_eq!(any, vec![Mode::Any]);
+        // not played in a match: never part of a session
+        for t in ["Complete 3 Squad Building Challenge groups.", "Buy 10 Player Items using Buy Now in the Transfer Market.", "Achieve S Rank in the Ultimate Scream Gallery Set.", "Complete the Season 2 Daily Knockout Tournament Weekly Play Objective 5 times.", "Build 20+ Chemistry in your squad."] {
+            assert_eq!(m(t), None, "{t}");
+        }
+        assert_eq!(m("Play 50 Co-Op matches.").unwrap(), vec![Mode::CoOp]);
+        let ghoul_fest = Mode::Event("ghoul fest".into());
+        let world_class = Mode::Event("fc heritage circuit world class event".into());
+        // Ghoul Fest + Phantom Playgrounds (any live event) + "any mode" play together …
+        assert!(plays_in(&ghoul, &ghoul_fest) && plays_in(&phantom, &ghoul_fest) && plays_in(&any, &ghoul_fest));
+        // … Ghoul Fest and an FC Heritage event never
+        assert!(!plays_in(&heritage, &ghoul_fest) && !plays_in(&ghoul, &world_class));
+        assert!(plays_in(&phantom, &world_class) && plays_in(&phantom, &Mode::SquadBattles) && !plays_in(&ghoul, &Mode::SquadBattles));
+        // a drafted squad is not the user's
+        assert!(!plays_in(&any, &Mode::Draft));
+    }
+
+    #[test]
+    fn every_kind_of_squad_requirement_is_read() {
+        let mut n = names();
+        n.nations.insert(95, "United States".into());
+        n.nations.insert(21, "Germany".into());
+        n.nations.insert(83, "Mexico".into());
+        n.rarities.insert(160, "Ultimate Scream".into());
+        n.rarities.insert(161, "Future Stars Academy".into());
+        let p = |t: &str| parse_requirement(t, &n);
+        let sq = |need, count| Parsed::Squad(Req { need, count });
+        assert_eq!(p("Score at least 1 goal from outside the box in 10 separate matches with 4* or higher WF players in Squad Battles"), sq(Need::WeakFoot(4), 1));
+        assert_eq!(p("Score 5 skill move goals with 5* skill move players"), sq(Need::SkillMoves(5), 1));
+        assert_eq!(p("Win 3 matches with 30+ Chemistry in any FUT game mode"), sq(Need::Chemistry(30), 1));
+        assert_eq!(p("Score 3 goals with a player with Lengthy AcceleRATE"), sq(Need::Accel("lengthy".into()), 1));
+        assert_eq!(p("Score 2 goals with a player with the Finesse Shot+ PlayStyle"), sq(Need::PlayStyle("finesse shot".into(), true), 1));
+        assert_eq!(p("Play 3 matches in any Football Ultimate Team game mode while having at least 2 players from USA in your starting 11."), sq(Need::Nation(95), 2));
+        assert_eq!(p("Play 1 match with 3 Mexican players in your starting XI in any FUT game mode."), sq(Need::Nation(83), 3));
+        assert_eq!(p("Score 10 goals in any FUT game mode using a player from Germany."), sq(Need::Nation(21), 1));
+        assert_eq!(p("Score 4 goals in any FUT game mode with a Player Item from Bundesliga."), sq(Need::League(19), 1));
+        assert_eq!(p("Play 10 matches while having min. 1 Future Stars Academy player in your starting XI in Squad Battles"), sq(Need::Rarity(161), 1));
+        assert_eq!(p("Score 50 goals while having Min. 1 Ultimate Scream Player in your starting XI"), sq(Need::Rarity(160), 1));
+        assert_eq!(p("Score at least 1 goal with a Future Stars Academy player in Squad Battles"), sq(Need::Rarity(161), 1));
+        // no requirement hides in these
+        for t in ["Play 3 matches with the Mexico National team Away kit equipped in any FUT game mode.", "Score at least one Chip Shot goal in 5 separate matches", "Win 10 matches in Squad Battles on min. Semi-Pro difficulty (or Rivals/Champions/Live Events/Rush)."] {
+            assert_eq!(p(t), Parsed::None, "{t}");
+        }
     }
 
     #[test]
@@ -1798,10 +2534,10 @@ mod tests {
         let reqs = vec![Req { need: Need::League(16), count: 1 }];
         let f = builtin_formations();
         let req_first = SquadPrefs { chem_target: 33, ..Default::default() };
-        let (_, a) = solve(&club, &reqs, &f, &req_first, &BTreeMap::new(), &BTreeSet::new()).unwrap();
+        let (_, a) = solve(&club, &reqs, &f, &req_first, &BTreeMap::new(), &BTreeSet::new(), None).unwrap();
         assert!(a.slots.iter().flatten().any(|&i| club[i].key == 50), "requirements first: the Ligue 1 player plays");
         let chem_first = SquadPrefs { chem_target: 33, chem_first: true, ..Default::default() };
-        let (_, b) = solve(&club, &reqs, &f, &chem_first, &BTreeMap::new(), &BTreeSet::new()).unwrap();
+        let (_, b) = solve(&club, &reqs, &f, &chem_first, &BTreeMap::new(), &BTreeSet::new(), None).unwrap();
         let xi: Vec<&Player> = b.slots.iter().flatten().map(|&i| &club[i]).collect();
         assert_eq!(chemistry(&xi, &BTreeMap::new()).iter().sum::<u32>(), 33, "chemistry first: 33");
     }
@@ -1821,6 +2557,7 @@ impl Input {
             formations: vec![],
             team_links: BTreeMap::new(),
             active: BTreeSet::new(),
+            active_formation: None,
             coins: None,
             read_at: None,
             now_ms: 0,
@@ -1915,6 +2652,7 @@ mod real_data {
             formations: vec![],
             team_links: links,
             active: BTreeSet::new(),
+            active_formation: None,
             coins: snap["coins"][0].as_u64(),
             read_at: None,
             now_ms: snap["prices"].as_object().unwrap().values().filter_map(|p| p["at"].as_u64()).max().unwrap_or(0),

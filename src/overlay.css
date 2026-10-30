@@ -1305,7 +1305,21 @@ html[data-view="toast"] #root {
 @container ovframe (max-width: 620px) { .ov-body.planner-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); } }
 
 /* ---------- Objective squads (beta, Squads.tsx) ---------- */
-.sq { display: grid; gap: 16px; padding-bottom: 24px; }
+/* one column that never grows past its box: a long row of event tabs scrolls inside it */
+.sq { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; padding-bottom: 24px; }
+.sq > * { min-width: 0; }
+/* "What are you playing?" and the play sessions */
+.sq-play { display: grid; gap: 8px; min-width: 0; }
+.sq-play .sq-order { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.sq-session-list { display: grid; gap: 12px; }
+.sq-session-group { display: grid; gap: 6px; }
+.sq-session-group h4 { margin: 0; font: 700 14px/1.2 var(--font-display); letter-spacing: 0.04em; text-transform: uppercase; color: var(--text); }
+.sq-split > .sq-col:last-child { position: sticky; top: 0; }
+.sq-apart { background: var(--surface); padding: 10px 14px; clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut)); }
+.sq-apart summary { cursor: pointer; font-weight: 700; color: var(--muted); }
+.sq-apart ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; }
+.sq-apart li { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.sq-section-title { margin: 8px 0 0; font: 700 18px/1.1 var(--font-display); letter-spacing: 0.03em; text-transform: uppercase; }
 .sq-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
 .sq-title { margin: 0; font: 700 30px/1 var(--font-display); letter-spacing: 0.02em; text-transform: uppercase; }
 .sq-muted { color: var(--muted); font-size: 12px; margin: 0; }

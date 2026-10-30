@@ -132,6 +132,9 @@ pub struct Summary {
 
 /// Brings a snapshot written by an older version up to date (in place, idempotent).
 pub(crate) fn migrate(snapshot: &mut Snapshot) {
+    // cards from dream squads / opponents' squads were kept as club items: their id is the card's
+    // own id, never an owned item's
+    snapshot.items.retain(|&id, i| Some(id) != i.asset_id && Some(id) != i.play.as_ref().and_then(|p| p.def_id));
     if snapshot.schema < SCHEMA_VERSION {
         // Schema 1 stored card-database search results as club items; the next sync refills.
         // First-owner marks may come from those too; the club read rebuilds them.

@@ -90,8 +90,13 @@ pub struct WebData {
     pub attributes: Option<Latest>,
 }
 
+/// EA's whole objectives list (every category, every event).
+const CATEGORIES: &str = "/scmp/objective/categories/all";
+
 /// What goes to the shared objectives list after a sync (api.fc-tracker.com/v1/objectives): the
 /// events and objectives without progress or state, and EA's public name lists and formations.
+
+
 pub fn objectives_for_sharing(w: &WebData) -> Option<Value> {
     let body = &w.objectives.as_ref()?.body;
     let groups: Vec<Value> = body
@@ -142,6 +147,13 @@ impl WebData {
                     *slot = Some(Latest { at, body: v.clone() });
                     changed = true;
                 }
+            }
+        }
+        // program names an older read lacks
+        if let (Some(own), Some(r)) = (self.names.as_mut(), cat.pointer("/names/rarities").filter(|r| r.as_object().is_some_and(|o| !o.is_empty()))) {
+            if !own.body.get("rarities").is_some_and(|x| x.as_object().is_some_and(|o| !o.is_empty())) {
+                own.body["rarities"] = r.clone();
+                changed = true;
             }
         }
         changed
@@ -217,6 +229,12 @@ impl WebData {
         };
         if let Some(slot) = slot {
             *slot = Some(Latest { at: now, body: body.clone() });
+            if url == "fct://webapp/objectives" {
+                // the events the extension opened, plus every other one EA's full list holds
+                if let Some(cats) = self.latest.iter().find(|(k, _)| k.ends_with(CATEGORIES)).map(|(_, l)| l.body.clone()) {
+                    self.fold_categories(&cats, false, now);
+                }
+            }
             return true;
         }
         if url == "fct://webapp/attributes" {
@@ -259,7 +277,10 @@ impl WebData {
         if key.contains("/sbs/") {
             self.merge_sources("sbc", rewards(body, "sbc"), key.ends_with("/sbs/sets"));
         } else if key.contains("/scmp/") {
-            self.merge_sources("objective", rewards(body, "objective"), key.ends_with("/scmp/objective/categories/all"));
+            self.merge_sources("objective", rewards(body, "objective"), key.ends_with(CATEGORIES));
+        }
+        if key.ends_with(CATEGORIES) {
+            self.fold_categories(body, true, now);
         }
         if key.ends_with("/usermassinfo") {
             if let Some(c) = club_record(body, now) {
@@ -267,6 +288,31 @@ impl WebData {
             }
         }
         true
+    }
+
+    /// EA's whole objectives list into the objective events (squads, the shared list): new events
+    /// are added; `fresh` (the list itself just arrived) also updates the events already known.
+    fn fold_categories(&mut self, cats: &Value, fresh: bool, now: u64) {
+        let groups = crate::squads::groups_from_categories(cats, &|k| self.text(k).to_string());
+        if groups.is_empty() {
+            return;
+        }
+        let own = self.objectives.get_or_insert_with(|| Latest { at: now, body: serde_json::json!({ "groups": [] }) });
+        if !own.body.get("groups").is_some_and(Value::is_array) {
+            own.body["groups"] = serde_json::json!([]);
+        }
+        let list = own.body["groups"].as_array_mut().unwrap();
+        for g in groups {
+            let id = g.get("id").and_then(Value::as_u64);
+            match list.iter().position(|m| m.get("id").and_then(Value::as_u64) == id) {
+                Some(i) if fresh => list[i] = g,
+                Some(_) => {}
+                None => list.push(g),
+            }
+        }
+        if fresh {
+            own.at = own.at.max(now);
+        }
     }
 
     /// `full` = a list of every open one of that kind: what's no longer in it has ended.

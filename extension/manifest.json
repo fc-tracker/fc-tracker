@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "FC-Tracker",
-  "version": "0.13.1",
+  "version": "0.13.2",
   "description": "__MSG_extDescription__",
   "default_locale": "en",
   "icons": {

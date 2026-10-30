@@ -150,7 +150,9 @@ pub(crate) fn is_card_database_search(url: &str) -> bool {
 }
 
 pub(crate) fn parse_item(v: &Value, now: u64) -> Option<Item> {
-    if v.get("concept").and_then(Value::as_bool) == Some(true) {
+    // concept cards, and cards in a dream squad or an opponent's squad (Squad Battles hub): EA marks
+    // those `dream` – the user doesn't own them (2026-10-30: Cruyff, Buffon, Puskás from a dream squad)
+    if v.get("concept").and_then(Value::as_bool) == Some(true) || v.get("dream").and_then(Value::as_bool) == Some(true) {
         return None;
     }
     // id 0 = placeholder slots (empty squad/SBC positions), not owned items.

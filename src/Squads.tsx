@@ -1,19 +1,19 @@
-// Objective squads (beta, SQUADS.md): every open event with squad objectives, read from the Web
-// App by the sync – the checklist, the best XI from the user's own club that ticks as many of
-// them as possible at the chemistry they aim for, and realistic cards for what the club can't
-// cover. One event at a time (tabs, the mouse first), the checklist next to the pitch; a card
-// opens its details. The same view in the app overlay and on FC-Tracker Web; the side panel
-// shows the quick version (SquadQuick) and follows the event hub the app sees in the game.
-import { useEffect, useState } from "react";
+// Objective squads (beta, SQUADS.md): "What are you playing?" – Auto (the most objectives at once)
+// or one event the user picks (the event hub the game shows picks it too). A play session is a
+// place (a mode or one live event), the XI for it from the user's own club and every open
+// objective a match there moves on, across events; what needs another place is listed apart.
+// Below, every event with its checklist (mark done by hand). The same view in the app overlay and
+// on FC-Tracker Web; the side panel shows the quick version (SquadQuick).
+import { useEffect, useRef, useState } from "react";
 import { api, events, formatAge, IS_WEB } from "./api";
 import { num } from "./format";
 import { Flag } from "./flags";
 import { t, type MessageKey } from "./i18n";
-import { defaultSquadPrefs, pitchRows, type ClubEntry, type EventPlan, type GetOption, type ObjectiveView, type ReqView, type SlotView, type SquadPrefs, type SquadsView } from "./squadsData";
+import { defaultSquadPrefs, pitchRows, type ClubEntry, type EventPlan, type GetOption, type Mode, type ObjectiveView, type ReqView, type SessionItem, type SessionPlan, type SlotView, type SquadPrefs, type SquadsView, sameMode } from "./squadsData";
 import { removeSquad, saveSquad, useSavedSquads } from "./savedSquads";
 
 /** The XI as built now, kept to build later (in the game, from the dashboard, on another device). */
-function SaveButton({ e }: { e: EventPlan }) {
+function SaveButton({ e }: { e: Pick<EventPlan, "id" | "title" | "squad" | "reqs"> }) {
   const [saved, setSaved] = useState(false);
   useEffect(() => setSaved(false), [e.id, e.squad?.formation, e.squad?.strength]);
   if (!e.squad) return null;
@@ -94,9 +94,15 @@ export function useSquads(): [SquadsView | null, boolean, (p: SquadPrefs) => voi
   };
   useEffect(() => {
     load();
-    // a sync brings new objectives and club cards
-    const un = events.onGalleryUpdated(() => load());
+    // a sync brings new objectives and club cards – one rebuild when its pages settle, not one per
+    // page (the view kept jumping while a sync ran)
+    let timer = 0;
+    const un = events.onGalleryUpdated(() => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(load, 1500);
+    });
     return () => {
+      window.clearTimeout(timer);
       un.then((u) => u());
     };
   }, []);
@@ -104,6 +110,18 @@ export function useSquads(): [SquadsView | null, boolean, (p: SquadPrefs) => voi
     setView((v) => (v ? { ...v, prefs: p } : v));
     api.setSquadPrefs(p).then(load).catch(() => {});
   };
+  // the game shows an event's hub: that's what the user plays now (they can pick another)
+  const latest = useRef(view);
+  latest.current = view;
+  useEffect(() => {
+    const un = events.onSquadsFocus((id) => {
+      const v = latest.current;
+      if (v && v.prefs.primary !== id && v.events.some((e) => e.id === id)) setPrefs({ ...v.prefs, primary: id, place: null });
+    });
+    return () => {
+      un.then((u) => u());
+    };
+  }, []);
   return [view, busy, setPrefs];
 }
 
@@ -143,6 +161,16 @@ export function reqLabel(r: Pick<ReqView, "need" | "name" | "count">): string {
       return t("squads.need.hero", { count: r.count });
     case "rating":
       return t("squads.need.rating", { count: r.count, name: r.name });
+    case "weak_foot":
+      return t("squads.need.weakFoot", { count: r.count, name: r.name });
+    case "skill_moves":
+      return t("squads.need.skillMoves", { count: r.count, name: r.name });
+    case "chemistry":
+      return t("squads.need.chemistry", { name: r.name });
+    case "accel":
+      return t("squads.need.accel", { count: r.count, name: ACCEL[r.name] ? t(ACCEL[r.name]) : r.name });
+    case "playstyle":
+      return t("squads.need.playstyle", { count: r.count, name: r.name.replace(/\b\w/g, (c) => c.toUpperCase()) });
     default:
       return t("squads.need.named", { count: r.count, name: r.name });
   }
@@ -350,7 +378,9 @@ export function Checklist({ e, compact = false, onMark }: { e: EventPlan; compac
   );
 }
 
-function CardDetail({ s, e, onClose }: { s: SlotView; e: EventPlan; onClose: () => void }) {
+type SquadSource = Pick<EventPlan, "id" | "reqs" | "squad">;
+
+function CardDetail({ s, e, onClose }: { s: SlotView; e: SquadSource; onClose: () => void }) {
   return (
     <div className="sq-detail" role="dialog" aria-label={s.name}>
       <header>
@@ -401,7 +431,7 @@ function CardDetail({ s, e, onClose }: { s: SlotView; e: EventPlan; onClose: () 
 }
 
 /** The XI on a pitch, attack at the top; a card opens its details. */
-export function Pitch({ e, compact = false }: { e: EventPlan; compact?: boolean }) {
+export function Pitch({ e, compact = false }: { e: SquadSource; compact?: boolean }) {
   const [open, setOpen] = useState<number | null>(null);
   const sq = e.squad;
   useEffect(() => setOpen(null), [e.id]);
@@ -515,10 +545,185 @@ function Event({ e, prefs, onPrefs }: { e: EventPlan; prefs: SquadPrefs; onPrefs
   );
 }
 
+const PLACE: Record<string, MessageKey> = {
+  squad_battles: "squads.place.squad_battles",
+  rivals: "squads.place.rivals",
+  champions: "squads.place.champions",
+  rush: "squads.place.rush",
+  draft: "squads.place.draft",
+  co_op: "squads.place.co_op",
+  live_events: "squads.place.live_events",
+  any: "squads.place.any",
+};
+
+/** A place as the user knows it: a live event by its title, a mode by its name. */
+export function placeLabel(m: Mode, name: string): string {
+  return m.kind === "event" ? name : t(PLACE[m.kind]);
+}
+const placeName = (n: string) => (PLACE[n] ? t(PLACE[n]) : n);
+
+/** "What are you playing?": Auto (the most objectives at once) or one event – and where. */
+function PlayPick({ view, prefs, onPrefs }: { view: SquadsView; prefs: SquadPrefs; onPrefs: (p: SquadPrefs) => void }) {
+  const open = view.events.filter((e) => e.objectives.some((o) => !o.done));
+  const first = view.combos[0];
+  return (
+    <div className="sq-play">
+      <span className="sq-must-title">{t("squads.play.title")}</span>
+      <nav className="sq-events" aria-label={t("squads.play.title")}>
+        <button className={`sq-event-tab ${view.primary == null ? "active" : ""}`} aria-pressed={view.primary == null} onClick={() => onPrefs({ ...prefs, primary: null, place: null })}>
+          <span className="sq-event-name">{t("squads.play.auto")}</span>
+          <small>{t("squads.play.autoHint")}</small>
+        </button>
+        {open.map((e) => (
+          <button key={e.id} className={`sq-event-tab ${view.primary === e.id ? "active" : ""}`} aria-pressed={view.primary === e.id} onClick={() => onPrefs({ ...prefs, primary: e.id, place: null })}>
+            <span className="sq-event-name">{e.title}</span>
+            <small>{endsIn(e.ends_at) ?? t("squads.play.noEnd")}</small>
+          </button>
+        ))}
+      </nav>
+      {view.primary != null && view.places.length > 1 && (
+        <div className="sq-order" role="radiogroup" aria-label={t("squads.play.where")}>
+          <span className="sq-muted">{t("squads.play.where")}</span>
+          {view.places.map((p) => {
+            const on = sameMode(p.place, prefs.place ?? first?.place);
+            return (
+              <button key={JSON.stringify(p.place)} className={`cat-tab ${on ? "active" : ""}`} aria-pressed={on} onClick={() => onPrefs({ ...prefs, place: p.place })}>
+                {placeLabel(p.place, p.name)} · {p.objectives}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** A session's objectives by event: ✓ counts with this squad, ✕ needs a card, ? not readable. */
+export function SessionList({ s, compact = false }: { s: SessionPlan; compact?: boolean }) {
+  const groups: { title: string; items: SessionItem[] }[] = [];
+  for (const it of s.items) {
+    const g = groups.find((x) => x.title === it.event_title);
+    if (g) g.items.push(it);
+    else groups.push({ title: it.event_title, items: [it] });
+  }
+  // the picked event first, then what counts; what needs a card or can't be read at the end
+  const score = (g: { items: SessionItem[] }) => (g.items.some((x) => x.event === s.primary) ? 2 : 0) + (g.items.some((x) => x.counts) ? 1 : 0);
+  groups.sort((a, b) => score(b) - score(a));
+  for (const g of groups) g.items.sort((a, b) => Number(b.counts) - Number(a.counts));
+  return (
+    <div className="sq-session-list">
+      {groups.map((g) => (
+        <section key={g.title} className="sq-session-group">
+          <h4>{g.title}</h4>
+          <ul className={`sq-checklist ${compact ? "compact" : ""}`}>
+            {g.items.map((o) => {
+              const r = o.req != null ? s.reqs[o.req] : null;
+              const state = o.counts ? "met" : o.unknown ? "unknown" : "miss";
+              return (
+                <li key={o.objective} className={`sq-obj ${state}`}>
+                  <span className="sq-mark" aria-hidden="true">
+                    {state === "met" ? "✓" : state === "miss" ? "✕" : "?"}
+                  </span>
+                  <div>
+                    {compact ? <b>{o.text}</b> : <b>{o.name || o.text}</b>}
+                    {!compact && o.name && <p>{o.text}</p>}
+                    {r ? (
+                      <small className="sq-req">
+                        {reqLabel(r)} · {t("squads.have", { have: Math.min(r.have, r.count), count: r.count })}
+                        {r.players.length > 0 && <> – {r.players.slice(0, 3).join(", ")}</>}
+                        {o.scorer && <> · {t("squads.play.scorer")}</>}
+                      </small>
+                    ) : o.unknown ? (
+                      <small className="sq-req warn">{t("squads.notRead", { text: o.unknown })}</small>
+                    ) : (
+                      <small className="sq-req">{t("squads.play.anySquad")}</small>
+                    )}
+                  </div>
+                  {!compact && <span className="sq-progress">{`${o.progress}/${o.target}`}</span>}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function sessionEvents(s: SessionPlan): number {
+  return new Set(s.items.filter((x) => x.counts).map((x) => x.event)).size;
+}
+
+/** The sessions as tabs, the picked one (or the first) open: where, the XI, what counts. */
+function Sessions({ view }: { view: SquadsView }) {
+  const [picked, setPicked] = useState<number | null>(null);
+  useEffect(() => setPicked(null), [view.primary, view.prefs.place?.kind]);
+  const list = view.combos;
+  if (list.length === 0) return view.needs_sync ? null : <p className="sq-muted">{t("squads.play.none")}</p>;
+  const s = list.find((x) => x.id === picked) ?? list[0];
+  const place = placeLabel(s.place, s.place_name);
+  return (
+    <>
+      {list.length > 1 && (
+        <nav className="sq-events" aria-label={t("squads.play.sessions")}>
+          {list.map((x) => (
+            <button key={x.id} className={`sq-event-tab ${x.id === s.id ? "active" : ""}`} aria-pressed={x.id === s.id} onClick={() => setPicked(x.id)}>
+              <span className="sq-event-name">
+                {x.id}. {placeLabel(x.place, x.place_name)}
+              </span>
+              <small className={x.counted > 0 ? "ok" : ""}>{t("squads.play.objectives", { count: x.counted })}</small>
+            </button>
+          ))}
+        </nav>
+      )}
+      <article className="sq-event sq-session">
+        <header className="sq-event-head">
+          <div>
+            <h3>{t("squads.play.session", { place })}</h3>
+            <small>
+              {t("squads.play.counted", { count: s.counted, events: sessionEvents(s) })}
+              {s.ends_at && endsIn(s.ends_at) && <> · {t("squads.ends", { time: endsIn(s.ends_at) ?? "" })}</>}
+            </small>
+          </div>
+          <SaveButton e={{ id: s.id, title: `${place} · ${s.title}`, squad: s.squad, reqs: s.reqs }} />
+          <div className="sq-score">
+            <b className="ok">{s.counted}</b>
+            <small>{t("squads.play.objectivesShort")}</small>
+          </div>
+        </header>
+        <div className="sq-split">
+          <div className="sq-col">
+            <SessionList s={s} />
+          </div>
+          <div className="sq-col">
+            <Pitch e={s} />
+            {s.reqs.filter((r) => !r.met).map((r, i) => (
+              <Options key={i} r={r} />
+            ))}
+          </div>
+        </div>
+      </article>
+      {s.id === list[0].id && view.apart.length > 0 && (
+        <details className="sq-apart">
+          <summary>{t("squads.play.apart", { place, count: view.apart.length })}</summary>
+          <ul>
+            {view.apart.map((a) => (
+              <li key={a.event}>
+                <b>{a.title}</b>
+                <small className="sq-muted">{t("squads.play.needs", { places: a.places.map(placeName).join(" · ") })}</small>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </>
+  );
+}
+
 function Notes({ view, busy }: { view: SquadsView; busy: boolean }) {
   return (
     <>
-      {busy && <p className="ml-loading">{t("squads.building", { count: view.club_players })}</p>}
+      {busy && view.combos.length === 0 && view.events.length === 0 && <p className="ml-loading">{t("squads.building", { count: view.club_players })}</p>}
       {view.needs_sync ? (
         <div className="sq-empty">
           <b>{t("squads.needsSync.title")}</b>
@@ -527,7 +732,7 @@ function Notes({ view, busy }: { view: SquadsView; busy: boolean }) {
       ) : (
         <>
           {view.names_missing && <p className="sq-muted warn">{t("squads.namesMissing")}</p>}
-          {view.events.length === 0 && <p className="sq-muted">{t("squads.none")}</p>}
+          {view.events.length === 0 && view.combos.length === 0 && <p className="sq-muted">{t("squads.none")}</p>}
         </>
       )}
     </>
@@ -546,7 +751,7 @@ export default function Squads() {
         <div>
           <h2 className="sq-title">{t("squads.title")}</h2>
           <small className="sq-muted">
-            {view.read_at ? t("squads.read", { age: formatAge(view.read_at) }) : t("squads.notYet")} · {t("squads.ratingBeta")}
+            {busy ? <span className="ml-loading">{t("squads.building", { count: view.club_players })}</span> : view.read_at ? t("squads.read", { age: formatAge(view.read_at) }) : t("squads.notYet")} · {t("squads.ratingBeta")}
           </small>
         </div>
         <button className={`cat-tab ${settings ? "active" : ""}`} aria-expanded={settings} onClick={() => setSettings(!settings)}>
@@ -556,8 +761,11 @@ export default function Squads() {
       {settings && <Settings prefs={prefs} onChange={setPrefs} />}
       {!view.needs_sync && view.club.length > 0 && <MustPick view={view} prefs={prefs} onChange={setPrefs} />}
       <Notes view={view} busy={busy} />
+      {!view.needs_sync && <PlayPick view={view} prefs={prefs} onPrefs={setPrefs} />}
+      <Sessions view={view} />
       {current && (
         <>
+          <h3 className="sq-section-title">{t("squads.allEvents")}</h3>
           {view.events.length > 1 && <EventTabs list={view.events} current={current} pick={pick} />}
           <Event e={current} prefs={prefs} onPrefs={setPrefs} />
         </>
@@ -567,27 +775,32 @@ export default function Squads() {
   );
 }
 
-/** The side panel's quick overview: the event the game shows (or the last picked) – what's met,
- *  what's missing and the XI, all in one narrow column. */
+/** The side panel's quick overview: what to play (the first session – the user's pick or Auto),
+ *  what counts there and the XI, one session at a time in one narrow column. */
 export function SquadQuick() {
   const [view, busy] = useSquads();
-  const [current, pick] = useEventChoice(view);
+  const [k, setK] = useState(0);
   if (!view) return <p className="ml-empty ml-loading">{t("squads.loading")}</p>;
+  const list = view.combos;
+  const s = list[Math.min(k, list.length - 1)] ?? null;
+  const step = (d: number) => setK((Math.min(k, list.length - 1) + d + list.length) % list.length);
   return (
     <div className="ml-frame sq-quick">
       <header className="ml-head">
         <span className="eyebrow">{t("squads.tab")}</span>
-        {current ? (
+        {s ? (
           // arrows, not a dropdown: the side panel never takes the focus a dropdown needs
-          <div className="sq-pick" role="group" aria-label={t("squads.events")}>
-            {view.events.length > 1 && (
-              <button onClick={() => pick(view.events[(view.events.indexOf(current) - 1 + view.events.length) % view.events.length].id)} aria-label={t("squads.prevEvent")}>
+          <div className="sq-pick" role="group" aria-label={t("squads.play.sessions")}>
+            {list.length > 1 && (
+              <button onClick={() => step(-1)} aria-label={t("squads.prevEvent")}>
                 ‹
               </button>
             )}
-            <h1 className="ml-title">{current.title}</h1>
-            {view.events.length > 1 && (
-              <button onClick={() => pick(view.events[(view.events.indexOf(current) + 1) % view.events.length].id)} aria-label={t("squads.nextEvent")}>
+            <h1 className="ml-title">
+              {placeLabel(s.place, s.place_name)} · {t("squads.play.objectives", { count: s.counted })}
+            </h1>
+            {list.length > 1 && (
+              <button onClick={() => step(1)} aria-label={t("squads.nextEvent")}>
                 ›
               </button>
             )}
@@ -595,11 +808,11 @@ export function SquadQuick() {
         ) : null}
       </header>
       <Notes view={view} busy={busy} />
-      {current && (
+      {s && (
         <>
-          <Checklist e={current} compact />
-          <Pitch e={current} compact />
-          {current.reqs.filter((r) => !r.met).map((r, i) => (
+          <SessionList s={s} compact />
+          <Pitch e={s} compact />
+          {s.reqs.filter((r) => !r.met).map((r, i) => (
             <Options key={i} r={r} />
           ))}
         </>

@@ -545,7 +545,28 @@
       const names = [tryCall(() => L.teamIdToAbbr15(id, loc)), tryCall(() => L.teamIdToAbbr3(id, loc))].filter(Boolean);
       if (names.length) teams[id] = { names, league: t.leagueId ?? t.league?.id ?? (typeof t.league === "number" ? t.league : null) };
     }
-    return { leagues, nations, teams };
+    // rarity / program names ("Future Stars Academy"): objective texts name programs, cards carry
+    // only their rareflag – the Web App's own localisation, under the keys it has used
+    const rarities = {};
+    const util = L ? Object.getOwnPropertyNames(L).filter((n) => /rar/i.test(n) && typeof L[n] === "function") : [];
+    for (let id = 0; id < 256; id++) {
+      for (const k of [`item.raretype${id}`, `item.raretype.${id}`, `global.raretype${id}`, `search.cardRarity.${id}`]) {
+        const v = tryCall(() => loc.localize(k));
+        if (typeof v === "string" && v.trim() && v !== k && !v.startsWith("*") && !v.includes("raretype")) {
+          rarities[id] = v.trim();
+          break;
+        }
+      }
+      if (rarities[id]) continue;
+      for (const n of util) {
+        const v = tryCall(() => L[n](id, loc));
+        if (typeof v === "string" && v.trim() && !v.startsWith("*")) {
+          rarities[id] = v.trim();
+          break;
+        }
+      }
+    }
+    return { leagues, nations, teams, rarities };
   }
 
   function readFormations() {
