@@ -1,3 +1,4 @@
+mod account;
 mod bridge;
 mod champions;
 mod clock;
@@ -15,6 +16,7 @@ mod names;
 mod scan;
 mod session;
 mod speed;
+mod squads;
 mod store;
 mod sync_data;
 mod tracking;
@@ -660,12 +662,35 @@ fn set_first_owner(state: State<AppState>, def_id: u64, value: Option<bool>) {
 struct PriceShare {
     platform: Option<String>,
     prices: Vec<[u64; 3]>,
+    /// Lowest Buy Now prices seen in the user's own market results – [id, price, at].
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    bins: Vec<[u64; 3]>,
 }
 
 #[tauri::command]
 fn price_share(state: State<AppState>, since: u64) -> PriceShare {
     let store = state.store.lock().unwrap();
-    PriceShare { platform: store.platform(), prices: store.own_prices_since(since) }
+    PriceShare {
+        platform: store.platform(),
+        prices: store.own_prices_since(since),
+        bins: types::own_bins_since(&store.snapshot.prices, since, 1500),
+    }
+}
+
+/// Card definitions this PC knows from EA's card database – for FC-Tracker's card list
+/// (api.fc-tracker.com/v1/cards). No ownership: nothing about the user's club.
+#[tauri::command]
+fn card_defs(state: State<AppState>) -> Vec<serde_json::Value> {
+    let store = state.store.lock().unwrap();
+    store
+        .snapshot
+        .gallery
+        .values()
+        .map(|c| {
+            serde_json::json!({ "def_id": c.def_id, "name": c.name, "rating": c.rating, "rareflag": c.rareflag, "league": c.league,
+                                "team": c.team, "nation": c.nation, "position": c.position, "score": c.score, "holo": c.holo })
+        })
+        .collect()
 }
 
 /// The shared price pool of the user's platform ({definition id: [average, seen at]}).
@@ -682,13 +707,74 @@ fn paid_share(state: State<AppState>) -> PriceShare {
     let platform = store.platform();
     // kept until the market is known (the first sync)
     let prices = if platform.is_some() { std::mem::take(&mut store.paid_new) } else { Vec::new() };
-    PriceShare { platform, prices }
+    PriceShare { platform, prices, bins: Vec::new() }
 }
 
 /// The shared pool of paid prices ({definition id: [price, newest purchase, purchases]}).
 #[tauri::command]
 fn paid_pool(state: State<AppState>, platform: String, prices: std::collections::BTreeMap<u64, [u64; 3]>) -> usize {
     state.store.lock().unwrap().apply_paid_pool(&platform, &prices)
+}
+
+/// The FC-Tracker account's saved secret (refresh token + e-mail, JSON) from Credential Manager.
+#[tauri::command]
+fn account_secret() -> Option<String> {
+    account::secret()
+}
+
+/// Saves (or, with null, removes) the account secret.
+#[tauri::command]
+fn set_account_secret(value: Option<String>) -> Result<(), String> {
+    account::set_secret(value.as_deref())
+}
+
+#[derive(serde::Serialize)]
+struct PartExport {
+    /// gzip + base64
+    data: String,
+    /// When this PC last wrote the part locally (ms).
+    written_at: u64,
+}
+
+/// One part of this PC's data for the account sync (account.rs): gallery, webapp or champions.
+#[tauri::command]
+async fn sync_part_export(state: State<'_, AppState>, part: String) -> Result<PartExport, String> {
+    let dir = &state.data_dir;
+    match part.as_str() {
+        "gallery" => {
+            let store = state.store.lock().unwrap();
+            Ok(PartExport { data: account::export(&store.snapshot)?, written_at: account::written_at(dir, "snapshot.json") })
+        }
+        "webapp" => {
+            let store = state.store.lock().unwrap();
+            Ok(PartExport { data: account::pack(&store.web)?, written_at: account::written_at(dir, "webdata.json") })
+        }
+        "champions" => Ok(PartExport {
+            data: account::pack(&champions::for_sync(&champions::data()))?,
+            written_at: account::written_at(dir, "champions.json"),
+        }),
+        _ => Err("bad_request".into()),
+    }
+}
+
+/// Another device's part (account sync): merged in, or – `replace`, the user chose the cloud's
+/// data – taken as this PC's.
+#[tauri::command]
+async fn sync_part_import(app: AppHandle, state: State<'_, AppState>, part: String, data: String, replace: bool) -> Result<(), String> {
+    match part.as_str() {
+        "gallery" => state.store.lock().unwrap().absorb_synced(account::decode(&data)?, replace),
+        "webapp" => {
+            let web: webdata::WebData = account::unpack(&data)?;
+            state.store.lock().unwrap().absorb_synced_web(web, replace);
+            Ok(())
+        }
+        "champions" => {
+            let d = champions::absorb_synced(account::unpack(&data)?, replace);
+            let _ = app.emit("champions", &d);
+            Ok(())
+        }
+        _ => Err("bad_request".into()),
+    }
 }
 
 /// The revision of the Gallery set list in use (the launcher compares fc-tracker.com's with it).
@@ -815,6 +901,81 @@ fn set_champions_tracking(app: AppHandle, on: bool) -> ui::UiPrefs {
     save_ui(&app);
     tracking::log(&app.state::<AppState>().data_dir, if on { "champions: tracking switched ON" } else { "champions: tracking switched OFF" });
     prefs
+}
+
+/// Objective squads (SQUADS.md): the open events with squad objectives, the best XI from the
+/// club for each and realistic cards for what it misses. Computed in the background.
+#[tauri::command]
+async fn squads_plan(app: AppHandle) -> squads::SquadsView {
+    let (input, prefs) = {
+        let state = app.state::<AppState>();
+        let prefs = state.ui.lock().unwrap().squads.clone();
+        let input = squads_input(&state.store.lock().unwrap());
+        (input, prefs)
+    };
+    tauri::async_runtime::spawn_blocking(move || squads::plan(&input, &prefs)).await.unwrap_or_else(|_| squads::plan(&squads::Input::empty(), &Default::default()))
+}
+
+/// "Has to include" search over every card that exists (not owned ones; the club list has those).
+#[tauri::command]
+async fn squads_search(app: AppHandle, q: String) -> Vec<squads::ClubEntry> {
+    let input = {
+        let state = app.state::<AppState>();
+        let store = state.store.lock().unwrap();
+        squads_input(&store)
+    };
+    tauri::async_runtime::spawn_blocking(move || squads::search(&input, &q, 30)).await.unwrap_or_default()
+}
+
+/// Settings → Squads.
+#[tauri::command]
+fn set_squad_prefs(app: AppHandle, prefs: squads::SquadPrefs) -> ui::UiPrefs {
+    let out = {
+        let state = app.state::<AppState>();
+        let mut p = state.ui.lock().unwrap();
+        p.squads = squads::SquadPrefs { chem_target: prefs.chem_target.min(33), ..prefs };
+        p.clone()
+    };
+    save_ui(&app);
+    out
+}
+
+/// What the squad engine needs from the snapshot and the Web App data.
+fn squads_input(store: &store::Store) -> squads::Input {
+    let snap = &store.snapshot;
+    let web = &store.web;
+    let names_known = web.names.is_some();
+    let mut names = web.names.as_ref().map(|n| squads::Names::from_value(&n.body)).unwrap_or_default();
+    for c in snap.gallery.values() {
+        if let (Some(t), Some(n)) = (c.team, c.team_name.as_deref()) {
+            names.add_team(t, n, c.league);
+        }
+    }
+    let now = store::now_ms();
+    let now_s = now / 1000;
+    let attrs = web.attributes.as_ref().map(|a| squads::Attributes::from_value(&a.body)).unwrap_or_default();
+    let mut rewards: std::collections::BTreeMap<u64, Vec<(String, String)>> = Default::default();
+    for &def in web.sources.keys() {
+        let open = web.open_sources(def, now_s);
+        if !open.is_empty() {
+            rewards.insert(def, open.iter().map(|s| (s.kind.clone(), web.text(&s.name).to_string())).collect());
+        }
+    }
+    squads::Input {
+        groups: web.objectives.as_ref().map(|o| squads::groups_from_value(&o.body)).unwrap_or_default(),
+        names,
+        names_known,
+        club: snap.items.values().filter_map(|i| squads::club_player(i, &snap.gallery, &attrs)).collect(),
+        catalog: snap.gallery.values().filter_map(|c| squads::catalog_player(c, &attrs)).collect(),
+        prices: snap.prices.clone(),
+        rewards,
+        formations: web.formations.as_ref().map(|f| squads::formations_from_value(&f.body)).unwrap_or_default(),
+        team_links: snap.team_links.clone(),
+        active: web.latest.iter().find(|(k, _)| k.ends_with("/usermassinfo")).map(|(_, v)| squads::active_squad(&v.body)).unwrap_or_default(),
+        coins: snap.coins.map(|[c, _]| c),
+        read_at: web.objectives.as_ref().map(|o| o.at),
+        now_ms: now,
+    }
 }
 
 /// Settings → Champions: forget every match read so far.
@@ -1129,6 +1290,7 @@ pub fn run() {
         .setup(move |app| {
             // fctracker:// – the extension's "Open FC-Tracker" button (no admin, current user)
             std::thread::spawn(game::register_protocol);
+            updates::start(app.handle().clone());
             use tauri_plugin_global_shortcut::GlobalShortcutExt;
             // A shortcut another program already owns must not stop the app from starting.
             for (name, shortcut) in [
@@ -1403,6 +1565,11 @@ pub fn run() {
             price_pool,
             paid_share,
             paid_pool,
+            account_secret,
+            set_account_secret,
+            sync_part_export,
+            sync_part_import,
+            card_defs,
             mark_swap_done,
             current_page,
             auto_scan,
@@ -1421,6 +1588,9 @@ pub fn run() {
             open_diagnostics,
             set_after_play,
             champions_data,
+            squads_plan,
+            squads_search,
+            set_squad_prefs,
             set_champions_tracking,
             clear_champions,
             sync_suggested,
@@ -1436,6 +1606,7 @@ pub fn run() {
             controller,
             open_help,
             updates::check_update,
+            updates::update_state,
             updates::install_update,
             cancel_sync,
             open_data_dir

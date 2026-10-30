@@ -6,6 +6,8 @@ import type { BestValue, CurrentPage, GalleryCategory, GalleryStatus, PriceShare
 import { excludedIds } from "../excluded";
 import { call, core, validPoints } from "./core";
 import { trackOnce } from "../usage";
+import { pack, unpack } from "../gzip";
+import type { ClubEntry, SquadPrefs, SquadsView } from "../squadsData";
 import { classify, Frame, pageKey, readSet, readSwap, textReader, type Box } from "./reader";
 
 export type Source = "window" | "tab" | "card";
@@ -49,6 +51,8 @@ export const webEvents = {
 };
 
 const STORE = "fct.web.state";
+/** When this browser last saved what it learned (shown when it and the account disagree). */
+const SAVED_AT = "fct.web.savedAt";
 let status: WebStatus = { phase: "off", source: null, set: null, cards: 0, verified: false, ms: null, error: null, width: 0, height: 0, fps: 0, reads: 0 };
 let stream: MediaStream | null = null;
 let video: HTMLVideoElement | null = null;
@@ -79,6 +83,7 @@ const restored = restore();
 async function persist() {
   try {
     localStorage.setItem(STORE, JSON.stringify(await call("state")));
+    localStorage.setItem(SAVED_AT, String(Date.now()));
   } catch {
     /* storage full or blocked: this visit still works */
   }
@@ -161,6 +166,19 @@ export const webApi = {
       changed();
     }
     return n;
+  },
+  /** Objective squads: the open events' squad objectives and the best XI from the synced club. */
+  squadsPlan: async (): Promise<SquadsView> => {
+    await restored;
+    return call<SquadsView>("squads_plan");
+  },
+  squadsSearch: async (q: string): Promise<ClubEntry[]> => {
+    await restored;
+    return call<ClubEntry[]>("squads_search", { q });
+  },
+  setSquadPrefs: async (prefs: SquadPrefs): Promise<void> => {
+    await call("set_squad_prefs", { prefs });
+    await persist();
   },
   /** Forget everything this browser learned (the "Start over" button). */
   reset: async () => {
@@ -443,6 +461,7 @@ async function checkClub() {
         changed();
         setClub({ readAt: r.synced_at, cards: r.collected });
         trackOnce("web-first-sync");
+        emit("club-synced", r.synced_at);
       }
     } finally {
       setClub({ reading: false });
@@ -453,6 +472,12 @@ void restored.then(checkClub);
 setInterval(() => document.visibilityState === "visible" && void checkClub(), 10_000);
 document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && void checkClub());
 
+/** The page needs a newer extension: it asks the Chrome Web Store now and reloads into it. */
+export async function askExtensionUpdate() {
+  await ext({ type: "update" });
+  setTimeout(() => void checkClub(), 15_000);
+}
+
 let openedAt = 0;
 /** "Sync my club": the extension opens the Web App, which syncs by itself. */
 export async function syncClub() {
@@ -460,4 +485,31 @@ export async function syncClub() {
   setClub({ syncing: true });
   await ext({ type: "open-webapp" });
   setTimeout(() => void checkClub(), 61_000);
+}
+
+// ---------------------------------------------------------------- account sync (src/account.ts)
+// The Gallery data travels in the app's snapshot format and the Web App part in the app's
+// webdata format – one copy on the account for the app and this page (PC ⇄ console).
+
+/** A Web App club sync was read in: the account takes it at once. */
+export const onClubSynced = (cb: Listener<number | null>) => on("club-synced", cb);
+
+export async function syncPartExport(part: string): Promise<{ data: string; written_at: number }> {
+  await restored;
+  const fn = part === "gallery" ? "sync_export" : part === "webapp" ? "webapp_export" : null;
+  if (!fn) throw "bad_request";
+  let at = 0;
+  try {
+    at = Number(localStorage.getItem(SAVED_AT) ?? 0);
+  } catch {}
+  return { data: await pack(await call(fn)), written_at: at };
+}
+
+export async function syncPartImport(part: string, data: string, replace: boolean): Promise<void> {
+  await restored;
+  const fn = part === "gallery" ? "sync_import" : part === "webapp" ? "webapp_import" : null;
+  if (!fn) throw "bad_request";
+  await call(fn, { data: await unpack(data), replace });
+  await persist();
+  changed();
 }

@@ -4,6 +4,8 @@
 //                                           the public tag, and signs it for the updater here)
 //   node scripts/release.mjs               (builds on this PC – only for a local test release)
 //   node scripts/release.mjs --no-build    (reuses the last local build)
+//   … --required                            (this release must be installed: older apps show
+//                                            "Update required"; see scripts/require-update.mjs)
 // 1. Builds the NSIS installer, signed for the in-app updater with the private key in
 //    %USERPROFILE%\.tauri\fc-tracker-updater.key (never in the repo – back it up: without it,
 //    installed apps can't be updated any more).
@@ -119,8 +121,21 @@ if (apiKey()) {
 
 // The updater feed: the installer's minisign signature is checked by the app before it runs.
 fs.mkdirSync(path.join(pub, "updates"), { recursive: true });
+// `required`: the oldest app that may keep running (--required = this release must be installed).
+// `extension`: the extension this release goes with – the feed holds the release back until the
+// Chrome Web Store has accepted it (site/api/update-feed.mjs), so app and extension arrive together.
+const oldFeed = (() => {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(pub, "updates", "feed.json"), "utf8"));
+  } catch {
+    return {};
+  }
+})();
+const required = process.argv.includes("--required") ? conf.version : oldFeed.required;
 const feed = {
   version: conf.version,
+  ...(required ? { required } : {}),
+  extension: ext.version,
   pub_date: now.toISOString(),
   platforms: {
     "windows-x86_64": { signature, url: `${SITE}/downloads/${appFile}` },

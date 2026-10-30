@@ -542,6 +542,7 @@ pub fn spawn(app: AppHandle) {
                         observe_screen(&app, session::classify(&frame, &page), &mut leave_votes);
                         if matches!(page, Page::Other) {
                             champions_menu(&app, &frame);
+                            squads_menu(&app, &frame);
                         }
                         on_preview = matches!(&page, Page::Swap { preview: Some(_), .. });
                         // A notice belongs to its screen: hide it on any other page.
@@ -708,6 +709,38 @@ fn champions_menu(app: &AppHandle, frame: &scan::Frame) {
     if let Some(seen) = crate::champions::read_screen(&frame.words, Some(frame), crate::store::now_ms()) {
         champions_feed(app, seen);
     }
+}
+
+/// Objective squads: an event's hub is on screen (its title, as the Web App names it) – the side
+/// panel's squad checklist follows that event, and a notice says it's there (once per event seen).
+fn squads_menu(app: &AppHandle, frame: &scan::Frame) {
+    static LAST: std::sync::Mutex<Option<u64>> = std::sync::Mutex::new(None);
+    let titles: Vec<(u64, String, String)> = {
+        let state = app.state::<AppState>();
+        let store = state.store.lock().unwrap();
+        let Some(o) = store.web.objectives.as_ref() else { return };
+        crate::squads::groups_from_value(&o.body)
+            .into_iter()
+            .filter(|g| g.objectives.iter().any(|x| !x.done && crate::squads::parse_requirement(&x.text, &Default::default()) != crate::squads::Parsed::None || x.text.to_lowercase().contains("starting 11")))
+            .map(|g| (g.id, crate::names::normalise_name(&g.title), g.title))
+            .filter(|(_, t, _)| t.len() >= 10)
+            .collect()
+    };
+    if titles.is_empty() {
+        return;
+    }
+    let screen = crate::names::normalise_name(&frame.words.iter().map(|w| w.text.as_str()).collect::<Vec<_>>().join(" "));
+    // the longest title on screen ("… Tournament" over "… Circuit")
+    let Some((id, _, title)) = titles.iter().filter(|(_, t, _)| screen.contains(t.as_str())).max_by_key(|(_, t, _)| t.len()) else { return };
+    let mut last = LAST.lock().unwrap();
+    if *last == Some(*id) {
+        return;
+    }
+    *last = Some(*id);
+    drop(last);
+    log(&app.state::<AppState>().data_dir, &format!("squads: event hub seen ({id})"));
+    let _ = app.emit("squads-focus", *id);
+    crate::show_notice(app, serde_json::json!({ "kind": "squads", "event": title }), 6);
 }
 
 /// One Champions screen to the tracker: logged (no gamertags in the log), saved, sent to the UI.

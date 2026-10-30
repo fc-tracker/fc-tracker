@@ -1,0 +1,3015 @@
+{
+  "events": [
+    {
+      "id": 1,
+      "title": "Design check – leagues left out of the club",
+      "ends_at": null,
+      "done": 0,
+      "total": 2,
+      "objectives": [
+        {
+          "name": "Premier Pride",
+          "text": "Win 1 match while having Min. 2 ROSHN Saudi League players in your starting 11",
+          "progress": 0,
+          "target": 1,
+          "done": false,
+          "req": 0,
+          "unknown": null
+        },
+        {
+          "name": "French Connection",
+          "text": "Win 1 match while having Min. 1 MLS player in your starting 11",
+          "progress": 0,
+          "target": 1,
+          "done": false,
+          "req": 1,
+          "unknown": null
+        }
+      ],
+      "reqs": [
+        {
+          "need": {
+            "kind": "league",
+            "id": 350
+          },
+          "name": "ROSHN Saudi League",
+          "count": 2,
+          "have": 0,
+          "met": false,
+          "players": [],
+          "options": [
+            {
+              "kind": "cheapest",
+              "name": "Bounou",
+              "def_id": 209981,
+              "rating": 82,
+              "pos": "GK",
+              "price": 700,
+              "source": null,
+              "strength": 82.0,
+              "nation": 129,
+              "nation_name": null
+            },
+            {
+              "kind": "value",
+              "name": "Quiñones",
+              "def_id": 234579,
+              "rating": 84,
+              "pos": "ST",
+              "price": 1150,
+              "source": null,
+              "strength": 84.2,
+              "nation": 83,
+              "nation_name": null
+            }
+          ],
+          "unpriced": 534
+        },
+        {
+          "need": {
+            "kind": "league",
+            "id": 39
+          },
+          "name": "MLS",
+          "count": 1,
+          "have": 0,
+          "met": false,
+          "players": [],
+          "options": [
+            {
+              "kind": "cheapest",
+              "name": "Griezmann",
+              "def_id": 194765,
+              "rating": 84,
+              "pos": "CM",
+              "price": 1261,
+              "source": null,
+              "strength": 81.8,
+              "nation": 18,
+              "nation_name": "France"
+            }
+          ],
+          "unpriced": 825
+        }
+      ],
+      "squad": {
+        "formation": "5-2-3",
+        "chem": 33,
+        "chem_target": 33,
+        "slots": [
+          {
+            "pos": "GK",
+            "name": "Pickford",
+            "def_id": 204935,
+            "rating": 85,
+            "chem": 3,
+            "strength": 85.0,
+            "loan": false,
+            "counts_for": [],
+            "accel": null,
+            "key_ps": 0,
+            "key_ps_plus": 0,
+            "full": false,
+            "nation": 14,
+            "nation_name": "England",
+            "foot": 0,
+            "weak_foot": 4,
+            "skill_moves": 1,
+            "must": false,
+            "owned": true,
+            "price": null
+          },
+          {
+            "pos": "RB",
+            "name": "Ona Batlle",
+            "def_id": 253436,
+            "rating": 87,
+            "chem": 3,
+            "strength": 85.5,
+            "loan": false,
+            "counts_for": [],
+            "accel": null,
+            "key_ps": 0,
+            "key_ps_plus": 0,
+            "full": false,
+            "nation": 45,
+            "nation_name": null,
+            "foot": 1,
+            "weak_foot": 4,
+            "skill_moves": 3,
+            "must": false,
+            "owned": true,
+            "price": null
+          },
+          {
+            "pos": "CB",
+            "name": "Rúben Dias",
+            "def_id": 239818,
+            "rating": 87,
+            "chem": 3,
+            "strength": 83.8,
+            "loan": false,
+            "counts_for": [],
+            "accel": null,
+            "key_ps": 0,
+            "key_ps_plus": 0,
+            "full": false,
+            "nation": 38,
+            "nation_name": null,
+            "foot": 1,
+            "weak_foot": 4,
+            "skill_moves": 2,
+            "must": false,
+            "owned": true,
+            "price": null
+          },
+          {
+            "pos": "CB",
+            "name": "Mapi León",
+            "def_id": 236479,
+            "rating": 88,
+            "chem": 3,
+            "strength": 87.3,
+            "loan": false,
+            "counts_for": [],
+            "accel": null,
+            "key_ps": 0,
+            "key_ps_plus": 0,
+            "full": false,
+            "nation": 45,
+            "nation_name": null,
+            "foot": 2,
+            "weak_foot": 3,
+            "skill_moves": 2,
+            "must": false,
+            "owned": true,
+            "price": null
+          },
+          {
+            "pos": "CB",
+            "name": "Pepe",
+            "def_id": 67229397,
+            "rating": 85,
+            "chem": 3,
+            "strength": 84.5,
+            "loan": false,
+            "counts_for": [],
+            "accel": null,
+            "key_ps": 0,
+            "key_ps_plus": 0,
+            "full": false,
+            "nation": 38,
+            "nation_name": null,
+            "foot": 1,
+            "weak_foot": 3,
+            "skill_moves": 2,
+            "must": false,
+            "owned": true,
+            "price": null
+          },
+          {
+            "pos": "LB",
+            "name": "Chelsea",
+            "def_id": 265239,
+            "rating": 86,
+            "chem": 3,
+            "strength": 83.6,
+            "loan": false,
+            "counts_for": [],
+            "accel": null,
+            "key_ps": 0,
+            "key_ps_plus": 0,
+            "full": false,
+            "nation": 25,
+            "nation_name": null,
+            "foot": 0,
+            "weak_foot": 3,
+            "skill_moves": 4,
+            "must": false,
+            "owned": true,
+            "price": null
+          },
+          {
+            "pos": "CM",
+            "name": "Rice",
+            "def_id": 234378,
+            "rating": 88,
+            "chem": 3,
+            "strength": 85.5,
+            "loan": false,
+            "counts_for": [],
+            "accel": null,
+            "key_ps": 0,
+            "key_ps_plus": 0,
+            "full": false,
+            "nation": 14,
+            "nation_name": "England",
+            "foot": 1,
+            "weak_foot": 3,
+            "skill_moves": 3,
+            "must": false,
+            "owned": true,
+            "price": null
+          },
+          {
+            "pos": "CM",
+            "name": "Anderson",
+            "def_id": 50585891,
+            "rating": 86,
+            "chem": 3,
+            "strength": 84.0,
+            "loan": false,
+            "counts_for": [],
+            "accel": null,
+            "key_ps": 0,
+            "key_ps_plus": 0,
+            "full": false,
+            "nation": 14,
+            "nation_name": "England",
+            "foot": 1,
+            "weak_foot": 4,
+            "skill_moves": 3,
+            "must": false,
+            "owned": true,
+            "price": null
+          },
+          {
+            "pos": "RW",
+            "name": "Kelly",
+            "def_id": 257001,
+            "rating": 86,
+            "chem": 3,
+            "strength": 87.1,
+            "loan": false,
+            "counts_for": [],
+            "accel": null,
+            "key_ps": 0,
+            "key_ps_plus": 0,
+            "full": false,
+            "nation": 14,
+            "nation_name": "England",
+            "foot": 1,
+            "weak_foot": 4,
+            "skill_moves": 4,
+            "must": false,
+            "owned": true,
+            "price": null
+          },
+          {
+            "pos": "ST",
+            "name": "Anyomi",
+            "def_id": 50596595,
+            "rating": 85,
+            "chem": 3,
+            "strength": 86.0,
+            "loan": false,
+            "counts_for": [],
+            "accel": null,
+            "key_ps": 0,
+            "key_ps_plus": 0,
+            "full": false,
+            "nation": 21,
+            "nation_name": null,
+            "foot": 1,
+            "weak_foot": 4,
+            "skill_moves": 4,
+            "must": false,
+            "owned": true,
+            "price": null
+          },
+          {
+            "pos": "LW",
+            "name": "James",
+            "def_id": 265249,
+            "rating": 85,
+            "chem": 3,
+            "strength": 87.2,
+            "loan": false,
+            "counts_for": [],
+            "accel": null,
+            "key_ps": 0,
+            "key_ps_plus": 0,
+            "full": false,
+            "nation": 14,
+            "nation_name": "England",
+            "foot": 1,
+            "weak_foot": 5,
+            "skill_moves": 5,
+            "must": false,
+            "owned": true,
+            "price": null
+          }
+        ],
+        "strength": 85.4,
+        "met": 0,
+        "changes": null,
+        "must_missing": []
+      }
+    }
+  ],
+  "needs_sync": false,
+  "names_missing": false,
+  "club_players": 183,
+  "coins": 256304,
+  "read_at": null,
+  "prefs": {
+    "chem_target": 33,
+    "chem_first": false,
+    "hide_loans": true,
+    "budget": null,
+    "must": [],
+    "must_cards": []
+  },
+  "club": [
+    {
+      "key": 247827,
+      "name": "Olise",
+      "rating": 90,
+      "positions": [
+        "RM",
+        "CAM",
+        "RW"
+      ],
+      "nation": 18,
+      "nation_name": "France",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 944578734316,
+      "name": "Hazard",
+      "rating": 89,
+      "positions": [
+        "LM",
+        "CAM",
+        "LW"
+      ],
+      "nation": 7,
+      "nation_name": "Belgium",
+      "loan": true,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 252145,
+      "name": "Nuno Mendes",
+      "rating": 89,
+      "positions": [
+        "LB",
+        "LM"
+      ],
+      "nation": 38,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 256196,
+      "name": "Pacho",
+      "rating": 89,
+      "positions": [
+        "CB"
+      ],
+      "nation": 57,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951339563700,
+      "name": "Mapi León",
+      "rating": 88,
+      "positions": [
+        "CB"
+      ],
+      "nation": 45,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 952592112811,
+      "name": "Rice",
+      "rating": 88,
+      "positions": [
+        "CDM",
+        "CM"
+      ],
+      "nation": 14,
+      "nation_name": "England",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951362162718,
+      "name": "Barella",
+      "rating": 87,
+      "positions": [
+        "CDM",
+        "CM"
+      ],
+      "nation": 27,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950668373043,
+      "name": "Ona Batlle",
+      "rating": 87,
+      "positions": [
+        "RB",
+        "LB",
+        "RM",
+        "LM"
+      ],
+      "nation": 45,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950546875280,
+      "name": "Rúben Dias",
+      "rating": 87,
+      "positions": [
+        "CB"
+      ],
+      "nation": 38,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 946562007024,
+      "name": "Anderson",
+      "rating": 86,
+      "positions": [
+        "CDM",
+        "CM"
+      ],
+      "nation": 14,
+      "nation_name": "England",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951367631706,
+      "name": "Bacha",
+      "rating": 86,
+      "positions": [
+        "LB",
+        "LM",
+        "LW"
+      ],
+      "nation": 18,
+      "nation_name": "France",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 265239,
+      "name": "Chelsea",
+      "rating": 86,
+      "positions": [
+        "LB",
+        "LM"
+      ],
+      "nation": 25,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951336841769,
+      "name": "Cucurella",
+      "rating": 86,
+      "positions": [
+        "LB"
+      ],
+      "nation": 45,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 226268,
+      "name": "Dimarco",
+      "rating": 86,
+      "positions": [
+        "LB",
+        "LM"
+      ],
+      "nation": 27,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951362162730,
+      "name": "Fabián Ruiz",
+      "rating": 86,
+      "positions": [
+        "CDM",
+        "CM",
+        "CAM"
+      ],
+      "nation": 45,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 948544191522,
+      "name": "Kelly",
+      "rating": 86,
+      "positions": [
+        "RM",
+        "LM",
+        "RW",
+        "LW"
+      ],
+      "nation": 14,
+      "nation_name": "England",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950301835243,
+      "name": "Mandžukić",
+      "rating": 86,
+      "positions": [
+        "ST",
+        "LW"
+      ],
+      "nation": 10,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950318324357,
+      "name": "Anyomi",
+      "rating": 85,
+      "positions": [
+        "LM",
+        "CAM",
+        "ST",
+        "LW"
+      ],
+      "nation": 21,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 944134703855,
+      "name": "Brugts",
+      "rating": 85,
+      "positions": [
+        "LB",
+        "CM",
+        "LM",
+        "CAM",
+        "ST",
+        "LW"
+      ],
+      "nation": 34,
+      "nation_name": "Netherlands",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 945395607676,
+      "name": "Dybala",
+      "rating": 85,
+      "positions": [
+        "CAM",
+        "ST"
+      ],
+      "nation": 52,
+      "nation_name": null,
+      "loan": true,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950068649886,
+      "name": "Dybala",
+      "rating": 85,
+      "positions": [
+        "CAM",
+        "ST"
+      ],
+      "nation": 52,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950290693318,
+      "name": "Eric García",
+      "rating": 85,
+      "positions": [
+        "RB",
+        "CB",
+        "CDM",
+        "CM"
+      ],
+      "nation": 45,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951087658700,
+      "name": "James",
+      "rating": 85,
+      "positions": [
+        "RM",
+        "LM",
+        "RW",
+        "LW"
+      ],
+      "nation": 14,
+      "nation_name": "England",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951362162724,
+      "name": "Marcos Llorente",
+      "rating": 85,
+      "positions": [
+        "RB",
+        "RM",
+        "CM"
+      ],
+      "nation": 45,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 952483361404,
+      "name": "Peio Canales",
+      "rating": 85,
+      "positions": [
+        "CDM",
+        "CM",
+        "CAM"
+      ],
+      "nation": 45,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 944097727761,
+      "name": "Pepe",
+      "rating": 85,
+      "positions": [
+        "CB"
+      ],
+      "nation": 38,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 204935,
+      "name": "Pickford",
+      "rating": 85,
+      "positions": [
+        "GK"
+      ],
+      "nation": 14,
+      "nation_name": "England",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951362162720,
+      "name": "Schüller",
+      "rating": 85,
+      "positions": [
+        "CAM",
+        "ST"
+      ],
+      "nation": 21,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 942006191061,
+      "name": "Unai Simón",
+      "rating": 85,
+      "positions": [
+        "GK"
+      ],
+      "nation": 45,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951336742773,
+      "name": "Cerci",
+      "rating": 84,
+      "positions": [
+        "CAM",
+        "ST"
+      ],
+      "nation": 21,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950069928555,
+      "name": "Corona",
+      "rating": 84,
+      "positions": [
+        "RM",
+        "CM",
+        "LM",
+        "CAM",
+        "RW",
+        "LW"
+      ],
+      "nation": 83,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950080604164,
+      "name": "Dallmann",
+      "rating": 84,
+      "positions": [
+        "RM",
+        "CM",
+        "CAM",
+        "RW"
+      ],
+      "nation": 21,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951362162717,
+      "name": "Dani Olmo",
+      "rating": 84,
+      "positions": [
+        "CM",
+        "LM",
+        "CAM",
+        "LW"
+      ],
+      "nation": 45,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951362162723,
+      "name": "Eze",
+      "rating": 84,
+      "positions": [
+        "CM",
+        "LM",
+        "CAM",
+        "LW"
+      ],
+      "nation": 14,
+      "nation_name": "England",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950395590054,
+      "name": "Falcone",
+      "rating": 84,
+      "positions": [
+        "GK"
+      ],
+      "nation": 27,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 945696773928,
+      "name": "Fiamma Benítez",
+      "rating": 84,
+      "positions": [
+        "CDM",
+        "CM",
+        "CAM"
+      ],
+      "nation": 45,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951681889914,
+      "name": "Geyoro",
+      "rating": 84,
+      "positions": [
+        "CDM",
+        "CM",
+        "CAM"
+      ],
+      "nation": 18,
+      "nation_name": "France",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951357722226,
+      "name": "Gilles",
+      "rating": 84,
+      "positions": [
+        "CB"
+      ],
+      "nation": 70,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950558447152,
+      "name": "Gonçalo Ramos",
+      "rating": 84,
+      "positions": [
+        "ST"
+      ],
+      "nation": 38,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950091690629,
+      "name": "James",
+      "rating": 84,
+      "positions": [
+        "RB",
+        "CDM",
+        "CM"
+      ],
+      "nation": 14,
+      "nation_name": "England",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951363721180,
+      "name": "João Cancelo",
+      "rating": 84,
+      "positions": [
+        "RB",
+        "LB",
+        "RM",
+        "LM"
+      ],
+      "nation": 38,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 944136579512,
+      "name": "Konaté",
+      "rating": 84,
+      "positions": [
+        "CB"
+      ],
+      "nation": 18,
+      "nation_name": "France",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951681889913,
+      "name": "Konsa",
+      "rating": 84,
+      "positions": [
+        "CB"
+      ],
+      "nation": 14,
+      "nation_name": "England",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 952483441315,
+      "name": "Laporte",
+      "rating": 84,
+      "positions": [
+        "CB"
+      ],
+      "nation": 45,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950558752409,
+      "name": "Mancini",
+      "rating": 84,
+      "positions": [
+        "CB"
+      ],
+      "nation": 27,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951099282969,
+      "name": "Mika Mármol",
+      "rating": 84,
+      "positions": [
+        "CB",
+        "LB"
+      ],
+      "nation": 45,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 942162464500,
+      "name": "Nico Paz",
+      "rating": 84,
+      "positions": [
+        "CAM",
+        "ST"
+      ],
+      "nation": 52,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950558752410,
+      "name": "Oberdorf",
+      "rating": 84,
+      "positions": [
+        "CDM",
+        "CM"
+      ],
+      "nation": 21,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950541012665,
+      "name": "Oyarzabal",
+      "rating": 84,
+      "positions": [
+        "ST"
+      ],
+      "nation": 45,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951681755744,
+      "name": "Renard",
+      "rating": 84,
+      "positions": [
+        "CB"
+      ],
+      "nation": 18,
+      "nation_name": "France",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 943312809150,
+      "name": "Rodrygo",
+      "rating": 84,
+      "positions": [
+        "RM",
+        "LM",
+        "CAM",
+        "RW",
+        "ST",
+        "LW"
+      ],
+      "nation": 54,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951116953392,
+      "name": "Senß",
+      "rating": 84,
+      "positions": [
+        "CDM",
+        "CM",
+        "CAM"
+      ],
+      "nation": 21,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950541075498,
+      "name": "Toone",
+      "rating": 84,
+      "positions": [
+        "CDM",
+        "CM",
+        "CAM"
+      ],
+      "nation": 14,
+      "nation_name": "England",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 949776462082,
+      "name": "Vicky López",
+      "rating": 84,
+      "positions": [
+        "CDM",
+        "RM",
+        "CM",
+        "CAM",
+        "RW",
+        "ST"
+      ],
+      "nation": 45,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950283183694,
+      "name": "Vušković",
+      "rating": 84,
+      "positions": [
+        "CB"
+      ],
+      "nation": 10,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951362162714,
+      "name": "Yamashita",
+      "rating": 84,
+      "positions": [
+        "GK"
+      ],
+      "nation": 163,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 945698229184,
+      "name": "Yıldız",
+      "rating": 84,
+      "positions": [
+        "LM",
+        "CAM",
+        "ST",
+        "LW"
+      ],
+      "nation": 48,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 248148,
+      "name": "Zubimendi",
+      "rating": 84,
+      "positions": [
+        "CDM",
+        "CM"
+      ],
+      "nation": 45,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951681889908,
+      "name": "Zubimendi",
+      "rating": 84,
+      "positions": [
+        "CDM",
+        "CM"
+      ],
+      "nation": 45,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 949775704840,
+      "name": "Éder Militão",
+      "rating": 84,
+      "positions": [
+        "CB"
+      ],
+      "nation": 54,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 943283319652,
+      "name": "Becho",
+      "rating": 83,
+      "positions": [
+        "RM",
+        "CAM",
+        "RW",
+        "ST"
+      ],
+      "nation": 18,
+      "nation_name": "France",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 949775579188,
+      "name": "Dumfries",
+      "rating": 83,
+      "positions": [
+        "RB",
+        "RM"
+      ],
+      "nation": 34,
+      "nation_name": "Netherlands",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 945571188444,
+      "name": "Elena Julve",
+      "rating": 83,
+      "positions": [
+        "RM",
+        "CAM",
+        "RW",
+        "ST"
+      ],
+      "nation": 45,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950541075497,
+      "name": "Girelli",
+      "rating": 83,
+      "positions": [
+        "ST"
+      ],
+      "nation": 27,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951721213162,
+      "name": "Greggi",
+      "rating": 83,
+      "positions": [
+        "CDM",
+        "CM"
+      ],
+      "nation": 27,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951725096352,
+      "name": "Hjulmand",
+      "rating": 83,
+      "positions": [
+        "CDM",
+        "CM"
+      ],
+      "nation": 13,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 944133002280,
+      "name": "João Cancelo",
+      "rating": 83,
+      "positions": [
+        "RB",
+        "LB",
+        "RM",
+        "LM"
+      ],
+      "nation": 38,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950318324356,
+      "name": "Lacroix",
+      "rating": 83,
+      "positions": [
+        "CB"
+      ],
+      "nation": 18,
+      "nation_name": "France",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 948296960677,
+      "name": "Malen",
+      "rating": 83,
+      "positions": [
+        "ST"
+      ],
+      "nation": 34,
+      "nation_name": "Netherlands",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951362162727,
+      "name": "Mamardashvili",
+      "rating": 83,
+      "positions": [
+        "GK"
+      ],
+      "nation": 20,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 253124,
+      "name": "Matheus Nunes",
+      "rating": 83,
+      "positions": [
+        "RB",
+        "CM"
+      ],
+      "nation": 38,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 945571074692,
+      "name": "Matheus Nunes",
+      "rating": 83,
+      "positions": [
+        "RB",
+        "CM"
+      ],
+      "nation": 38,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950312262373,
+      "name": "Meerveld",
+      "rating": 83,
+      "positions": [
+        "CDM",
+        "CM",
+        "LM",
+        "CAM",
+        "LW"
+      ],
+      "nation": 34,
+      "nation_name": "Netherlands",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951681889909,
+      "name": "O'Reilly",
+      "rating": 83,
+      "positions": [
+        "LB",
+        "CDM",
+        "CM"
+      ],
+      "nation": 14,
+      "nation_name": "England",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 952483441320,
+      "name": "Orbán",
+      "rating": 83,
+      "positions": [
+        "CB"
+      ],
+      "nation": 23,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951336742772,
+      "name": "Spence",
+      "rating": 83,
+      "positions": [
+        "RB",
+        "LB"
+      ],
+      "nation": 14,
+      "nation_name": "England",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951681755750,
+      "name": "Stiller",
+      "rating": 83,
+      "positions": [
+        "CDM",
+        "CM"
+      ],
+      "nation": 21,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951116953391,
+      "name": "Tzolis",
+      "rating": 83,
+      "positions": [
+        "LM",
+        "LW"
+      ],
+      "nation": 22,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 952483441318,
+      "name": "Álex Baena",
+      "rating": 83,
+      "positions": [
+        "CM",
+        "LM",
+        "CAM",
+        "LW"
+      ],
+      "nation": 45,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950080377971,
+      "name": "Bethune",
+      "rating": 82,
+      "positions": [
+        "CDM",
+        "CM",
+        "CAM",
+        "ST"
+      ],
+      "nation": 95,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951681889907,
+      "name": "Bonansea",
+      "rating": 82,
+      "positions": [
+        "LM",
+        "CAM",
+        "LW"
+      ],
+      "nation": 27,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950080377972,
+      "name": "Brandt",
+      "rating": 82,
+      "positions": [
+        "CDM",
+        "CM",
+        "CAM"
+      ],
+      "nation": 21,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950297281628,
+      "name": "Burkardt",
+      "rating": 82,
+      "positions": [
+        "ST"
+      ],
+      "nation": 21,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 945728107042,
+      "name": "Diaby",
+      "rating": 82,
+      "positions": [
+        "RM",
+        "LM",
+        "RW",
+        "LW"
+      ],
+      "nation": 18,
+      "nation_name": "France",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950277341165,
+      "name": "Garbino",
+      "rating": 82,
+      "positions": [
+        "RM",
+        "CM",
+        "LM",
+        "CAM",
+        "RW",
+        "LW"
+      ],
+      "nation": 18,
+      "nation_name": "France",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 952483155580,
+      "name": "Grealish",
+      "rating": 82,
+      "positions": [
+        "LM",
+        "LW"
+      ],
+      "nation": 14,
+      "nation_name": "England",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 949775505773,
+      "name": "Hugo Duro",
+      "rating": 82,
+      "positions": [
+        "ST"
+      ],
+      "nation": 45,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950318449982,
+      "name": "Igor Thiago",
+      "rating": 82,
+      "positions": [
+        "ST"
+      ],
+      "nation": 54,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950297281627,
+      "name": "Kean",
+      "rating": 82,
+      "positions": [
+        "ST"
+      ],
+      "nation": 27,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 952483441319,
+      "name": "Leila Ouahabi",
+      "rating": 82,
+      "positions": [
+        "LB",
+        "LM"
+      ],
+      "nation": 45,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 50553308,
+      "name": "Lindelöf",
+      "rating": 82,
+      "positions": [
+        "CB"
+      ],
+      "nation": 46,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950318682251,
+      "name": "Luany",
+      "rating": 82,
+      "positions": [
+        "RM",
+        "CAM",
+        "RW",
+        "ST"
+      ],
+      "nation": 54,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950312475213,
+      "name": "Lukaku",
+      "rating": 82,
+      "positions": [
+        "ST"
+      ],
+      "nation": 7,
+      "nation_name": "Belgium",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950068752757,
+      "name": "Mahmutovic",
+      "rating": 82,
+      "positions": [
+        "GK"
+      ],
+      "nation": 21,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950283479975,
+      "name": "Martínez",
+      "rating": 82,
+      "positions": [
+        "CB"
+      ],
+      "nation": 52,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950283479974,
+      "name": "Natalia Ramos",
+      "rating": 82,
+      "positions": [
+        "CDM",
+        "CM"
+      ],
+      "nation": 45,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950091690628,
+      "name": "Pedro Gonçalves",
+      "rating": 82,
+      "positions": [
+        "LM",
+        "CAM",
+        "LW"
+      ],
+      "nation": 38,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950395590055,
+      "name": "Sheridan",
+      "rating": 82,
+      "positions": [
+        "GK"
+      ],
+      "nation": 70,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 945126793795,
+      "name": "Starfelt",
+      "rating": 82,
+      "positions": [
+        "CB"
+      ],
+      "nation": 46,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950290693315,
+      "name": "Šeško",
+      "rating": 82,
+      "positions": [
+        "ST"
+      ],
+      "nation": 44,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951357722225,
+      "name": "Akliouche",
+      "rating": 81,
+      "positions": [
+        "RM",
+        "CM",
+        "CAM",
+        "RW"
+      ],
+      "nation": 18,
+      "nation_name": "France",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951362162721,
+      "name": "Antony",
+      "rating": 81,
+      "positions": [
+        "RM",
+        "RW"
+      ],
+      "nation": 54,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 952483936134,
+      "name": "Araújo",
+      "rating": 81,
+      "positions": [
+        "LB",
+        "LM",
+        "LW"
+      ],
+      "nation": 60,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951362162713,
+      "name": "Brown",
+      "rating": 81,
+      "positions": [
+        "LB",
+        "LM"
+      ],
+      "nation": 21,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950525182676,
+      "name": "Chabot",
+      "rating": 81,
+      "positions": [
+        "CB"
+      ],
+      "nation": 21,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951681755751,
+      "name": "De Ketelaere",
+      "rating": 81,
+      "positions": [
+        "CAM",
+        "ST"
+      ],
+      "nation": 7,
+      "nation_name": "Belgium",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 952483936137,
+      "name": "Fleming",
+      "rating": 81,
+      "positions": [
+        "CDM",
+        "RM",
+        "CM",
+        "RW"
+      ],
+      "nation": 70,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951681755745,
+      "name": "Greif",
+      "rating": 81,
+      "positions": [
+        "GK"
+      ],
+      "nation": 43,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951681889911,
+      "name": "Hernández",
+      "rating": 81,
+      "positions": [
+        "CB",
+        "LB",
+        "LM"
+      ],
+      "nation": 18,
+      "nation_name": "France",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951099339125,
+      "name": "Iago Aspas",
+      "rating": 81,
+      "positions": [
+        "RM",
+        "CAM",
+        "RW",
+        "ST"
+      ],
+      "nation": 45,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951681889906,
+      "name": "Ilestedt",
+      "rating": 81,
+      "positions": [
+        "CB"
+      ],
+      "nation": 46,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 952483936132,
+      "name": "Koke",
+      "rating": 81,
+      "positions": [
+        "CDM",
+        "CM"
+      ],
+      "nation": 45,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950525182670,
+      "name": "Koné",
+      "rating": 81,
+      "positions": [
+        "CM",
+        "CAM"
+      ],
+      "nation": 18,
+      "nation_name": "France",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 952483936133,
+      "name": "Kovačić",
+      "rating": 81,
+      "positions": [
+        "CDM",
+        "CM",
+        "CAM"
+      ],
+      "nation": 10,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 952483155575,
+      "name": "Kulusevski",
+      "rating": 81,
+      "positions": [
+        "RM",
+        "CM",
+        "CAM",
+        "RW"
+      ],
+      "nation": 46,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950318449981,
+      "name": "Le Normand",
+      "rating": 81,
+      "positions": [
+        "CB"
+      ],
+      "nation": 45,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 945127076395,
+      "name": "Miley",
+      "rating": 81,
+      "positions": [
+        "RB",
+        "CDM",
+        "RM",
+        "CM"
+      ],
+      "nation": 14,
+      "nation_name": "England",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951362162722,
+      "name": "Mkhitaryan",
+      "rating": 81,
+      "positions": [
+        "CM",
+        "CAM"
+      ],
+      "nation": 3,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951362162715,
+      "name": "Neuer",
+      "rating": 81,
+      "positions": [
+        "GK"
+      ],
+      "nation": 21,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951681755743,
+      "name": "Onana",
+      "rating": 81,
+      "positions": [
+        "CDM",
+        "CM"
+      ],
+      "nation": 7,
+      "nation_name": "Belgium",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 952483441313,
+      "name": "Roefs",
+      "rating": 81,
+      "positions": [
+        "GK"
+      ],
+      "nation": 34,
+      "nation_name": "Netherlands",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951357722224,
+      "name": "Samba",
+      "rating": 81,
+      "positions": [
+        "GK"
+      ],
+      "nation": 18,
+      "nation_name": "France",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951099339126,
+      "name": "Sangaré",
+      "rating": 81,
+      "positions": [
+        "CDM",
+        "CM"
+      ],
+      "nation": 126,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 949775478170,
+      "name": "Suazo",
+      "rating": 81,
+      "positions": [
+        "LB",
+        "LM",
+        "LW"
+      ],
+      "nation": 55,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951362162716,
+      "name": "Thiaw",
+      "rating": 81,
+      "positions": [
+        "CB"
+      ],
+      "nation": 21,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950541012660,
+      "name": "Torreira",
+      "rating": 81,
+      "positions": [
+        "CDM",
+        "CM"
+      ],
+      "nation": 60,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951817229060,
+      "name": "Verbruggen",
+      "rating": 81,
+      "positions": [
+        "GK"
+      ],
+      "nation": 34,
+      "nation_name": "Netherlands",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951681889912,
+      "name": "Álvaro Carreras",
+      "rating": 81,
+      "positions": [
+        "CB",
+        "LB",
+        "LM"
+      ],
+      "nation": 45,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 949776064745,
+      "name": "Charles",
+      "rating": 80,
+      "positions": [
+        "CDM",
+        "CM"
+      ],
+      "nation": 35,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 946457454064,
+      "name": "Mastantuono",
+      "rating": 80,
+      "positions": [
+        "RM",
+        "CAM",
+        "RW"
+      ],
+      "nation": 52,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 944133002286,
+      "name": "Paradela",
+      "rating": 80,
+      "positions": [
+        "RM",
+        "CM",
+        "CAM",
+        "RW"
+      ],
+      "nation": 52,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 188567,
+      "name": "Aubameyang",
+      "rating": 79,
+      "positions": [
+        "ST"
+      ],
+      "nation": 115,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 242238,
+      "name": "Solet",
+      "rating": 78,
+      "positions": [
+        "CB"
+      ],
+      "nation": 18,
+      "nation_name": "France",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 949958402126,
+      "name": "Al Arab",
+      "rating": 74,
+      "positions": [
+        "CB"
+      ],
+      "nation": 164,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950388287229,
+      "name": "Arrey-Mbi",
+      "rating": 74,
+      "positions": [
+        "CB",
+        "LB"
+      ],
+      "nation": 21,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950422968968,
+      "name": "Gabriel Silva",
+      "rating": 74,
+      "positions": [
+        "RM",
+        "LM",
+        "RW",
+        "ST",
+        "LW"
+      ],
+      "nation": 54,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950366760477,
+      "name": "Mitriță",
+      "rating": 74,
+      "positions": [
+        "CM",
+        "LM",
+        "CAM",
+        "LW"
+      ],
+      "nation": 39,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 949775814932,
+      "name": "Pellegrini",
+      "rating": 74,
+      "positions": [
+        "LB",
+        "LM"
+      ],
+      "nation": 27,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 949775814930,
+      "name": "Röhl",
+      "rating": 74,
+      "positions": [
+        "CDM",
+        "CM",
+        "CAM"
+      ],
+      "nation": 21,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 943297761363,
+      "name": "Sebulonsen",
+      "rating": 74,
+      "positions": [
+        "RB",
+        "CB",
+        "RM"
+      ],
+      "nation": 36,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 947246414214,
+      "name": "St. Juste",
+      "rating": 74,
+      "positions": [
+        "CB"
+      ],
+      "nation": 34,
+      "nation_name": "Netherlands",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 949776064751,
+      "name": "Bah",
+      "rating": 73,
+      "positions": [
+        "CB"
+      ],
+      "nation": 138,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 949776064749,
+      "name": "El-Faouzi",
+      "rating": 73,
+      "positions": [
+        "CDM",
+        "CM",
+        "CAM"
+      ],
+      "nation": 129,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950418284521,
+      "name": "Kasius",
+      "rating": 73,
+      "positions": [
+        "RB",
+        "RM"
+      ],
+      "nation": 34,
+      "nation_name": "Netherlands",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950406761271,
+      "name": "Kim Dae Won",
+      "rating": 73,
+      "positions": [
+        "RM",
+        "LM",
+        "RW",
+        "LW"
+      ],
+      "nation": 167,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950420431993,
+      "name": "Lee Gi Hyuk",
+      "rating": 73,
+      "positions": [
+        "RB",
+        "CB",
+        "CDM",
+        "RM",
+        "CM"
+      ],
+      "nation": 167,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 949775814933,
+      "name": "Musaba",
+      "rating": 73,
+      "positions": [
+        "RM",
+        "LM",
+        "RW",
+        "LW"
+      ],
+      "nation": 34,
+      "nation_name": "Netherlands",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950340117157,
+      "name": "Romero",
+      "rating": 73,
+      "positions": [
+        "CM",
+        "CAM",
+        "RW"
+      ],
+      "nation": 58,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950405442178,
+      "name": "Anderson Oliveira",
+      "rating": 72,
+      "positions": [
+        "RM",
+        "LM",
+        "CAM",
+        "RW",
+        "ST",
+        "LW"
+      ],
+      "nation": 54,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 949775814934,
+      "name": "Bolin",
+      "rating": 72,
+      "positions": [
+        "RM",
+        "CM",
+        "LM",
+        "CAM",
+        "RW",
+        "LW"
+      ],
+      "nation": 46,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 945127212644,
+      "name": "Cooper",
+      "rating": 72,
+      "positions": [
+        "GK"
+      ],
+      "nation": 14,
+      "nation_name": "England",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950073744070,
+      "name": "Egan",
+      "rating": 72,
+      "positions": [
+        "CB"
+      ],
+      "nation": 25,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 949758439335,
+      "name": "Ernst",
+      "rating": 72,
+      "positions": [
+        "GK"
+      ],
+      "nation": 21,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 943297761362,
+      "name": "Mor",
+      "rating": 72,
+      "positions": [
+        "RM",
+        "CAM",
+        "RW",
+        "ST"
+      ],
+      "nation": 48,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 949049620380,
+      "name": "Oude Kotte",
+      "rating": 72,
+      "positions": [
+        "CB",
+        "CDM",
+        "CM"
+      ],
+      "nation": 34,
+      "nation_name": "Netherlands",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 942161456606,
+      "name": "Reed",
+      "rating": 72,
+      "positions": [
+        "CDM",
+        "CM"
+      ],
+      "nation": 14,
+      "nation_name": "England",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950425660084,
+      "name": "Tchatchoua",
+      "rating": 72,
+      "positions": [
+        "RB",
+        "RM"
+      ],
+      "nation": 103,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950414289469,
+      "name": "Zaracho",
+      "rating": 72,
+      "positions": [
+        "RM",
+        "CM",
+        "CAM",
+        "RW"
+      ],
+      "nation": 52,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 949775794155,
+      "name": "Dejaegere",
+      "rating": 71,
+      "positions": [
+        "CM",
+        "LM",
+        "CAM"
+      ],
+      "nation": 7,
+      "nation_name": "Belgium",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 949356296496,
+      "name": "Johnsen",
+      "rating": 71,
+      "positions": [
+        "LM",
+        "CAM",
+        "ST",
+        "LW"
+      ],
+      "nation": 36,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 943287889964,
+      "name": "Marquinhos",
+      "rating": 71,
+      "positions": [
+        "LM",
+        "CAM",
+        "LW"
+      ],
+      "nation": 54,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 949775794154,
+      "name": "Oyedele",
+      "rating": 71,
+      "positions": [
+        "CDM",
+        "CM"
+      ],
+      "nation": 37,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 948713184888,
+      "name": "Zeca",
+      "rating": 71,
+      "positions": [
+        "LM",
+        "CAM",
+        "ST",
+        "LW"
+      ],
+      "nation": 54,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 951825221096,
+      "name": "Diarra",
+      "rating": 70,
+      "positions": [
+        "LM",
+        "RW",
+        "LW"
+      ],
+      "nation": 126,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 945127212643,
+      "name": "El Azzouzi",
+      "rating": 70,
+      "positions": [
+        "CDM",
+        "CM"
+      ],
+      "nation": 129,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 948511360748,
+      "name": "Irankunda",
+      "rating": 70,
+      "positions": [
+        "RM",
+        "LM",
+        "RW",
+        "ST",
+        "LW"
+      ],
+      "nation": 195,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950073744072,
+      "name": "Kotyk",
+      "rating": 70,
+      "positions": [
+        "CB"
+      ],
+      "nation": 49,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 949775814935,
+      "name": "Medina",
+      "rating": 70,
+      "positions": [
+        "LB",
+        "LM",
+        "LW"
+      ],
+      "nation": 57,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 948934733846,
+      "name": "Small",
+      "rating": 70,
+      "positions": [
+        "RB",
+        "LB",
+        "RM",
+        "LM"
+      ],
+      "nation": 14,
+      "nation_name": "England",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 949775814931,
+      "name": "Darikwa",
+      "rating": 69,
+      "positions": [
+        "RB",
+        "RM"
+      ],
+      "nation": 148,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 949775794144,
+      "name": "Delcroix",
+      "rating": 69,
+      "positions": [
+        "CB",
+        "LB",
+        "CDM"
+      ],
+      "nation": 80,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950073744069,
+      "name": "Robert",
+      "rating": 69,
+      "positions": [
+        "LM",
+        "LW"
+      ],
+      "nation": 54,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950073744071,
+      "name": "Tempelmann",
+      "rating": 69,
+      "positions": [
+        "CM",
+        "CAM"
+      ],
+      "nation": 21,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 950073744067,
+      "name": "Collins",
+      "rating": 68,
+      "positions": [
+        "RB",
+        "CB",
+        "LB",
+        "CDM"
+      ],
+      "nation": 70,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 949776064743,
+      "name": "Diogo Nascimento",
+      "rating": 68,
+      "positions": [
+        "CDM",
+        "CM",
+        "CAM"
+      ],
+      "nation": 38,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 945127212642,
+      "name": "Hugo González",
+      "rating": 68,
+      "positions": [
+        "RB",
+        "RM",
+        "LM",
+        "RW"
+      ],
+      "nation": 45,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 949775794163,
+      "name": "Luquinhas",
+      "rating": 68,
+      "positions": [
+        "CDM",
+        "CM",
+        "LM",
+        "LW"
+      ],
+      "nation": 54,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 943297761357,
+      "name": "Thomas",
+      "rating": 68,
+      "positions": [
+        "CB",
+        "LB"
+      ],
+      "nation": 14,
+      "nation_name": "England",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 943297761353,
+      "name": "Bayliss",
+      "rating": 67,
+      "positions": [
+        "CDM",
+        "CM",
+        "CAM"
+      ],
+      "nation": 14,
+      "nation_name": "England",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 949775747330,
+      "name": "McCammon",
+      "rating": 67,
+      "positions": [
+        "CDM",
+        "CM"
+      ],
+      "nation": 95,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 942159670097,
+      "name": "Patiño",
+      "rating": 67,
+      "positions": [
+        "CDM",
+        "CM",
+        "CAM"
+      ],
+      "nation": 14,
+      "nation_name": "England",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 949774796753,
+      "name": "Lebarbier",
+      "rating": 63,
+      "positions": [
+        "CDM",
+        "CM"
+      ],
+      "nation": 18,
+      "nation_name": "France",
+      "loan": false,
+      "owned": true,
+      "price": null
+    },
+    {
+      "key": 946548467102,
+      "name": "Miguel Cubo",
+      "rating": 63,
+      "positions": [
+        "ST"
+      ],
+      "nation": 45,
+      "nation_name": null,
+      "loan": false,
+      "owned": true,
+      "price": null
+    }
+  ]
+}

@@ -2,7 +2,7 @@
 //! club pages. Pure parsing (no I/O, no clock) – the app's store and the browser version
 //! (web-core) both use it.
 
-use crate::types::{GalleryCard, Item};
+use crate::types::{GalleryCard, Item, PlayData};
 use serde_json::Value;
 
 pub(crate) const GALLERY_PREFIX: &str = "fct://gallery/";
@@ -26,6 +26,7 @@ pub(crate) fn parse_gallery_card(v: &Value) -> Option<GalleryCard> {
         positions: Vec::new(),
         team_name: v.get("teamName").and_then(Value::as_str).map(str::to_string),
         holo: v.get("holo").and_then(Value::as_bool).unwrap_or(false),
+        face: Vec::new(),
     })
 }
 
@@ -55,6 +56,12 @@ pub(crate) fn parse_raw_concept_card(v: &Value) -> Option<GalleryCard> {
             .unwrap_or_default(),
         team_name: None,
         holo: v.get("hyperCosmetics").and_then(Value::as_object).is_some_and(|o| !o.is_empty()),
+        face: v
+            .get("attributeArray")
+            .and_then(Value::as_array)
+            .map(|a| a.iter().filter_map(Value::as_u64).map(|x| x.min(99) as u8).collect::<Vec<_>>())
+            .filter(|a| a.len() == 6)
+            .unwrap_or_default(),
     })
 }
 
@@ -80,6 +87,9 @@ impl GalleryCard {
             self.positions = old.positions.clone();
         }
         self.team_name = self.team_name.take().or_else(|| old.team_name.clone());
+        if self.face.is_empty() {
+            self.face = old.face.clone();
+        }
         self
     }
 }
@@ -167,7 +177,32 @@ pub(crate) fn parse_item(v: &Value, now: u64) -> Option<Item> {
             .map(|a| a.iter().filter_map(Value::as_u64).collect::<Vec<_>>())
             .filter(|a| !a.is_empty()),
         assists: v.get("lifetimeAssists").and_then(Value::as_u64),
+        play: parse_play(v),
         last_seen: now,
+    })
+}
+
+/// A club player's in-game data – only EA's raw club items carry it.
+fn parse_play(v: &Value) -> Option<PlayData> {
+    let positions: Vec<String> =
+        v.get("possiblePositions").and_then(Value::as_array).map(|a| a.iter().filter_map(Value::as_str).map(str::to_string).collect()).unwrap_or_default();
+    let nums = |k: &str| v.get(k).and_then(Value::as_array).map(|a| a.iter().filter_map(Value::as_u64).collect::<Vec<_>>()).unwrap_or_default();
+    let face = nums("attributeArray");
+    if positions.is_empty() && face.is_empty() {
+        return None;
+    }
+    Some(PlayData {
+        def_id: v.get("resourceId").and_then(Value::as_u64).filter(|&d| d > 0),
+        positions,
+        face,
+        ps: nums("baseTraits"),
+        ps_plus: nums("iconTraits"),
+        roles_plus: nums("plusRoles"),
+        roles_pp: nums("plusPlusRoles"),
+        weak_foot: v.get("weakfootabilitytypecode").and_then(Value::as_u64),
+        skill_moves: v.get("skillmoves").and_then(Value::as_u64).map(|s| s + 1),
+        loans: v.get("loans").and_then(Value::as_u64),
+        foot: v.get("preferredfoot").and_then(Value::as_u64),
     })
 }
 

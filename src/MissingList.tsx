@@ -6,6 +6,7 @@ import { t, useLocale, type MessageKey } from "./i18n";
 import { Gem } from "./icons";
 import { useTheme } from "./theme";
 import { ShoppingPanel } from "./shopping";
+import { SquadQuick } from "./Squads";
 import "./overlay.css";
 
 /** Rows of "Best for your coins": the side window can't scroll (it never takes the mouse), so it
@@ -15,7 +16,7 @@ const SHOWN_EMBEDDED = 30;
 /** From this many cards the best selection uses dense rows (30-slot league sets fit). */
 const DENSE_FROM = 16;
 
-type Tab = "best" | "buy" | "shop";
+type Tab = "best" | "buy" | "shop" | "squad";
 
 /** The overlay's last tab (Overlay.tsx keeps it in fct.section) – same origin, so readable here. */
 function lastSection(): string | null {
@@ -57,7 +58,9 @@ export default function MissingList({ embedded = false }: { embedded?: boolean }
   const [loading, setLoading] = useState(true);
   const [side, setSide] = useState<"left" | "right">("left");
   // A tab picked by hand holds for that set; another set starts from the automatic choice.
-  const [picked, setPicked] = useState<{ key: string; tab: Tab } | null>(() => (lastSection() === "planner" ? { key: "", tab: "shop" } : null));
+  // opened from the Planner: the shopping list; from Squads: the squad checklist
+  const fromSection = (): { key: string; tab: Tab } | null => (lastSection() === "planner" ? { key: "", tab: "shop" } : lastSection() === "squads" ? { key: "", tab: "squad" } : null);
+  const [picked, setPicked] = useState<{ key: string; tab: Tab } | null>(fromSection);
   useEffect(() => {
     api.uiPrefs().then((p) => setSide(p.missing_side)).catch(() => {});
   }, []);
@@ -89,11 +92,13 @@ export default function MissingList({ embedded = false }: { embedded?: boolean }
       events.onMissingSet(() => load()),
       events.onGalleryUpdated(() => document.visibilityState === "visible" && load()),
       events.onSyncDone(() => load()),
+      // the game shows an event's hub: its squad checklist
+      events.onSquadsFocus(() => setPicked({ key: "", tab: "squad" })),
       // opened again: the tab follows what the app knows (a hand-picked tab doesn't stick)
       events.onMissingVisible((v) => {
         if (v) {
-          // opened from the Planner (the overlay's last tab): the shopping list, else what the app knows
-          setPicked(lastSection() === "planner" ? { key: "", tab: "shop" } : null);
+          // opened from the Planner / Squads (the overlay's last tab): its view, else what the app knows
+          setPicked(fromSection());
           load();
         }
       }),
@@ -104,13 +109,39 @@ export default function MissingList({ embedded = false }: { embedded?: boolean }
     };
   }, [load]);
 
-  if (!list) {
+  const squadTab = (on: boolean, choose: (t: Tab) => void) => (
+    <button role="tab" aria-selected={on} className={on ? "on" : ""} onClick={() => choose("squad")}>
+      {t("squads.tab")}
+    </button>
+  );
+
+  if (!list || picked?.tab === "squad") {
+    const squad = picked?.tab === "squad";
     return (
       <div className={`ml ${embedded || IS_WEB ? "embedded" : ""}`}>
-        <div className="ml-top">{sideSwitch}</div>
+        <div className="ml-top">
+          <div className="ml-tabs" role="tablist" aria-label={t("best.tabs")}>
+            {list && (
+              <button role="tab" aria-selected={false} onClick={() => setPicked({ key: list.key, tab: autoTab(list) })}>
+                {list.name}
+              </button>
+            )}
+            <button role="tab" aria-selected={picked?.tab === "shop"} className={picked?.tab === "shop" ? "on" : ""} onClick={() => setPicked({ key: "", tab: "shop" })}>
+              {t("missing.shopTab")}
+            </button>
+            {squadTab(squad, () => setPicked({ key: "", tab: "squad" }))}
+          </div>
+          {sideSwitch}
+        </div>
+        {squad ? (
+          <SquadQuick />
+        ) : picked?.tab === "shop" ? (
+          <ShoppingPanel />
+        ) : (
         <div className="ml-frame">
           {loading ? <p className="ml-empty ml-loading">{t("progress.calculating")}</p> : <p className="ml-empty">{t("missing.empty")}</p>}
         </div>
+        )}
       </div>
     );
   }
@@ -132,6 +163,7 @@ export default function MissingList({ embedded = false }: { embedded?: boolean }
         <button role="tab" aria-selected={tab === "shop"} className={tab === "shop" ? "on" : ""} onClick={() => choose("shop")}>
           {t("missing.shopTab")}
         </button>
+        {squadTab(false, choose)}
       </div>
       {sideSwitch}
       </div>
@@ -153,6 +185,11 @@ function Rating({ card }: { card: GalleryCardView }) {
 function Best({ list, best }: { list: ShoppingList; best: BestSelection }) {
   const putIn = best.cards.filter((c) => c.in_selection === false).length;
   const dense = best.cards.length >= DENSE_FROM;
+  // the card it replaces – by name, or by its slot while the game hasn't named it yet
+  const replacedBy = (id: number) => {
+    const out = (best.swaps ?? []).find((s) => s.into.def_id === id)?.out;
+    return out ? (out.name ?? (out.slot != null ? t("swaps.slot", { n: out.slot + 1 }) : null)) : null;
+  };
   // the cards to put in first, then the rest (each by points)
   const cards = [...best.cards].sort((a, b) => Number(b.in_selection === false) - Number(a.in_selection === false));
   const status =
@@ -211,6 +248,7 @@ function Best({ list, best }: { list: ShoppingList; best: BestSelection }) {
         </header>
 
       <ol className={`ml-list ${dense ? "dense" : ""}`}>
+        {/* one card per row with room to read it; a card to put in says what it replaces */}
         {cards.map(({ card, in_selection }, i) => (
           <li
             key={card.def_id}
@@ -220,7 +258,7 @@ function Best({ list, best }: { list: ShoppingList; best: BestSelection }) {
             <Rating card={card} />
             <span className="ml-name">
               {card.name ?? (card.slot != null ? t("swaps.slot", { n: card.slot + 1 }) : "?")}
-              {!dense && <small>{card.position ?? ""}</small>}
+              <small>{card.position ?? ""}</small>
               {["known", "manual", "scanned"].includes(card.first_owner) && (
                 <span className="ml-fo" title={t("best.firstOwner")}>
                   1
@@ -231,11 +269,15 @@ function Best({ list, best }: { list: ShoppingList; best: BestSelection }) {
               <Gem size={9} />
               {compact(card.score)}
             </span>
-            {!dense && (
-              <span className="ml-price">
-                {in_selection === false ? <span className="ml-putin">{t("best.putIn")}</span> : in_selection ? <span className="ml-in">✓</span> : null}
-              </span>
-            )}
+            <span className="ml-price">
+              {in_selection === false ? (
+                <span className="ml-putin" title={replacedBy(card.def_id) ?? undefined}>
+                  {replacedBy(card.def_id) ? t("best.putInFor", { name: replacedBy(card.def_id)! }) : t("best.putInFree")}
+                </span>
+              ) : in_selection ? (
+                <span className="ml-in">✓</span>
+              ) : null}
+            </span>
           </li>
         ))}
       </ol>

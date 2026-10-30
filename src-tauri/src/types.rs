@@ -70,6 +70,20 @@ pub fn own_prices_since(prices: &BTreeMap<u64, Price>, since: u64, max: usize) -
     v
 }
 
+/// The lowest Buy Now prices this user saw in their own market results after `since` (ms),
+/// newest first – [definition id, lowest Buy Now, seen at]. Only market observations (they come
+/// with EA's average); a price the user paid travels as a purchase instead.
+pub fn own_bins_since(prices: &BTreeMap<u64, Price>, since: u64, max: usize) -> Vec<[u64; 3]> {
+    let mut v: Vec<[u64; 3]> = prices
+        .iter()
+        .filter(|(_, p)| !p.shared && p.at > since && p.bin > 0 && p.avg.is_some())
+        .map(|(&id, p)| [id, p.bin, p.at])
+        .collect();
+    v.sort_by(|a, b| b[2].cmp(&a[2]));
+    v.truncate(max);
+    v
+}
+
 /// A price paid for a card (Buy Now on the transfer market) – this user's own purchase, or the
 /// shared pool of purchases on the platform. Fills only cards without EA's average: EA's average
 /// stays first, a paid price is better than none (a card nobody had seen got a price at once –
@@ -160,6 +174,10 @@ pub struct GalleryCard {
     /// Only special cards can be holographic (verified 2026-10-13: 402 same-player pairs, all ×1.5).
     #[serde(default)]
     pub holo: bool,
+    /// The six face stats (EA `attributeArray`, the card database's raw data) – Objective squads
+    /// rate cards to get with them.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub face: Vec<u8>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -190,7 +208,45 @@ pub struct Item {
     /// Lifetime assists of a player (`lifetimeAssists`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub assists: Option<u64>,
+    /// What a squad needs to know about a player (raw club data) – Objective squads (SQUADS.md).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub play: Option<PlayData>,
     pub last_seen: u64,
+}
+
+/// A club player's in-game data from EA's raw club items.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+pub struct PlayData {
+    /// The card definition (`resourceId`) – special cards differ from the base player's `assetId`.
+    #[serde(default)]
+    pub def_id: Option<u64>,
+    /// EA `possiblePositions`.
+    #[serde(default)]
+    pub positions: Vec<String>,
+    /// The six face stats (`attributeArray`): PAC SHO PAS DRI DEF PHY (a keeper: DIV HAN KIC REF SPD POS).
+    #[serde(default)]
+    pub face: Vec<u64>,
+    /// PlayStyles (`baseTraits`) and PlayStyles+ (`iconTraits`).
+    #[serde(default)]
+    pub ps: Vec<u64>,
+    #[serde(default)]
+    pub ps_plus: Vec<u64>,
+    /// Roles + and ++ (`plusRoles`, `plusPlusRoles`).
+    #[serde(default)]
+    pub roles_plus: Vec<u64>,
+    #[serde(default)]
+    pub roles_pp: Vec<u64>,
+    #[serde(default)]
+    pub weak_foot: Option<u64>,
+    /// Stars (EA sends stars − 1).
+    #[serde(default)]
+    pub skill_moves: Option<u64>,
+    /// Matches left on a loan item; none for owned cards.
+    #[serde(default)]
+    pub loans: Option<u64>,
+    /// EA `preferredfoot`: 1 = right, 2 = left.
+    #[serde(default)]
+    pub foot: Option<u64>,
 }
 
 #[cfg(test)]

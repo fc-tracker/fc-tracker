@@ -199,3 +199,17 @@ export function champsClock(data: ChampsData | null, now: number): Clock {
   return { live: now >= ends - WINDOW, ends, opens: ends - WINDOW, exact: false };
 }
 
+
+// ---- the rank ladder: a weekend's rank by wins only (15 ranks), with the Season 1 rewards
+// (published FC 27 table: coins and Champions tokens per rank). The hub shows the rank being played
+// for, so the rank shown is worked out from the wins.
+export const RANK_TIERS = ["Contender", "Champion", "Elite"] as const;
+const NUMERALS = ["V", "IV", "III", "II", "I"];
+export const RANKS = RANK_TIERS.flatMap((tier) => NUMERALS.map((n) => `${tier} ${n}`));
+export const REWARDS: { coins: number; tokens: number }[] = [
+  [0, 15], [0, 20], [0, 30], [0, 40], [2_500, 50],
+  [5_000, 60], [10_000, 75], [15_000, 90], [25_000, 110], [35_000, 135],
+  [50_000, 165], [75_000, 215], [105_000, 275], [145_000, 350], [250_000, 450],
+].map(([coins, tokens]) => ({ coins, tokens }));
+/** The rank 1–15 wins earn (null for 0 wins). */
+export const rankFor = (wins: number): string | null => (wins >= 1 && wins <= 15 ? RANKS[wins - 1] : null);

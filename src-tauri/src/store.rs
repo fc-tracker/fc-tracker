@@ -245,6 +245,7 @@ impl Item {
         self.rareflag = self.rareflag.or(old.rareflag);
         self.stats = self.stats.take().or_else(|| old.stats.clone());
         self.assists = self.assists.or(old.assists);
+        self.play = self.play.take().or_else(|| old.play.clone());
         self
     }
 }
@@ -389,6 +390,43 @@ impl Store {
         self.paid_new.push([def_id, price, now]);
         self.bump();
         self.dirty = true;
+    }
+
+    /// Data another device of the same FC-Tracker account synced (account.rs): merged like a
+    /// second copy of the app folder – facts are unions, the newer read wins. A snapshot of a
+    /// different market (PC vs console) is another EA account and is never mixed in.
+    /// `replace` (the user chose the cloud's data when the two disagreed): it becomes this PC's.
+    pub fn absorb_synced(&mut self, other: Snapshot, replace: bool) -> Result<(), String> {
+        if replace {
+            let version = self.snapshot.first_owner_version + other.first_owner_version + 1;
+            self.snapshot = other;
+            self.snapshot.first_owner_version = version;
+        } else {
+            if let (Some(a), Some(b)) = (&self.snapshot.platform, &other.platform) {
+                if a != b {
+                    return Err("sync_other_account".into());
+                }
+            }
+            if self.snapshot.platform.is_none() {
+                self.snapshot.platform = other.platform.clone();
+            }
+            crate::merge::merge(&mut self.snapshot, other);
+        }
+        self.bump();
+        self.save();
+        Ok(())
+    }
+
+    /// The Web App data another device of the account synced (merged, or – `replace` – taken).
+    pub fn absorb_synced_web(&mut self, other: crate::webdata::WebData, replace: bool) {
+        if replace {
+            self.web = other;
+        } else {
+            self.web.merge(other);
+        }
+        self.web_dirty = true;
+        self.bump();
+        self.save();
     }
 
     /// Prices other users on the same platform paid (the shared pool of purchases).

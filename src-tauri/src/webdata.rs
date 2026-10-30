@@ -76,6 +76,18 @@ pub struct WebData {
     /// EA text key → the text the Web App shows for it ("FC27_S1_OWW_COMP_GROUP" → "Ones We Watched").
     #[serde(default)]
     pub texts: BTreeMap<String, String>,
+    /// Objective squads (SQUADS.md), read in the page by the extension: the open objective groups
+    /// with their objectives (texts as the Web App shows them), the league / club / nation names
+    /// of the user's language, and the game's formations.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub objectives: Option<Latest>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub names: Option<Latest>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub formations: Option<Latest>,
+    /// The club players' in-game attributes (the player bio's data), merged over syncs.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub attributes: Option<Latest>,
 }
 
 impl WebData {
@@ -92,6 +104,44 @@ impl WebData {
         }
     }
 
+    /// What another device of the same account saw on the Web App (account sync): the newer
+    /// response wins per request, card sources are unions, the first known origin stays.
+    pub fn merge(&mut self, other: WebData) {
+        let newer = |a: &Option<Latest>, b: &Option<Latest>| b.as_ref().map(|l| l.at) > a.as_ref().map(|l| l.at);
+        for (k, v) in other.latest {
+            if self.latest.get(&k).is_none_or(|l| v.at > l.at) {
+                self.latest.insert(k, v);
+            }
+        }
+        for (id, list) in other.sources {
+            let mine = self.sources.entry(id).or_default();
+            for s in list {
+                if !mine.contains(&s) {
+                    mine.push(s);
+                }
+            }
+        }
+        if other.club.as_ref().map(|c| c.seen_at) > self.club.as_ref().map(|c| c.seen_at) {
+            self.club = other.club;
+        }
+        for (k, v) in other.origin {
+            self.origin.entry(k).or_insert(v);
+        }
+        for (k, v) in other.texts {
+            self.texts.entry(k).or_insert(v);
+        }
+        for (mine, theirs) in [
+            (&mut self.objectives, other.objectives),
+            (&mut self.names, other.names),
+            (&mut self.formations, other.formations),
+            (&mut self.attributes, other.attributes),
+        ] {
+            if newer(mine, &theirs) {
+                *mine = theirs;
+            }
+        }
+    }
+
     /// One Web App response. True when something was kept.
     pub fn ingest(&mut self, url: &str, body: &Value, now: u64) -> bool {
         if url == "fct://webapp/texts" {
@@ -102,6 +152,33 @@ impl WebData {
                 }
             }
             return n > 0;
+        }
+        let slot = match url {
+            "fct://webapp/objectives" => Some(&mut self.objectives),
+            "fct://webapp/names" => Some(&mut self.names),
+            "fct://webapp/formations" => Some(&mut self.formations),
+            _ => None,
+        };
+        if let Some(slot) = slot {
+            *slot = Some(Latest { at: now, body: body.clone() });
+            return true;
+        }
+        if url == "fct://webapp/attributes" {
+            // cards read earlier stay (a sync only asks for new ones)
+            let mut merged = self.attributes.take().map(|l| l.body).unwrap_or_else(|| serde_json::json!({}));
+            for k in ["names", "traits"] {
+                if let Some(v) = body.get(k).filter(|v| v.as_object().is_some_and(|o| !o.is_empty())) {
+                    merged[k] = v.clone();
+                }
+            }
+            if !merged.get("cards").is_some_and(Value::is_object) {
+                merged["cards"] = serde_json::json!({});
+            }
+            for (id, c) in body.get("cards").and_then(Value::as_object).into_iter().flatten() {
+                merged["cards"][id] = c.clone();
+            }
+            self.attributes = Some(Latest { at: now, body: merged });
+            return true;
         }
         if url.starts_with("fct://") {
             return false;

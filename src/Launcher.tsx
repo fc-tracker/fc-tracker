@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { api, events, formatAge, olderThan, syncAllowed, type BridgeInfo, type GameSession, type SetupStatus, type SyncSummary, type UpdateInfo, type AfterPlay } from "./api";
+import { api, events, formatAge, olderThan, syncAllowed, type BridgeInfo, type GameSession, type SetupStatus, type SyncSummary, type AfterPlay } from "./api";
 import { LOCALE_NAMES, t, tError, useLocale, type Locale, type MessageKey } from "./i18n";
 import Help from "./Help";
 import { SupportButton } from "./Support";
@@ -9,6 +9,10 @@ import { initUsage, onlineNow, setUsageEnabled, startPresence, track, trackOnce,
 import { boardName, champsNewsState, NAME_RE, setBoardName, setChampsNewsState, uploadWeekend, type ChampsNews } from "./championsBoard";
 import { startPrices } from "./prices";
 import { startGallerySets } from "./gallerySets";
+import { Account } from "./AccountSettings";
+import { startAccount } from "./account";
+import SyncConflict from "./SyncConflict";
+import { RequiredUpdate, useUpdate } from "./UpdateRequired";
 
 // Usage statistics run in the real app only (the launcher window lives as long as the app does).
 const inApp = "__TAURI_INTERNALS__" in window;
@@ -32,7 +36,8 @@ export default function Launcher() {
   const [message, setMessage] = useState<Message>(null);
   const [busy, setBusy] = useState(false);
   const [session, setSession] = useState<GameSession>("unknown");
-  const [update, setUpdate] = useState<UpdateInfo | null>(null);
+  // the update watcher's news arrives at once (updates.rs) – no reload needed
+  const update = useUpdate();
   const [updating, setUpdating] = useState(false);
   const [version, setVersion] = useState("");
   const [afterPlay, setAfterPlay] = useState<AfterPlay>("remind");
@@ -44,7 +49,7 @@ export default function Launcher() {
       un.then((u) => u());
     };
   }, []);
-  const [settingsTab, setSettingsTab] = useState<"general" | "speed">("general");
+  const [settingsTab, setSettingsTab] = useState<"general" | "account" | "speed">("general");
   const [missingSide, setMissingSide] = useState<"left" | "right">("left");
   const [autostart, setAutostart] = useState<boolean | null>(null);
   const [usageOn, setUsageOn] = useState(usageEnabled);
@@ -103,13 +108,8 @@ export default function Launcher() {
     api.setLocale(locale).catch(() => {});
   }, [locale]);
 
-  // New releases: checked at start and every 6 hours; installed only when the user clicks.
   useEffect(() => {
     api.appVersion().then(setVersion).catch(() => {});
-    const check = () => api.checkUpdate().then(setUpdate).catch(() => {});
-    check();
-    const id = setInterval(check, 6 * 60 * 60 * 1000);
-    return () => clearInterval(id);
   }, []);
 
   async function installUpdate() {
@@ -154,6 +154,7 @@ export default function Launcher() {
       startPresence("app");
       startPrices();
       startGallerySets();
+      void startAccount();
     })();
     const unlisten = [
       events.onPaired(() => trackOnce("extension-connected")),
@@ -235,9 +236,12 @@ export default function Launcher() {
   // "unknown" stays clickable: the app then looks at the game behind the launcher right away.
   const canSync = paired && (!running || syncAllowed(session) || session === "unknown");
   const extOutdated = !!(paired && bridge?.extension_version && olderThan(bridge.extension_version, bridge.extension_latest));
+  // older than the app needs: the extension was told to update itself (it reloads within a minute)
+  const extRequired = !!(paired && bridge?.extension_version && bridge.extension_required && olderThan(bridge.extension_version, bridge.extension_required));
 
   return (
     <div className="ln">
+      <SyncConflict />
       <aside className="ln-rail">
         <Logo />
         <nav className="ln-nav">
@@ -265,7 +269,16 @@ export default function Launcher() {
           </span>
         </header>
 
-        {update && (
+        {update?.required && <RequiredUpdate update={update} running={running} />}
+        {extRequired && (
+          <div className="ln-update required" role="alert">
+            <span className="ln-update-mark" aria-hidden="true" />
+            <p>
+              <b>{t("update.ext.required", { version: bridge?.extension_required ?? "" })}</b> {t("update.ext.requiredText")}
+            </p>
+          </div>
+        )}
+        {update && !update.required && (
           <div className="ln-update" role="status">
             <span className="ln-update-mark" aria-hidden="true" />
             <p>
@@ -424,14 +437,15 @@ export default function Launcher() {
             <h1>{t("nav.settings")}</h1>
             <nav className="help-bar settings-tabs" aria-label={t("nav.settings")}>
               <span className="help-tabs">
-                {(["general", "speed"] as const).map((tab) => (
+                {(["general", "account", "speed"] as const).map((tab) => (
                   <button key={tab} className={settingsTab === tab ? "on" : ""} aria-pressed={settingsTab === tab} onClick={() => setSettingsTab(tab)}>
-                    {t(tab === "general" ? "settings.general" : "speed.tab")}
+                    {t(tab === "general" ? "settings.general" : tab === "account" ? "settings.account" : "speed.tab")}
                   </button>
                 ))}
               </span>
             </nav>
             {settingsTab === "speed" && <Speed />}
+            {settingsTab === "account" && <Account />}
             {settingsTab === "general" && (
             <>
             <div className="ln-form">

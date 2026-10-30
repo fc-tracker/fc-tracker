@@ -1,0 +1,67 @@
+/* The dashboard (src/dashboard/Dashboard.tsx). Theme tokens only; FC language: cut corners. */
+html.dash-page, html.dash-page body { min-height: 100%; background: var(--glow, none), var(--bg); color: var(--text); }
+html.dash-page body { margin: 0; font-family: var(--font-body); }
+
+.dash { min-height: 100vh; display: flex; flex-direction: column; }
+.dash-bar {
+  position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 18px;
+  height: 56px; padding: 0 16px; background: var(--bg-2, var(--bg)); border-bottom: 1px solid var(--line);
+}
+.dash-tabs { display: flex; gap: 4px; }
+.dash-tabs button {
+  all: unset; cursor: pointer; height: 36px; padding: 0 14px; display: inline-flex; align-items: center;
+  font: 700 15px var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted);
+  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+}
+.dash-tabs button:hover, .dash-tabs button:focus-visible { color: var(--text); background: var(--surface); }
+.dash-tabs button.on { color: var(--on-accent); background: var(--accent); }
+.dash-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+
+.dash-pad { padding: 24px 16px 48px; width: min(1180px, 100%); margin: 0 auto; box-sizing: border-box; }
+.dash-narrow { width: min(720px, 100%); }
+.dash-muted { color: var(--muted); }
+.dash-card { width: 100%; box-sizing: border-box; }
+
+.dash-hero { display: flex; align-items: center; gap: 18px; margin-bottom: 22px; }
+.dash-hero h1 { margin: 0; font: 700 34px/1.05 var(--font-display); text-transform: uppercase; letter-spacing: 0.02em; }
+.dash-hero p { margin: 4px 0 0; font-size: 14px; }
+.dash-hero .wb-btn { margin-left: auto; }
+
+.dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+.dash-tile {
+  --cut: 14px;
+  padding: 16px 18px; background: var(--surface); border: 1px solid var(--line); display: grid; gap: 12px; align-content: start;
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+}
+.dash-tile > header { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.dash-tile h2 { margin: 0; font: 700 20px var(--font-display); text-transform: uppercase; letter-spacing: 0.05em; }
+.dash-sub { margin: 4px 0 0; font: 600 11px var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.dash-link { all: unset; cursor: pointer; font: 700 12px var(--font-body); color: var(--accent-2, var(--accent)); }
+.dash-link:hover, .dash-link:focus-visible { text-decoration: underline; }
+.dash-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.dash-stat { display: grid; gap: 2px; padding: 10px 12px; background: var(--surface-hi); }
+.dash-stat b { font: 700 24px/1 var(--font-display); }
+.dash-stat small { color: var(--muted); font-size: 12px; }
+.dash-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.dash-list li { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
+.dash-list small { color: var(--muted); text-align: right; }
+.dash-tile .sq-saved { margin-top: 4px; }
+.dash-tile .sq-saved h3 { font-size: 15px; }
+
+.dash-tracker { flex: 1; min-height: 0; display: flex; }
+.dash-tracker .ov { flex: 1; }
+
+.dash-signin { width: min(560px, 100%); margin: 8vh auto 48px; padding: 0 16px; box-sizing: border-box; }
+.dash-signin h1 { margin: 0 0 6px; font: 700 40px/1 var(--font-display); text-transform: uppercase; }
+.dash-signin > p { margin: 0 0 18px; color: var(--muted); }
+
+@media (max-width: 720px) {
+  .dash-bar { flex-wrap: wrap; height: auto; padding: 10px 16px; gap: 10px; }
+  .dash-tabs { order: 3; width: 100%; overflow-x: auto; }
+  .dash-actions .wb-btn { display: none; }
+  .dash-stats { grid-template-columns: repeat(2, 1fr); }
+  .dash-hero { flex-wrap: wrap; }
+  .dash-hero h1 { font-size: 28px; }
+}
+/* the tracker inside the dashboard: the dashboard bar has the profile menu already */
+.dash-tracker .ov-header .me-btn { display: none; }

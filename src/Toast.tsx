@@ -150,6 +150,18 @@ export default function Toast() {
     );
   }
 
+  if (toast.kind === "squads") {
+    return (
+      <div className="toast read best" key="squads" role="status">
+        <span className="toast-mark read" aria-hidden="true" />
+        <div className="toast-body">
+          <p className="toast-title">{t("squads.notice.title", { event: toast.event })}</p>
+          <p className="toast-line">{t("squads.notice.line")}</p>
+        </div>
+      </div>
+    );
+  }
+
   if (toast.kind === "recording") {
     return (
       <div className="toast better" key="recording" role="status">

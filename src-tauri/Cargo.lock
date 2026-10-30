@@ -997,8 +997,10 @@ checksum = "da7c62ceae207dd37ea5b845da6a0696c799f85e97da1ab5b7910be3c1c80223"
 
 [[package]]
 name = "fc-tracker"
-version = "0.1.73"
+version = "0.1.74"
 dependencies = [
+ "base64 0.22.1",
+ "flate2",
  "getrandom 0.3.4",
  "gilrs",
  "serde",

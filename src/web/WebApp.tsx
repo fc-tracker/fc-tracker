@@ -8,6 +8,8 @@ import { useTheme } from "../theme";
 import { captureDevices, onClub, startCapture, stopCapture, syncClub, webApi, webClub, webEvents, webStatus, webStream, type ClubSync, type Source, type WebStatus } from "./backend";
 import { formatAge } from "../api";
 import type { Box } from "./reader";
+import WebUpdate from "./WebUpdate";
+import SyncConflict from "../SyncConflict";
 
 const DOWNLOAD = "/download";
 const EXTENSION = "/download/extension";
@@ -274,6 +276,7 @@ export default function WebApp() {
       </div>
 
       <Preview status={status} />
+      <WebUpdate />
 
       {intro && !live && !picker && (
         <section className="wb-intro" aria-labelledby="wb-intro-t">
@@ -292,6 +295,7 @@ export default function WebApp() {
         </section>
       )}
 
+      <SyncConflict />
       {picker && <SourcePicker onClose={() => setPicker(false)} />}
       {nudge && <Nudge ms={status.ms} onLater={() => setNudgeAt(status.reads + NUDGE_EVERY)} />}
 

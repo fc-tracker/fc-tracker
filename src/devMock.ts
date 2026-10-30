@@ -111,3 +111,28 @@ export const demoChampions = (): ChampsData => {
   return (e.runs[0].ends_at ?? 0) > Date.now() ? e : { runs: [], me: e.me, last_hub: null, pending: null };
 };
 export const mockChampionsEmpty: ChampsData = { runs: [], me: { gamertag: null, clubs: [], abbrs: [] }, last_hub: null, pending: null };
+
+// Objective squads: the real plan the engine made from the user's club for the FC Heritage Circuit
+// events (squads.rs `real_club_heritage_events`, FCT_SQUADS_OUT → src/squadsDemo.json).
+import type { ClubEntry, SquadPrefs, SquadsView } from "./squadsData";
+import squadsDemo from "./squadsDemo.json";
+// ?squads-gaps: the same club with two leagues left out – shows the realistic options (design only)
+import squadsGaps from "./squadsGapsDemo.json";
+let squadPrefs: SquadPrefs | null = null;
+export const mockSquads = (): SquadsView => {
+  const gaps = typeof location !== "undefined" && new URLSearchParams(location.search).has("squads-gaps");
+  const v = (gaps ? squadsGaps : squadsDemo) as unknown as SquadsView;
+  return { ...v, read_at: Date.now() - 12 * 60_000, prefs: squadPrefs ?? v.prefs };
+};
+// the demo has no catalog: the cards the demo plan suggests stand in for a search
+export const mockSquadsSearch = (q: string): ClubEntry[] => {
+  const opts = (squadsGaps as unknown as SquadsView).events.flatMap((e) => e.reqs.flatMap((r) => r.options));
+  const w = q.toLowerCase();
+  return opts
+    .filter((o) => o.name.toLowerCase().includes(w))
+    .map((o) => ({ key: o.def_id, name: o.name, rating: o.rating, positions: [o.pos], nation: o.nation, nation_name: o.nation_name, loan: false, owned: false, price: o.price }));
+};
+export const setMockSquadPrefs = (p: SquadPrefs) => {
+  squadPrefs = p;
+  return { mode: "panel" as const, missing_side: "left" as const, after_play: "remind" as const, squads: p };
+};

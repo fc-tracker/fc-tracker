@@ -1,0 +1,83 @@
+/* The account UI (src/AccountSettings.tsx, src/SyncConflict.tsx) – in the launcher and on
+   FC-Tracker Web. The launcher already styles its .ln-* rows and buttons (styles.css); on the web
+   page the same look comes from here, scoped to .acct. Theme tokens only. */
+
+.acct-modal {
+  position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px;
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+}
+.acct-dialog {
+  --cut: 14px;
+  width: min(560px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: 22px 24px;
+  background: var(--glow, none), var(--bg); color: var(--text); font-family: var(--font-body);
+  box-shadow: 0 20px 60px color-mix(in srgb, var(--bg) 80%, transparent), inset 3px 0 0 var(--accent);
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+}
+.acct-dialog h2 { margin: 0 0 8px; font: 700 26px/1.05 var(--font-display); text-transform: uppercase; letter-spacing: 0.02em; }
+.acct-dialog > p { margin: 0 0 14px; color: var(--muted); font-size: 14px; }
+.acct-parts { list-style: none; margin: 0 0 16px; padding: 0; display: grid; gap: 8px; }
+.acct-parts li { padding: 10px 12px; background: var(--surface); border: 1px solid var(--line); }
+.acct-parts b { display: block; margin-bottom: 4px; }
+.acct-parts span { display: block; color: var(--muted); font-size: 13px; }
+.acct-parts .newer { color: var(--accent-2, var(--accent)); font-weight: 700; }
+.acct-choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.acct-dialog-head { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
+
+/* FC-Tracker Web: the launcher's row and button look for the account panel */
+html:not([data-view="launcher"]) .acct .ln-rows { display: grid; gap: 10px; }
+html:not([data-view="launcher"]) .acct .ln-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 14px 16px;
+  background: var(--surface); border: 1px solid var(--line);
+}
+html:not([data-view="launcher"]) .acct .ln-row.stack { flex-direction: column; align-items: stretch; gap: 10px; }
+html:not([data-view="launcher"]) .acct .ln-row p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+html:not([data-view="launcher"]) .acct .ln-seg { display: flex; flex-wrap: wrap; gap: 6px; }
+html:not([data-view="launcher"]) .acct .ln-note { color: var(--muted); }
+html:not([data-view="launcher"]) .acct .ln-list { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; }
+html:not([data-view="launcher"]) .acct .ln-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 13px; }
+html:not([data-view="launcher"]) .acct .ln-input {
+  width: 150px; padding: 9px 10px; font: 700 14px var(--font-body); color: var(--text);
+  background: var(--surface-hi); border: 1px solid var(--line);
+}
+html:not([data-view="launcher"]) .acct .ln-input.wide { width: 240px; }
+html:not([data-view="launcher"]) .acct .ln-input.code { width: 110px; letter-spacing: 0.2em; text-align: center; font-family: var(--font-display); font-size: 18px; }
+html:not([data-view="launcher"]) .acct .ln-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* the buttons (both places: the launcher's .ln-btn is the same shape) */
+.acct .ln-btn, .acct-dialog .ln-btn {
+  --ln-cut: 8px;
+  display: inline-flex; align-items: center; gap: 10px; cursor: pointer;
+  padding: 10px 16px; border: 0; background: var(--accent); color: var(--on-accent, var(--text));
+  font: 700 15px/1 var(--font-display); letter-spacing: 0.08em; text-transform: uppercase;
+  clip-path: polygon(var(--ln-cut) 0, 100% 0, 100% calc(100% - var(--ln-cut)), calc(100% - var(--ln-cut)) 100%, 0 100%, 0 var(--ln-cut));
+}
+.acct .ln-btn:disabled, .acct-dialog .ln-btn:disabled { opacity: 0.45; cursor: default; }
+.acct .ln-btn.ghost, .acct-dialog .ln-btn.ghost { background: var(--surface-hi); color: var(--text); }
+.acct .ln-btn.danger { background: var(--result-loss, var(--accent)); color: var(--text); }
+@media (prefers-reduced-motion: no-preference) {
+  .acct .ln-btn, .acct-dialog .ln-btn { transition: filter var(--dur, 150ms) var(--ease, ease); }
+  .acct .ln-btn:hover:not(:disabled), .acct-dialog .ln-btn:hover:not(:disabled) { filter: brightness(1.12); }
+}
+
+/* the user's picture or initial (menu button, profile row, dashboard): a cut square, FC style */
+.me-avatar {
+  --cut: 5px;
+  display: inline-grid; place-items: center; flex: none; overflow: hidden;
+  background: var(--surface-hi); color: var(--text);
+  font: 700 13px/1 var(--font-display); text-transform: uppercase;
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+}
+.me-avatar.in { background: var(--accent); color: var(--on-accent, var(--text)); }
+.me-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.me-avatar-blank { width: 45%; height: 45%; border: 2px solid var(--muted); transform: rotate(45deg); }
+/* the verified mark: a small mint diamond with a tick */
+.me-verified {
+  display: inline-block; width: 13px; height: 13px; margin-left: 6px; vertical-align: -1px;
+  background: var(--accent-2, var(--accent)); transform: rotate(45deg);
+  box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--accent-2, var(--accent)) 60%, var(--bg));
+}
+.acct-pic { display: flex; align-items: center; gap: 12px; }
+.acct-x {
+  all: unset; cursor: pointer; font-size: 22px; line-height: 1; padding: 2px 8px; color: var(--muted);
+}
+.acct-x:hover, .acct-x:focus-visible { color: var(--text); }

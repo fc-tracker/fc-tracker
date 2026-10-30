@@ -10,7 +10,7 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const snapshot = process.env.FCT_REAL_SNAPSHOT ?? path.join(process.env.APPDATA ?? "", "dk.fctracker.app", "snapshot.json");
 const snap = JSON.parse(fs.readFileSync(snapshot, "utf8"));
 
-const KEEP = ["def_id", "score", "rating", "rareflag", "league", "team", "nation", "name", "position", "positions", "weak_foot", "skill_moves", "team_name", "holo"];
+const KEEP = ["def_id", "score", "rating", "rareflag", "league", "team", "nation", "name", "position", "positions", "weak_foot", "skill_moves", "team_name", "holo", "face"];
 const gallery = Object.values(snap.gallery ?? {}).map((c) => {
   const out = { collected: false };
   for (const k of KEEP) if (c[k] != null && !(Array.isArray(c[k]) && !c[k].length) && c[k] !== false) out[k] = c[k];

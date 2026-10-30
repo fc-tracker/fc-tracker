@@ -63,6 +63,8 @@ pub struct BridgeInfo {
     pub extension_version: Option<String>,
     /// The version on the website; an older installed one should be replaced.
     pub extension_latest: String,
+    /// The oldest extension this app works with.
+    pub extension_required: String,
     /// Show the pairing code: never paired, or an unpaired extension is asking right now.
     pub needs_pairing: bool,
     /// The paired extension checked in lately – Chrome runs and the connection works.
@@ -111,6 +113,7 @@ impl Bridge {
             pairing_code: self.pairing_code.clone(),
             extension_version: self.extension_version.clone(),
             extension_latest: extension_latest(),
+            extension_required: crate::updates::EXTENSION_REQUIRED.to_string(),
             needs_pairing: self.token.is_none() || self.unpaired_seen.is_some_and(|t| t.elapsed() < std::time::Duration::from_secs(600)),
             // The extension checks in every 30 s (every 60 s before 0.10.1).
             extension_live: self.token.is_some() && self.authorized_seen.is_some_and(|t| t.elapsed() < std::time::Duration::from_secs(100)),
@@ -127,6 +130,8 @@ impl Bridge {
     fn saw_extension(&mut self, version: &str) {
         if self.extension_version.as_deref() != Some(version) && version.len() <= 20 {
             self.extension_version = Some(version.to_string());
+            // a new extension = Chrome installed a new release: the app's update is out too
+            crate::updates::kick();
             if self.token.is_some() {
                 self.save();
             }
@@ -294,7 +299,9 @@ fn handle(
                     "synced_at": if authorized { synced_at } else { None },
                     "locale": locale,
                     // the extension version that belongs to this app – the extension offers an update
-                    "extension_latest": extension_latest()
+                    "extension_latest": extension_latest(),
+                    // older than this and the extension updates itself right away (updates.rs)
+                    "extension_required": crate::updates::EXTENSION_REQUIRED
                 }),
             )
         }

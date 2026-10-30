@@ -17,6 +17,7 @@ import { setWebBackend } from "../api";
 import { initUsage, startPresence, track } from "../usage";
 import { startPrices } from "../prices";
 import { startGallerySets } from "../gallerySets";
+import { startAccount, syncSoon } from "../account";
 import * as reader from "./reader";
 import "../overlay.css";
 import "./web.css";
@@ -34,6 +35,9 @@ track("web-start");
 startPresence("web");
 startPrices();
 startGallerySets();
+void startAccount();
+// a Web App club sync read in: the account takes it at once
+backend.onClubSynced(() => syncSoon(2_000));
 browserPad.requireFocus(true);
 // local testing only: feed a picture instead of a shared screen
 if (location.hostname === "localhost") Object.assign(window, { __fctWeb: { attach: backend.attach, reader } });

@@ -1,6 +1,6 @@
 [package]
 name = "fc-tracker"
-version = "0.1.73"
+version = "0.1.74"
 description = "Launcher + overlay for EA SPORTS FC 27"
 authors = ["fc-tracker contributors"]
 edition = "2021"
@@ -58,8 +58,13 @@ windows = { version = "0.62", features = [
   "Win32_System_WinRT_Graphics_Capture",
   # borderless capture access (no yellow frame around the game)
   "Security_Authorization_AppCapabilityAccess",
+  # the account's refresh token in Windows Credential Manager (account.rs)
+  "Win32_Security_Credentials",
 ] }
 getrandom = "0.3"
+# account sync (account.rs): the snapshot travels gzipped + base64
+flate2 = "1"
+base64 = "0.22"
 tauri-plugin-single-instance = "2"
 tauri-plugin-updater = "2"
 

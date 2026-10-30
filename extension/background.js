@@ -90,7 +90,8 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
 
 // FC-Tracker Web reads the club and the Gallery; the rest of a sync (SBCs, objectives, events)
 // is only for the app – not kept in the browser for the page.
-const WEB_SKIP = /\/(sbs|scmp|champs2|rivals|sqbt|leaderboards|academy|squad|store|eventtoken|club\/stats)\b|\/fc\/(user|season)\b|^fct:\/\/webapp\//;
+// Objective squads read in the Web App (objectives, names, formations, player attributes) are kept.
+const WEB_SKIP = /\/(sbs|scmp|champs2|rivals|sqbt|leaderboards|academy|squad|store|eventtoken|club\/stats)\b|\/fc\/(user|season)\b|^fct:\/\/webapp\/(?!objectives|names|formations|attributes)/;
 
 function webKeep(url, body, at) {
   if (WEB_SKIP.test(url)) return Promise.resolve();
@@ -136,6 +137,10 @@ chrome.runtime.onMessageExternal.addListener((msg, sender, reply) => {
         const stored = await chrome.storage.local.get(wLast.keys);
         return reply({ ok: true, at: wLast.at, entries: wLast.keys.map((k) => stored[k]).filter(Boolean).map(({ url, body }) => ({ url, body })) });
       }
+      case "update":
+        // the page needs a newer extension (update required): ask the store now
+        await updateNow("web");
+        return reply({ ok: true, version: chrome.runtime.getManifest().version });
       case "open-webapp":
         // the user asked for a sync: the Web App syncs by itself when it opens
         await chrome.tabs.create({ url: "https://www.ea.com/ea-sports-fc/ultimate-team/web-app/" });
@@ -430,7 +435,47 @@ async function rememberLatest(res) {
   if (typeof res?.extension_latest === "string" && /^\d+(\.\d+)*$/.test(res.extension_latest)) {
     await chrome.storage.local.set({ latest: res.extension_latest });
   }
+  // The app needs a newer extension (an update required): ask the Chrome Web Store now instead of
+  // waiting for Chrome's own check (hours) – at most every 10 minutes.
+  if (typeof res?.extension_required === "string" && isOlder(chrome.runtime.getManifest().version, res.extension_required)) {
+    await updateNow("required");
+  }
 }
+
+/** Asks the store for this extension's update; one found is applied by reloading. */
+async function updateNow(reason) {
+  const { updateAskedAt } = await chrome.storage.local.get("updateAskedAt");
+  if (updateAskedAt && Date.now() - updateAskedAt < 10 * 60 * 1000) return;
+  await chrome.storage.local.set({ updateAskedAt: Date.now() });
+  try {
+    const self = await chrome.management.getSelf();
+    if (self.installType !== "normal") return; // a developer copy updates by hand
+    chrome.runtime.requestUpdateCheck((s) => {
+      const status = typeof s === "string" ? s : s?.status;
+      if (!chrome.runtime.lastError && status === "update_available") applyUpdate(reason);
+    });
+  } catch {}
+}
+
+/** Reloads into the new version – not in the middle of a sync. */
+async function applyUpdate(reason) {
+  for (let i = 0; i < 60 && (await syncRunning()); i++) await new Promise((r) => setTimeout(r, 5000));
+  console.info(`FC-Tracker: updating the extension (${reason})`);
+  chrome.runtime.reload();
+}
+
+/** A sync for FC-Tracker Web or the app is running right now. */
+async function syncRunning() {
+  if (await webSyncing()) return true;
+  try {
+    return (await call("/ping")).sync_active === true;
+  } catch {
+    return false; // the app isn't running
+  }
+}
+
+// Chrome downloaded a new version: use it now (instant), not at the next browser start.
+chrome.runtime.onUpdateAvailable.addListener(() => applyUpdate("store"));
 
 async function checkIn() {
   try {

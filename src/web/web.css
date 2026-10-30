@@ -140,3 +140,7 @@ html.web body { font-family: var(--font-body); color: var(--text); }
   .wb-club { order: 4; }
   .wb-preview { width: 180px; left: 16px; }
 }
+
+/* a new FC-Tracker Web is out / the extension is updating (WebUpdate.tsx) */
+.wb-update { position: fixed; left: 50%; bottom: 44px; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 12px; padding: 10px 14px 10px 16px; background: var(--surface-hi); box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), inset 3px 0 0 var(--accent-2); max-width: calc(100vw - 32px); }
+.wb-update p { margin: 0; font-size: 13px; }

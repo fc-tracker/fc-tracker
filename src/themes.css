@@ -6,6 +6,11 @@
   --cut: 14px;                 /* size of the angular corner cut */
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --dur: 260ms;
+  /* each theme's accent, for the theme picker's swatches (shown whatever theme is on) */
+  --swatch-midnight: #8d6bff;
+  --swatch-pitch: #5df08f;
+  --swatch-gold: #f2c94c;
+  --swatch-glass: #ffffff;
 
   /* grade colours (shared by all themes, like the game) */
   --grade-d: #e2733a;

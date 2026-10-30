@@ -480,3 +480,17 @@ html[data-view="launcher"] .ln-input { width: 150px; padding: 9px 10px; font: 70
 .ln-news .ln-info-tip { right: auto; left: -10px; }
 @keyframes ln-news-in { from { opacity: 0; transform: translateY(6px); } }
 @media (prefers-reduced-motion: reduce) { .ln-news { animation: none; } }
+
+/* Settings → Account (src/Account.tsx) */
+html[data-view="launcher"] .ln-input.wide { width: 240px; }
+html[data-view="launcher"] .ln-input.code { width: 110px; letter-spacing: 0.2em; text-align: center; font-family: var(--font-display); font-size: 18px; }
+html[data-view="launcher"] .ln-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+html[data-view="launcher"] .ln-note { color: var(--muted); }
+html[data-view="launcher"] .ln-list { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; }
+html[data-view="launcher"] .ln-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 13px; }
+html[data-view="launcher"] .ln-btn.danger { background: var(--ln-error); color: var(--text); }
+/* sign-in rows: the text above, the field and its buttons on their own line (they wrap when narrow) */
+html[data-view="launcher"] .ln-row.stack { flex-direction: column; align-items: stretch; gap: 10px; }
+html[data-view="launcher"] .ln-row.stack > .ln-seg { flex-wrap: wrap; flex-shrink: 1; }
+html[data-view="launcher"] .ln-update.required { border-left-color: var(--result-loss, var(--accent)); }
+html[data-view="launcher"] .ln-update.required b { color: var(--text); }

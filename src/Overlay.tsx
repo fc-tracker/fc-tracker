@@ -19,12 +19,14 @@ import { cardTier, num } from "./format";
 import { rarity } from "./rarities";
 import { t, useLocale, type MessageKey } from "./i18n";
 import { Gem } from "./icons";
-import { THEMES, useTheme } from "./theme";
-import { SupportButton } from "./Support";
+import { useTheme } from "./theme";
+import OverlayMenu from "./OverlayMenu";
 import MissingList from "./MissingList";
 import { GradeCosts, Planner, ValueList, rankByValue, useBestValue, useSetValue } from "./BestValue";
 import { PadButton, useInputMode } from "./padGlyphs";
 import Champions from "./Champions";
+import Squads from "./Squads";
+import { RequiredUpdate, useUpdate } from "./UpdateRequired";
 import { champsTabSeen } from "./championsBoard";
 import "./overlay.css";
 
@@ -328,6 +330,8 @@ function BestSelection({ set, ui }: { set: GallerySet; ui: CardUi }) {
   const swaps = set.swaps;
   if (!swaps.length) return null;
   const putIn = new Set(swaps.map((sw) => sw.into.def_id));
+  // which card each one replaces: no cross-checking with the game or the side panel
+  const replaces = new Map(swaps.map((sw) => [sw.into.def_id, { ...sw.out, name: sw.out.name ?? (sw.out.slot != null ? t("swaps.slot", { n: sw.out.slot + 1 }) : null) }]));
   const gain = set.ingame?.total != null ? Math.max(0, set.score - set.ingame.total) : 0;
   return (
     <section className="detail-section swaps">
@@ -356,7 +360,11 @@ function BestSelection({ set, ui }: { set: GallerySet; ui: CardUi }) {
         {[...set.lineup].sort((a, b) => Number(putIn.has(b.def_id)) - Number(putIn.has(a.def_id))).map((c, i) => (
           <span key={c.def_id} className={putIn.has(c.def_id) ? "best-cell put-in" : "best-cell"} style={{ animationDelay: `${i * 20}ms` }}>
             <SwapCard card={c} />
-            {putIn.has(c.def_id) && <small className="best-putin">{t("best.putIn")}</small>}
+            {putIn.has(c.def_id) && (
+              <small className="best-putin" title={replaces.get(c.def_id)?.name ?? undefined}>
+                {replaces.get(c.def_id)?.name ? t("best.putInFor", { name: replaces.get(c.def_id)!.name! }) : t("best.putInFree")}
+              </small>
+            )}
           </span>
         ))}
       </span>
@@ -394,9 +402,9 @@ function SetCosts({ setKey, name }: { setKey: string; name: string }) {
 
 // Main menu → tabs → categories. Today the main menu has one entry (Gallery); its tabs are the
 // sets, Best value (sets ranked by what the next grade costs) and the token Planner.
-const SECTIONS = ["sets", "value", "planner", "champions"] as const;
+const SECTIONS = ["sets", "value", "planner", "champions", "squads"] as const;
 type Section = (typeof SECTIONS)[number];
-const SECTION_LABEL: Record<Section, MessageKey> = { sets: "section.sets", value: "section.value", planner: "section.planner", champions: "section.champions" };
+const SECTION_LABEL: Record<Section, MessageKey> = { sets: "section.sets", value: "section.value", planner: "section.planner", champions: "section.champions", squads: "section.squads" };
 const readPref = (k: string, d: string) => {
   try {
     return localStorage.getItem(k) ?? d;
@@ -560,6 +568,8 @@ export default function Overlay() {
     });
   const [status, setStatus] = useState<GalleryStatus | null>(null);
   const [session, setSession] = useState<GameSession>("unknown");
+  // an update the app must have: shown over everything (installed from here or the launcher)
+  const update = useUpdate();
   const [section, setSectionState] = useState<Section>(() => (SECTIONS as readonly string[]).includes(readPref("fct.section", "sets")) ? (readPref("fct.section", "sets") as Section) : "sets");
   const setSection = (s: Section) => {
     setSectionState(s);
@@ -923,7 +933,7 @@ export default function Overlay() {
       q: "prev_category", e: "next_category",
       arrowup: "up", arrowdown: "down", arrowleft: "left", arrowright: "right",
       enter: "select", " ": "select", escape: "back", backspace: "back", i: "info",
-      "1": "section_sets", "2": "section_value", "3": "section_planner", "4": "section_champions",
+      "1": "section_sets", "2": "section_value", "3": "section_planner", "4": "section_champions", "5": "section_squads",
     };
     const onKey = (e: KeyboardEvent) => {
       // typing in a field (the planner's budget) is not navigation
@@ -976,14 +986,14 @@ export default function Overlay() {
   const champsNew = section !== "champions" && !champsTabSeen();
   // the footer names only what works in the view: Planner and Champions scroll, Enter switches
   // the Champions tracker on while it is off
-  const scrolls = section === "planner" || section === "champions";
-  const enterHint: MessageKey | null = section === "planner" ? null : section === "champions" ? (champsOff ? "champs.hintSwitch" : null) : "overlay.hintOpen";
+  const scrolls = section === "planner" || section === "champions" || section === "squads";
+  const enterHint: MessageKey | null = section === "planner" || section === "squads" ? null : section === "champions" ? (champsOff ? "champs.hintSwitch" : null) : "overlay.hintOpen";
   const syncedAt = sync?.synced_at ?? null;
-  const nextTheme = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
 
   return (
     <div className="ov">
       <div className="ov-frame" style={zoom !== 1 ? ({ zoom } as React.CSSProperties) : undefined}>
+        {!IS_WEB && update?.required && <RequiredUpdate update={update} running={session !== "closed" && session !== "unknown"} overlay />}
         <header className={`ov-header mode-${mode}`} data-tauri-drag-region={mode === "panel" ? true : undefined}>
           <div className="brand" data-tauri-drag-region={mode === "panel" ? true : undefined} title={mode === "panel" ? t("overlay.dragHint") : undefined}>
             <span className="brand-mark" aria-hidden="true" />
@@ -995,7 +1005,8 @@ export default function Overlay() {
             {SECTIONS.map((s) => (
               <button key={s} className={`sec-tab ${section === s ? "active" : ""}`} aria-pressed={section === s} onClick={() => setSection(s)}>
                 {t(SECTION_LABEL[s])}
-                {s === "champions" && <span className={`sec-badge ${champsNew ? "new" : ""}`}>{t(champsNew ? "champs.news.badge" : "champs.beta")}</span>}
+                {/* only news gets a mark – "beta" is said inside the view, not in the bar */}
+                {s === "champions" && champsNew && <span className="sec-badge new">{t("champs.news.badge")}</span>}
               </button>
             ))}
             {pad ? <PadButton id="r2" layout={pad} size={18} /> : null}
@@ -1030,46 +1041,15 @@ export default function Overlay() {
             >
               {t("missing.toggle")}
             </button>
-            <button className="theme-btn" onClick={() => setTheme(nextTheme)} title={t("overlay.theme")}>
-              <span className="theme-swatch" />
-              {t(`theme.${theme}` as MessageKey)}
-            </button>
-            {/* Help → Controls in the launcher (buttons of the user's controller, animated examples) */}
-            <button className="theme-btn help-btn" onClick={() => api.openHelp("controls")} title={t("overlay.help")}>
-              <span className="help-q" aria-hidden="true">?</span>
-              {t("overlay.help")}
-            </button>
-            <span className="zoom-ctl" role="group" aria-label={t("overlay.zoom")}>
-              <button className="theme-btn" onClick={() => setZoom(-1)} title={t("overlay.zoomOut")} aria-label={t("overlay.zoomOut")}>−</button>
-              <button className="theme-btn zoom-val" onClick={() => setZoom(0)} title={t("overlay.zoomReset")}>{Math.round(zoom * 100)}%</button>
-              <button className="theme-btn" onClick={() => setZoom(1)} title={t("overlay.zoomIn")} aria-label={t("overlay.zoomIn")}>+</button>
-            </span>
-            <SupportButton />
+            {/* theme, zoom, window layout, language, help, support and the profile: one menu */}
+            <OverlayMenu theme={theme} setTheme={setTheme} zoom={zoom} setZoom={setZoom} mode={IS_WEB ? undefined : mode} changeMode={IS_WEB ? undefined : changeMode} />
             {!IS_WEB && (
-            <button className="close-btn" onClick={() => api.hideOverlay()} title={t("overlay.closeHint")}>
-              <span className="close-keys">
-                <kbd>Esc</kbd>
-                <kbd>{t("pad.holdViewShort")}</kbd>
-              </span>
-              <span className="close-x" aria-hidden="true">
-                ×
-              </span>
-            </button>
-            )}
-            {!IS_WEB && (
-            <div className="mode-switch" role="group" aria-label={t("overlay.mode.title")}>
-              {(["panel", "half", "full"] as const).map((m) => (
-                <button
-                  key={m}
-                  className={`mode-btn mode-${m} ${mode === m ? "active" : ""}`}
-                  onClick={() => changeMode(m)}
-                  title={t(`overlay.mode.${m}` as MessageKey)}
-                  aria-pressed={mode === m}
-                >
-                  <span className="mode-icon" aria-hidden="true" />
-                </button>
-              ))}
-            </div>
+              // Esc / hold View close it too (the hint row at the bottom says so)
+              <button className="close-btn" onClick={() => api.hideOverlay()} title={t("overlay.closeHint")} aria-label={t("overlay.closeHint")}>
+                <span className="close-x" aria-hidden="true">
+                  ×
+                </span>
+              </button>
             )}
           </div>
         </header>
@@ -1134,6 +1114,12 @@ export default function Overlay() {
               )}
             </div>
           </>
+        ) : section === "squads" ? (
+          <div className="ov-body zone-list planner-body">
+            <main className="detail-wrap">
+              <Squads />
+            </main>
+          </div>
         ) : section === "champions" ? (
           <div className="ov-body zone-list planner-body">
             <main className="detail-wrap">
@@ -1234,7 +1220,7 @@ export default function Overlay() {
           {pad ? (
             <>
               <span><PadButton id="l2" layout={pad} size={20} /><PadButton id="r2" layout={pad} size={20} /> {t("overlay.hintSection")}</span>
-              {section !== "champions" && <span><PadButton id="l1" layout={pad} size={20} /><PadButton id="r1" layout={pad} size={20} /> {t(section === "planner" ? "value.hintGoal" : "overlay.hintCategory")}</span>}
+              {section !== "champions" && section !== "squads" && <span><PadButton id="l1" layout={pad} size={20} /><PadButton id="r1" layout={pad} size={20} /> {t(section === "planner" ? "value.hintGoal" : "overlay.hintCategory")}</span>}
               <span><PadButton id="up" layout={pad} size={20} /><PadButton id="down" layout={pad} size={20} /> {t(scrolls ? "value.hintScroll" : "overlay.hintSet")}</span>
               {enterHint && <span><PadButton id="south" layout={pad} size={20} /> {t(enterHint)}</span>}
               <span><PadButton id="east" layout={pad} size={20} /> {t("overlay.hintBack")}</span>
@@ -1245,7 +1231,7 @@ export default function Overlay() {
           ) : (
             <>
               <span><kbd>Tab</kbd> {t("overlay.hintSection")}</span>
-              {section !== "champions" && <span><kbd>Q</kbd> <kbd>E</kbd> {t(section === "planner" ? "value.hintGoal" : "overlay.hintCategory")}</span>}
+              {section !== "champions" && section !== "squads" && <span><kbd>Q</kbd> <kbd>E</kbd> {t(section === "planner" ? "value.hintGoal" : "overlay.hintCategory")}</span>}
               <span><kbd>Ctrl</kbd>+<kbd>scroll</kbd> {t("overlay.zoom")}</span>
               <span><kbd>↑</kbd> <kbd>↓</kbd> {t(scrolls ? "value.hintScroll" : "overlay.hintSet")}</span>
               {enterHint && <span><kbd>Enter</kbd> {t(enterHint)}</span>}

@@ -24,6 +24,8 @@ mod names;
 mod types;
 #[path = "../../src-tauri/src/sync_data.rs"]
 mod sync_data;
+#[path = "../../src-tauri/src/squads.rs"]
+mod squads;
 
 /// What the shared modules import from the app's store and screen reader.
 mod store {
@@ -93,6 +95,16 @@ struct Web {
     platform: Option<String>,
     /// The coin balance from the sync ([coins, at]).
     coins: Option<[u64; 2]>,
+    /// Objective squads (SQUADS.md): the club as the last sync read it (positions, stats …), the
+    /// open objectives, names, formations and player attributes the extension read in the Web
+    /// App, and the active squad.
+    club: BTreeMap<u64, types::Item>,
+    objectives: Option<(u64, Value)>,
+    names: Option<Value>,
+    formations: Option<Value>,
+    attributes: Option<Value>,
+    active: BTreeSet<u64>,
+    squad_prefs: squads::SquadPrefs,
 }
 
 thread_local! {
@@ -291,7 +303,36 @@ fn ingest_sync(w: &mut Web, sync: SyncData) -> Value {
     let mut cards: Vec<GalleryCard> = Vec::new();
     let mut owners: Vec<(u64, u64)> = Vec::new();
     let at = sync.at.unwrap_or_else(clock::ms);
+    // a sync reads the whole club: it replaces the last one (sold players go)
+    let mut club: BTreeMap<u64, types::Item> = BTreeMap::new();
     for e in &sync.entries {
+        match e.url.as_str() {
+            "fct://webapp/objectives" => w.objectives = Some((at, e.body.clone())),
+            "fct://webapp/names" => w.names = Some(e.body.clone()),
+            "fct://webapp/formations" => w.formations = Some(e.body.clone()),
+            "fct://webapp/attributes" => w.attributes = Some(e.body.clone()),
+            _ => {}
+        }
+        let key = sync_data::endpoint_key(&e.url);
+        if key.ends_with("/usermassinfo") {
+            w.active = squads::active_squad(&e.body);
+        }
+        if key.ends_with("/club") || e.url.starts_with(sync_data::CLUB_READ_PREFIX) {
+            let mut found = Vec::new();
+            sync_data::collect_items(&e.body, &mut found, at);
+            for (mut item, _, _) in found {
+                if let Some(old) = club.get(&item.id).or_else(|| w.club.get(&item.id)) {
+                    item.play = item.play.take().or_else(|| old.play.clone());
+                    item.name = item.name.take().or_else(|| old.name.clone());
+                    item.league_id = item.league_id.or(old.league_id);
+                    item.team_id = item.team_id.or(old.team_id);
+                    item.nation_id = item.nation_id.or(old.nation_id);
+                    item.rating = item.rating.or(old.rating);
+                    item.asset_id = item.asset_id.or(old.asset_id);
+                }
+                club.insert(item.id, item);
+            }
+        }
         if !e.url.starts_with("fct://") {
             for (id, avg) in sync_data::market_averages(&e.body) {
                 let p = Price::seen(w.prices.get(&id), avg, at);
@@ -339,8 +380,37 @@ fn ingest_sync(w: &mut Web, sync: SyncData) -> Value {
             w.club_no.insert(id);
         }
     }
+    if !club.is_empty() {
+        w.club = club;
+    }
     w.synced_at = sync.at.or(w.synced_at);
     json!({ "cards": n, "collected": w.gallery.values().filter(|c| c.collected).count(), "first_owner": w.known.len(), "synced_at": w.synced_at })
+}
+
+/// The squad engine's input from what this browser knows (the same as the app's squads_input).
+fn squads_input(w: &Web) -> squads::Input {
+    let mut names = w.names.as_ref().map(squads::Names::from_value).unwrap_or_default();
+    for c in w.gallery.values() {
+        if let (Some(t), Some(n)) = (c.team, c.team_name.as_deref()) {
+            names.add_team(t, n, c.league);
+        }
+    }
+    let attrs = w.attributes.as_ref().map(squads::Attributes::from_value).unwrap_or_default();
+    squads::Input {
+        groups: w.objectives.as_ref().map(|(_, v)| squads::groups_from_value(v)).unwrap_or_default(),
+        names,
+        names_known: w.names.is_some(),
+        club: w.club.values().filter_map(|i| squads::club_player(i, &w.gallery, &attrs)).collect(),
+        catalog: w.gallery.values().filter_map(|c| squads::catalog_player(c, &attrs)).collect(),
+        prices: w.prices.clone(),
+        rewards: BTreeMap::new(),
+        formations: w.formations.as_ref().map(squads::formations_from_value).unwrap_or_default(),
+        team_links: w.links.clone(),
+        active: w.active.clone(),
+        coins: w.coins.map(|[c, _]| c),
+        read_at: w.objectives.as_ref().map(|(at, _)| *at),
+        now_ms: clock::ms(),
+    }
 }
 
 fn dispatch(req: Value) -> Result<Value, String> {
@@ -372,6 +442,13 @@ fn dispatch(req: Value) -> Result<Value, String> {
                 w.prices = serde_json::from_value(s.get("prices").cloned().unwrap_or(json!({}))).unwrap_or_default();
                 w.platform = s.get("platform").and_then(Value::as_str).map(str::to_string);
                 w.coins = serde_json::from_value(s.get("coins").cloned().unwrap_or(Value::Null)).unwrap_or(None);
+                w.club = serde_json::from_value(s.get("club").cloned().unwrap_or(json!({}))).unwrap_or_default();
+                w.objectives = serde_json::from_value(s.get("objectives").cloned().unwrap_or(Value::Null)).unwrap_or(None);
+                w.names = s.get("names").cloned().filter(|v| !v.is_null());
+                w.formations = s.get("formations").cloned().filter(|v| !v.is_null());
+                w.attributes = s.get("attributes").cloned().filter(|v| !v.is_null());
+                w.active = serde_json::from_value(s.get("active").cloned().unwrap_or(json!([]))).unwrap_or_default();
+                w.squad_prefs = serde_json::from_value(s.get("squad_prefs").cloned().unwrap_or(json!({}))).unwrap_or_default();
                 let extra: Vec<GalleryCard> = serde_json::from_value(s.get("extra").cloned().unwrap_or(json!([]))).unwrap_or_default();
                 for c in extra {
                     w.gallery.entry(c.def_id).or_insert(c);
@@ -387,11 +464,134 @@ fn dispatch(req: Value) -> Result<Value, String> {
                 }
                 Ok(json!(true))
             }
+            // Account sync (src/account.ts): the Gallery data in the app's own snapshot format, so
+            // the app and FC-Tracker Web share one copy on the account (PC ⇄ console).
+            "sync_export" => Ok(json!({
+                "schema": 2,
+                "synced_at": w.synced_at,
+                "items": w.club,
+                "endpoints": {},
+                "first_owner": w.known,
+                "first_owner_manual": w.manual,
+                "first_owner_club_no": w.club_no,
+                "first_owner_scanned": w.scanned,
+                "set_obs": w.observed,
+                "gallery": w.gallery,
+                "gallery_synced_at": w.synced_at,
+                "prices": w.prices.iter().filter(|(_, p)| !p.shared).collect::<BTreeMap<_, _>>(),
+                "set_list": w.listed,
+                "platform": w.platform,
+                "coins": w.coins,
+            })),
+            "sync_import" => {
+                let w: &mut Web = &mut w;
+                let s = arg("data");
+                let replace = arg("replace").as_bool().unwrap_or(false);
+                let get = |k: &str| s.get(k).cloned().unwrap_or(Value::Null);
+                let cards: BTreeMap<u64, GalleryCard> = serde_json::from_value(get("gallery")).unwrap_or_default();
+                if replace {
+                    for c in w.gallery.values_mut() {
+                        c.collected = false;
+                    }
+                }
+                for (id, c) in cards {
+                    match w.gallery.get_mut(&id) {
+                        Some(mine) => mine.collected = mine.collected || c.collected,
+                        None => {
+                            w.gallery.insert(id, c);
+                        }
+                    }
+                }
+                let obs: BTreeMap<String, SetObs> = serde_json::from_value(get("set_obs")).unwrap_or_default();
+                for (k, o) in obs {
+                    if replace || w.observed.get(&k).is_none_or(|m| o.lineup_at > m.lineup_at) {
+                        w.observed.insert(k, o);
+                    }
+                }
+                let listed: BTreeMap<String, ListObs> = serde_json::from_value(get("set_list")).unwrap_or_default();
+                for (k, o) in listed {
+                    if replace || w.listed.get(&k).is_none_or(|m| o.at > m.at) {
+                        w.listed.insert(k, o);
+                    }
+                }
+                for (mine, k) in [(&mut w.scanned, "first_owner_scanned"), (&mut w.manual, "first_owner_manual")] {
+                    let theirs: BTreeMap<u64, bool> = serde_json::from_value(get(k)).unwrap_or_default();
+                    if replace {
+                        *mine = theirs;
+                    } else {
+                        for (id, v) in theirs {
+                            mine.entry(id).or_insert(v);
+                        }
+                    }
+                }
+                let known: BTreeSet<u64> = serde_json::from_value(get("first_owner")).unwrap_or_default();
+                let club_no: BTreeSet<u64> = serde_json::from_value(get("first_owner_club_no")).unwrap_or_default();
+                if replace {
+                    w.known = known;
+                    w.club_no = club_no;
+                } else {
+                    w.known.extend(known);
+                    w.club_no.extend(club_no);
+                }
+                let prices: BTreeMap<u64, Price> = serde_json::from_value(get("prices")).unwrap_or_default();
+                for (id, p) in prices {
+                    if w.prices.get(&id).is_none_or(|m| p.at > m.at) {
+                        w.prices.insert(id, p);
+                    }
+                }
+                let at = get("synced_at").as_u64();
+                if replace || at > w.synced_at {
+                    if let Ok(items) = serde_json::from_value(get("items")) {
+                        w.club = items;
+                    }
+                    w.synced_at = at.or(w.synced_at);
+                }
+                if w.platform.is_none() || replace {
+                    w.platform = get("platform").as_str().map(str::to_string).or(w.platform.take());
+                }
+                let coins: Option<[u64; 2]> = serde_json::from_value(get("coins")).unwrap_or(None);
+                if replace || coins.map(|c| c[1]) > w.coins.map(|c| c[1]) {
+                    w.coins = coins.or(w.coins);
+                }
+                Ok(json!(true))
+            }
+            // The Web App part in the app's webdata.json format (objectives, names, formations,
+            // attributes – what the squads use).
+            "webapp_export" => {
+                let at = w.synced_at.unwrap_or(0);
+                let latest = |v: &Option<Value>| v.as_ref().map(|b| json!({ "at": at, "body": b }));
+                Ok(json!({
+                    "objectives": w.objectives.as_ref().map(|(at, b)| json!({ "at": at, "body": b })),
+                    "names": latest(&w.names),
+                    "formations": latest(&w.formations),
+                    "attributes": latest(&w.attributes),
+                }))
+            }
+            "webapp_import" => {
+                let w: &mut Web = &mut w;
+                let s = arg("data");
+                let replace = arg("replace").as_bool().unwrap_or(false);
+                let part = |k: &str| s.get(k).filter(|v| !v.is_null()).and_then(|v| Some((v.get("at")?.as_u64()?, v.get("body")?.clone())));
+                if let Some((at, body)) = part("objectives") {
+                    if replace || w.objectives.as_ref().is_none_or(|(mine, _)| at > *mine) {
+                        w.objectives = Some((at, body));
+                    }
+                }
+                for (mine, k) in [(&mut w.names, "names"), (&mut w.formations, "formations"), (&mut w.attributes, "attributes")] {
+                    if let Some((_, body)) = part(k) {
+                        if replace || mine.is_none() {
+                            *mine = Some(body);
+                        }
+                    }
+                }
+                Ok(json!(true))
+            }
             "state" => {
                 let collected: Vec<u64> = w.gallery.values().filter(|c| c.collected).map(|c| c.def_id).collect();
                 let extra: Vec<&GalleryCard> = w.gallery.values().filter(|c| !w.base_ids.contains(&c.def_id)).collect();
                 Ok(json!({ "collected": collected, "observed": w.observed, "listed": w.listed, "scanned": w.scanned, "manual": w.manual,
-                    "known": w.known, "club_no": w.club_no, "synced_at": w.synced_at, "extra": extra, "prices": w.prices, "platform": w.platform, "coins": w.coins }))
+                    "known": w.known, "club_no": w.club_no, "synced_at": w.synced_at, "extra": extra, "prices": w.prices, "platform": w.platform, "coins": w.coins,
+                    "club": w.club, "objectives": w.objectives, "names": w.names, "formations": w.formations, "attributes": w.attributes, "active": w.active, "squad_prefs": w.squad_prefs }))
             }
             "reset" => {
                 w.observed.clear();
@@ -404,6 +604,12 @@ fn dispatch(req: Value) -> Result<Value, String> {
                 w.prices.clear();
                 w.platform = None;
                 w.coins = None;
+                w.club.clear();
+                w.objectives = None;
+                w.names = None;
+                w.formations = None;
+                w.attributes = None;
+                w.active.clear();
                 let base = w.base_ids.clone();
                 w.gallery.retain(|id, _| base.contains(id));
                 for c in w.gallery.values_mut() {
@@ -449,7 +655,7 @@ fn dispatch(req: Value) -> Result<Value, String> {
             }
             "price_share" => {
                 let since = arg("since").as_u64().unwrap_or(0);
-                Ok(json!({ "platform": w.platform, "prices": types::own_prices_since(&w.prices, since, 1500) }))
+                Ok(json!({ "platform": w.platform, "prices": types::own_prices_since(&w.prices, since, 1500), "bins": types::own_bins_since(&w.prices, since, 1500) }))
             }
             "price_pool" => {
                 let platform = arg("platform").as_str().unwrap_or_default().to_string();
@@ -466,6 +672,19 @@ fn dispatch(req: Value) -> Result<Value, String> {
                     return Ok(json!(0));
                 }
                 Ok(json!(types::apply_paid_pool(&mut w.prices, &pool)))
+            }
+            "squads_plan" => {
+                let input = squads_input(&w);
+                serde_json::to_value(squads::plan(&input, &w.squad_prefs)).map_err(|e| e.to_string())
+            }
+            "squads_search" => {
+                let q = arg("q").as_str().unwrap_or_default().to_string();
+                serde_json::to_value(squads::search(&squads_input(&w), &q, 30)).map_err(|e| e.to_string())
+            }
+            "set_squad_prefs" => {
+                let p: squads::SquadPrefs = serde_json::from_value(arg("prefs")).map_err(|e| e.to_string())?;
+                w.squad_prefs = squads::SquadPrefs { chem_target: p.chem_target.min(33), ..p };
+                Ok(json!(true))
             }
             "ingest_sync" => Ok(ingest_sync(&mut w, serde_json::from_value(arg("sync")).map_err(|e| e.to_string())?)),
             "gallery_sets_revision" => Ok(json!(gallery_sets::revision())),

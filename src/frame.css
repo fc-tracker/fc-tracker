@@ -113,3 +113,14 @@ html[data-view="launcher"] .support-btn:focus-visible { outline: none; }
 /* the launcher's top-right pair ("$ Support me" · "FC 27 not running"): exactly the same box */
 html[data-view="launcher"] .ln-pill,
 html[data-view="launcher"] .support-btn { box-sizing: border-box; height: 36px; padding: 0 16px; line-height: 1; font-size: 13px; font-weight: 600; }
+
+/* ── Update required (UpdateRequired.tsx, web/WebUpdate.tsx): launcher, overlay and FC-Tracker Web ── */
+.upd-required { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 16px; background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: blur(6px); }
+.upd-required.in-overlay { position: absolute; }
+.upd-box { max-width: 460px; display: grid; gap: 10px; justify-items: start; padding: 22px 24px; background: var(--surface-hi); box-shadow: inset 3px 0 0 var(--accent-2); clip-path: polygon(var(--cut, 14px) 0, 100% 0, 100% calc(100% - var(--cut, 14px)), calc(100% - var(--cut, 14px)) 100%, 0 100%, 0 var(--cut, 14px)); }
+.upd-box h2 { margin: 0; font: 700 28px/1 var(--font-display); text-transform: uppercase; letter-spacing: 0.02em; color: var(--text); }
+.upd-box p { margin: 0; font-size: 14px; color: var(--text); }
+.upd-box .upd-wait { color: var(--muted); font-size: 13px; }
+.upd-box .upd-error { color: var(--result-loss, var(--accent)); font-size: 13px; }
+.upd-mark { width: 12px; height: 12px; flex: none; background: var(--accent-2); transform: rotate(45deg); box-shadow: 0 0 10px var(--accent-2); }
+@media (prefers-reduced-motion: reduce) { .upd-required { backdrop-filter: none; } }

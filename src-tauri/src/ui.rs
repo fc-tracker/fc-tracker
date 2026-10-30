@@ -32,6 +32,9 @@ pub struct UiPrefs {
     /// user switches it on – the launcher and the overlay's Champions tab announce it.
     #[serde(default)]
     pub champions: bool,
+    /// Settings → Squads: the chemistry target, its place in the order, loans, the budget.
+    #[serde(default)]
+    pub squads: crate::squads::SquadPrefs,
 }
 
 fn remind() -> String {
@@ -44,7 +47,7 @@ fn default_side() -> String {
 
 impl Default for UiPrefs {
     fn default() -> Self {
-        Self { mode: "panel".into(), panel: None, missing_side: default_side(), after_play: remind(), game_exe: None, tracking: Default::default(), champions: false }
+        Self { mode: "panel".into(), panel: None, missing_side: default_side(), after_play: remind(), game_exe: None, tracking: Default::default(), champions: false, squads: Default::default() }
     }
 }
 

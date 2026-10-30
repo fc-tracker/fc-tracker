@@ -1105,6 +1105,84 @@ pub fn clear() -> Data {
     Data::default()
 }
 
+/// The Champions data as it goes to the user's account (account sync): every opponent's
+/// gamertag removed – they are personal data and never leave this PC. The user's own stays.
+pub fn for_sync(d: &Data) -> Data {
+    let mut d = d.clone();
+    let mine = d.me.gamertag.clone();
+    let strip = |t: &mut Team| {
+        if t.gamertag.as_ref().is_some_and(|g| mine.as_ref().is_none_or(|m| !m.eq_ignore_ascii_case(g))) {
+            t.gamertag = None;
+        }
+    };
+    for m in d.runs.iter_mut().flat_map(|r| r.matches.iter_mut()).chain(d.pending.iter_mut()) {
+        strip(&mut m.home);
+        strip(&mut m.away);
+    }
+    d
+}
+
+/// The local opponents' gamertags put back on synced matches (same start time and side).
+fn keep_local_tags(into: &mut Data, local: &Data) {
+    let tags: std::collections::BTreeMap<u64, (Option<String>, Option<String>)> = local
+        .runs
+        .iter()
+        .flat_map(|r| r.matches.iter())
+        .map(|m| (m.started, (m.home.gamertag.clone(), m.away.gamertag.clone())))
+        .collect();
+    for m in into.runs.iter_mut().flat_map(|r| r.matches.iter_mut()) {
+        if let Some((h, a)) = tags.get(&m.started) {
+            m.home.gamertag = m.home.gamertag.take().or(h.clone());
+            m.away.gamertag = m.away.gamertag.take().or(a.clone());
+        }
+    }
+}
+
+/// Another device's Champions data (account sync). `replace`: it becomes this PC's (the user
+/// chose the cloud); else the weekends are merged – a weekend only one side has is added, and of
+/// one both have, the one with more matches seen (then the newer) stays. Opponents' gamertags
+/// this PC read are kept either way.
+pub fn absorb_synced(other: Data, replace: bool) -> Data {
+    let mut g = STORE.lock().unwrap();
+    let Some(s) = g.as_mut() else { return Data::default() };
+    let local = s.data.clone();
+    let mut d = if replace { other } else { merge(local.clone(), other) };
+    keep_local_tags(&mut d, &local);
+    s.data = d;
+    save(s);
+    s.data.clone()
+}
+
+fn merge(mut base: Data, other: Data) -> Data {
+    let seen = |r: &Run| (r.matches.len(), r.matches.iter().map(|m| m.seen).max().unwrap_or(0));
+    for run in other.runs {
+        match base.runs.iter_mut().find(|r| r.id == run.id) {
+            Some(b) if seen(&run) > seen(b) => *b = run,
+            Some(_) => {}
+            None => base.runs.push(run),
+        }
+    }
+    base.runs.sort_by_key(|r| r.id);
+    if other.last_hub.as_ref().map(|h| h.at) > base.last_hub.as_ref().map(|h| h.at) {
+        base.last_hub = other.last_hub;
+    }
+    base.hub_seen = base.hub_seen.max(other.hub_seen);
+    if base.me.gamertag.is_none() {
+        base.me.gamertag = other.me.gamertag;
+    }
+    for c in other.me.clubs {
+        if !base.me.clubs.contains(&c) {
+            base.me.clubs.push(c);
+        }
+    }
+    for a in other.me.abbrs {
+        if !base.me.abbrs.contains(&a) {
+            base.me.abbrs.push(a);
+        }
+    }
+    base
+}
+
 /// The scoreboard corner of a frame (2000×1125 reference coordinates, see `Frame::content_box`).
 /// The two abbreviations, the scores and the clock come from a 2× crop; a lone "1" (one thin
 /// stroke the OCR drops) is recognised from its ink.

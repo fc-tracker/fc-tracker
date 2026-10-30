@@ -774,7 +774,7 @@ fn lineup_pool<'a>(collected: &[&'a GalleryCard], obs: &SetObs) -> (Vec<Entry<'a
 }
 
 /// Swaps from the in-game lineup (the first `lineup_len` pool entries) to the picked lineup.
-fn swap_suggestions(pool: &[Entry], lineup_len: usize, picked: &[usize], ctx: &Context, obs: Option<&SetObs>, completed: Option<&SetObs>) -> Vec<SwapSuggestion> {
+fn swap_suggestions(pool: &[Entry], lineup_len: usize, picked: &[usize], slots: usize, ctx: &Context, obs: Option<&SetObs>, completed: Option<&SetObs>) -> Vec<SwapSuggestion> {
     let mut outgoing: Vec<usize> = (0..lineup_len).filter(|i| !picked.contains(i)).collect();
     let mut incoming: Vec<usize> = picked.iter().copied().filter(|&i| i >= lineup_len).collect();
     outgoing.sort_by_key(|&i| pool[i].points());
@@ -791,6 +791,13 @@ fn swap_suggestions(pool: &[Entry], lineup_len: usize, picked: &[usize], ctx: &C
         },
         _ => pool[o].view(ctx, obs),
     };
+    // A few changes: the same pairs as the side panel's precise swaps (chosen by the total –
+    // which card a newcomer replaces decides the bonus tags), so both say the same thing.
+    let candidates: Vec<Card> = pool.iter().map(|e| e.to_card(ctx)).collect();
+    let steps = precise_swaps(&candidates, lineup_len, picked, slots);
+    if !steps.is_empty() && steps.iter().all(|s| s.0.is_some()) {
+        return steps.into_iter().map(|(o, n, _)| SwapSuggestion { out: out_view(o.unwrap()), into: pool[n].view(ctx, obs) }).collect();
+    }
     outgoing
         .into_iter()
         .zip(incoming)
@@ -901,7 +908,7 @@ fn summarise(set: &SetDef, mut cards: Vec<&GalleryCard>, ctx: &Context, obs: Opt
         swaps: if obs.and_then(|o| o.total).is_some_and(|t| score.total <= t as u64) {
             Vec::new()
         } else {
-            swap_suggestions(&pool, lineup_len, &picked, ctx, obs, completed.as_ref().map(|(o, _)| o))
+            swap_suggestions(&pool, lineup_len, &picked, set.slots, ctx, obs, completed.as_ref().map(|(o, _)| o))
         },
         listed: listed.cloned(),
         lineup,

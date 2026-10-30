@@ -5,6 +5,7 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { browserPad } from "./browserPad";
 import { getLocale, t } from "./i18n";
 import type { ChampsData } from "./championsData";
+import type { ClubEntry, SquadPrefs, SquadsView } from "./squadsData";
 
 export type DisplayMode = "fullscreen" | "borderless" | "windowed" | "unknown";
 
@@ -22,6 +23,8 @@ export interface BridgeInfo {
   extension_version: string | null;
   /** The version on the website. */
   extension_latest: string;
+  /** The oldest extension this app works with (older ones update themselves, see updates.rs). */
+  extension_required?: string;
   /** Show the pairing code: never paired, or an unpaired extension is asking right now. */
   needs_pairing: boolean;
   /** Chrome or Edge is open (tells "browser closed" from "extension removed or off"). */
@@ -39,6 +42,8 @@ export interface Controller {
 export interface UpdateInfo {
   current: string;
   version: string;
+  /** This version must not keep running ("Update required"). */
+  required?: boolean;
 }
 
 /** True when version a is older than b ("0.9.1" < "0.9.2"). */
@@ -138,6 +143,8 @@ export interface BestValue {
 export interface PriceShare {
   platform: "pc" | "console" | null;
   prices: [number, number, number][];
+  /** Lowest Buy Now prices seen in own market results: [id, price, at]. */
+  bins?: [number, number, number][];
 }
 
 /** The user's lineup as read from the in-game set page (and its Swap Player pages). */
@@ -287,6 +294,8 @@ export type ToastPayload =
   | { kind: "recording" }
   /** Ultimate Team is loaded: FC-Tracker is running (once per game run). */
   | { kind: "welcome"; players: number }
+  /** An event's hub is on screen: its squad checklist is in the side panel. */
+  | { kind: "squads"; event: string }
   /** An incomplete set page: cards in the club can fill its open slots (names/points when certain). */
   | { kind: "fill"; set_name: string; count: number; names: string[]; points: number | null }
   /** A game page is being read (every wait visible). */
@@ -334,6 +343,8 @@ export interface UiPrefs {
   after_play: AfterPlay;
   /** Champions tracker (beta) on / off. */
   champions?: boolean;
+  /** Settings → Squads. */
+  squads?: SquadPrefs;
 }
 
 export interface GalleryTag {
@@ -492,6 +503,21 @@ const appApi = {
   paidShare: () => (browserDev ? Promise.resolve<PriceShare>({ platform: null, prices: [] }) : invoke<PriceShare>("paid_share")),
   paidPool: (platform: string, prices: Record<string, [number, number, number]>) =>
     browserDev ? Promise.resolve(0) : invoke<number>("paid_pool", { platform, prices }),
+  /** The FC-Tracker account (src/account.ts): the saved secret (Credential Manager in the app). */
+  accountSecret: () =>
+    browserDev ? Promise.resolve(localStorage.getItem("fct.account") ?? null) : invoke<string | null>("account_secret"),
+  setAccountSecret: (value: string | null) =>
+    browserDev
+      ? Promise.resolve(value == null ? localStorage.removeItem("fct.account") : localStorage.setItem("fct.account", value))
+      : invoke<void>("set_account_secret", { value }),
+  /** One part of this device's data for the account sync (gzip + base64, and when it was
+   *  written locally), and another device's part merged in – or taken (`replace`). */
+  syncPartExport: (part: string) =>
+    browserDev ? Promise.resolve<{ data: string; written_at: number } | null>(null) : invoke<{ data: string; written_at: number }>("sync_part_export", { part }),
+  syncPartImport: (part: string, data: string, replace: boolean) =>
+    browserDev ? Promise.resolve() : invoke<void>("sync_part_import", { part, data, replace }),
+  /** Card definitions this PC knows (no ownership) – for FC-Tracker's card list. */
+  cardDefs: () => (browserDev ? Promise.resolve<object[]>([]) : invoke<object[]>("card_defs")),
   /** The Gallery set list (src/gallerySets.ts): the revision in use, and a newer one to use. */
   gallerySetsRevision: () => (browserDev ? Promise.resolve(Number.MAX_SAFE_INTEGER) : invoke<number>("gallery_sets_revision")),
   useGallerySets: (json: string) => (browserDev ? Promise.resolve(0) : invoke<number>("use_gallery_sets", { json })),
@@ -510,8 +536,13 @@ const appApi = {
   cancelSync: () => invoke<SyncSummary>("cancel_sync"),
   checkUpdate: () =>
     browserDev
-      ? Promise.resolve<UpdateInfo | null>(demo === "outdated" ? { current: "0.1.1", version: "0.1.2" } : null)
+      ? Promise.resolve<UpdateInfo | null>(demo === "outdated" ? { current: "0.1.1", version: "0.1.2" } : demo === "required" ? { current: "0.1.1", version: "0.1.2", required: true } : null)
       : invoke<UpdateInfo | null>("check_update"),
+  /** What the app's update watcher knows (no request). */
+  updateState: () =>
+    browserDev
+      ? Promise.resolve<UpdateInfo | null>(demo === "outdated" ? { current: "0.1.1", version: "0.1.2" } : demo === "required" ? { current: "0.1.1", version: "0.1.2", required: true } : null)
+      : invoke<UpdateInfo | null>("update_state"),
   installUpdate: () => invoke<void>("install_update"),
   controller: () =>
     browserDev ? Promise.resolve<Controller | null>(demo === "xbox" ? { name: "Xbox Wireless Controller", kind: "xbox" } : null) : invoke<Controller | null>("controller"),
@@ -530,6 +561,11 @@ const appApi = {
   setChampionsTracking: (on: boolean) =>
     browserDev ? Promise.resolve<UiPrefs>({ mode: "panel", missing_side: "left", after_play: "remind", champions: on }) : invoke<UiPrefs>("set_champions_tracking", { on }),
   clearChampions: () => (browserDev ? import("./devMock").then((m) => m.mockChampionsEmpty) : invoke<ChampsData>("clear_champions")),
+  /** Objective squads (beta): the open events with squad objectives and the best XI for each. */
+  squadsPlan: () => (browserDev ? import("./devMock").then((m) => m.mockSquads()) : invoke<SquadsView>("squads_plan")),
+  setSquadPrefs: (prefs: SquadPrefs) => (browserDev ? import("./devMock").then((m) => m.setMockSquadPrefs(prefs)) : invoke<UiPrefs>("set_squad_prefs", { prefs })),
+  /** "Has to include": every card that exists, not owned (the club list has the owned ones). */
+  squadsSearch: (q: string) => (browserDev ? import("./devMock").then((m) => m.mockSquadsSearch(q)) : invoke<ClubEntry[]>("squads_search", { q })),
 };
 
 // The browser version: the gallery comes from the screen read in this tab (src/web/backend.ts).
@@ -570,7 +606,26 @@ function withWeb(a: typeof appApi): typeof appApi {
     openHelp: () => Promise.resolve(void window.open("/faq", "_blank", "noopener")),
     openSite: (path: string) => Promise.resolve(void window.open(path, "_blank", "noopener")),
     hideOverlay: () => Promise.resolve(),
-    championsData: () => import("./championsData").then((m) => m.emptyChamps),
+    // the weekends the app read, from the account (src/account.ts) – else empty
+    championsData: () =>
+      import("./championsData").then((m) => {
+        try {
+          const d = JSON.parse(localStorage.getItem("fct.web.champions") ?? "null");
+          return d ? ({ ...m.emptyChamps, ...d } as ChampsData) : m.emptyChamps;
+        } catch {
+          return m.emptyChamps;
+        }
+      }),
+    squadsPlan: () => wb((b) => b.webApi.squadsPlan()),
+    setSquadPrefs: (prefs: SquadPrefs) => wb((b) => b.webApi.setSquadPrefs(prefs)).then(() => ({ mode: "full", missing_side: "right", after_play: "off" }) as UiPrefs),
+    squadsSearch: (q: string) => wb((b) => b.webApi.squadsSearch(q)),
+    // the account: the refresh token stays in this browser; the Gallery and Web App parts are
+    // the same format as the app's
+    accountSecret: () => Promise.resolve(localStorage.getItem("fct.account") ?? null),
+    setAccountSecret: (value: string | null) =>
+      Promise.resolve(value == null ? localStorage.removeItem("fct.account") : localStorage.setItem("fct.account", value)),
+    syncPartExport: (part: string) => wb((b) => b.syncPartExport(part)),
+    syncPartImport: (part: string, data: string, replace: boolean) => wb((b) => b.syncPartImport(part, data, replace)),
   };
 }
 export const api = IS_WEB ? withWeb(appApi) : appApi;
@@ -639,6 +694,10 @@ const appEvents = {
     browserDev ? noListen() : listen<string>("scan-failed", (e) => cb(e.payload)),
   /** Champions tracker: a match / the hub was read. */
   onChampions: (cb: (d: ChampsData) => void) => (browserDev ? noListen() : listen<ChampsData>("champions", (e) => cb(e.payload))),
+  /** The app read an event's hub in the game: its squad checklist (the objective group id). */
+  onSquadsFocus: (cb: (id: number) => void) => (browserDev ? noListen() : listen<number>("squads-focus", (e) => cb(e.payload))),
+  /** The update watcher found a release (or one went away) – at once, no reload needed. */
+  onUpdate: (cb: (u: UpdateInfo | null) => void) => (browserDev ? noListen() : listen<UpdateInfo | null>("update", (e) => cb(e.payload))),
 };
 
 export const events: typeof appEvents = IS_WEB
@@ -653,6 +712,8 @@ export const events: typeof appEvents = IS_WEB
         webListen((b) => b.webEvents.onStatus, (st) => cb(st.phase === "off" ? "closed" : "in_ultimate_team")),
       onToast: () => noListen(),
       onChampions: () => noListen(),
+      onSquadsFocus: () => noListen(),
+      onUpdate: () => noListen(),
     }
   : appEvents;
 

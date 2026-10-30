@@ -275,6 +275,7 @@
     // offset (verified 2026-10-12: 175 players returned for every offset). So we stop as soon
     // as a page brings no new ids, or when the page is short.
     const seen = new Set();
+    const players = [];
     let offset = 0;
     for (let page = 0; page < MAX_PAGES; page++) {
       const result = page === 0 ? await firstClubPage() : await observe(window.services.Club.search(newCriteria(offset)));
@@ -282,6 +283,7 @@
       if (!result?.success && items.length === 0) break;
       const fresh = items.filter((e) => e && e.id && !seen.has(e.id));
       fresh.forEach((e) => seen.add(e.id));
+      players.push(...fresh);
       if (fresh.length === 0) break;      post({ kind: "capture", url: "fct://club/players", body: { itemData: fresh.map(toPlain) } });
       post({ kind: "progress", phase: "club", count: seen.size });
       if (items.length < PAGE_SIZE) break;
@@ -300,7 +302,46 @@
       }
     } catch {}
 
+    try {
+      await syncAttributes(players);
+    } catch {}
     return total;
+  }
+
+  // ---------- in-game attributes (Objective squads' rating, SQUADS.md B) ----------
+  // The player bio's own call (services.PlayerMetaData → /attributes/metadata) for the club's
+  // players, in batches like a person opening bios, 0.9 s apart; the Web App keeps them, so a
+  // later sync only asks for new cards. Sent with the Web App's own names for the attributes and
+  // PlayStyles (its enums), so the app never guesses an order.
+  const META_BATCH = 30;
+
+  function enumNames(e) {
+    const out = {};
+    for (const [k, v] of Object.entries(e ?? {})) if (typeof v === "number") out[v] = k;
+    return out;
+  }
+
+  async function syncAttributes(entities) {
+    const meta = window.services?.PlayerMetaData;
+    const repo = window.repositories?.PlayerMeta;
+    if (!meta?.updateItemPlayerMeta || !repo?.get) return;
+    const players = entities.filter((e) => e && e.definitionId && (typeof e.isPlayer !== "function" || e.isPlayer()));
+    for (let i = 0; i < players.length && !stopped; i += META_BATCH) {
+      try {
+        await observe(meta.updateItemPlayerMeta(players.slice(i, i + META_BATCH)), 20_000);
+      } catch {}
+      await sleep(PAGE_DELAY_MS);
+    }
+    const cards = {};
+    for (const e of players) {
+      try {
+        const m = repo.get(e.definitionId);
+        if (m && m.a) cards[e.definitionId] = { a: m.a, h: m.h ?? null };
+      } catch {}
+    }
+    if (Object.keys(cards).length) {
+      post({ kind: "capture", url: "fct://webapp/attributes", body: { names: enumNames(window.ItemSubAttribute), traits: enumNames(window.PlayerTrait), cards } });
+    }
   }
 
   // ---------- Gallery: card database per set (concept search) ----------
@@ -443,6 +484,153 @@
       if (stopped) break;
       await call(() => s.SBC.requestChallengesForSet(set));
     }
+    try {
+      await syncObjectiveSquads();
+    } catch {}
+  }
+
+  // ---------- Objective squads (SQUADS.md): objectives, names, formations (read only) ----------
+  // The objectives of the open objective groups (what the Objectives screen loads when a group is
+  // opened), with their texts as the Web App shows them; the league / club / nation names of the
+  // user's language (the Web App's own localisation, no request); and the game's formations.
+  const MAX_OBJECTIVE_GROUPS = 15;
+
+  function shown(key) {
+    if (typeof key !== "string" || !key) return "";
+    try {
+      const v = window.services?.Localization?.localize?.(key);
+      if (typeof v === "string" && v && v !== key && !v.startsWith("*")) return v;
+    } catch {}
+    return key;
+  }
+
+  const tryCall = (f) => {
+    try {
+      const v = f();
+      return typeof v === "string" && v && !v.startsWith("*") ? v : null;
+    } catch {
+      return null;
+    }
+  };
+
+  function readNames() {
+    const tc = window.repositories?.TeamConfig;
+    const L = window.UTLocalizationUtil;
+    const loc = window.services?.Localization;
+    const year = window.APP_YEAR ?? 2027;
+    const list = (f) => {
+      try {
+        const v = f();
+        return Array.isArray(v) ? v : v ? Array.from(v) : [];
+      } catch {
+        return [];
+      }
+    };
+    const leagues = {};
+    for (const l of list(() => tc.getLeagues())) {
+      const id = l?.id ?? l?.leagueId;
+      if (id == null) continue;
+      leagues[id] = [tryCall(() => loc.localize(`global.leagueFull.${year}.league${id}`)), tryCall(() => L.leagueIdToName(id, loc)), tryCall(() => L.leagueIdToAbbr5(id, loc))].filter(Boolean);
+    }
+    const nations = {};
+    for (const n of list(() => tc.getNations())) {
+      const id = n?.id ?? n?.nationId;
+      const name = id != null && tryCall(() => L.nationIdToName(id, loc));
+      if (name) nations[id] = name;
+    }
+    const teams = {};
+    for (const t of list(() => tc.getTeams())) {
+      const id = t?.id ?? t?.teamId;
+      if (id == null) continue;
+      const names = [tryCall(() => L.teamIdToAbbr15(id, loc)), tryCall(() => L.teamIdToAbbr3(id, loc))].filter(Boolean);
+      if (names.length) teams[id] = { names, league: t.leagueId ?? t.league?.id ?? (typeof t.league === "number" ? t.league : null) };
+    }
+    return { leagues, nations, teams };
+  }
+
+  function readFormations() {
+    const sq = window.repositories?.Squad;
+    let all = [];
+    try {
+      all = Array.from(sq?.getFormations?.() ?? []);
+    } catch {}
+    return all
+      .map((f) => ({ name: f?.name, label: f?.displayName, positions: Array.isArray(f?.generalPositions) ? f.generalPositions : null }))
+      .filter((f) => f.name && f.positions);
+  }
+
+  function objectiveDone(o) {
+    for (const m of ["isCompleted", "isComplete", "isRedeemed", "isClaimed"]) {
+      try {
+        if (typeof o[m] === "function" && o[m]()) return true;
+      } catch {}
+    }
+    return typeof o.progress === "number" && typeof o.multiplier === "number" && o.progress >= o.multiplier;
+  }
+
+  async function syncObjectiveSquads() {
+    const s = window.services ?? {};
+    try {
+      const names = readNames();
+      if (Object.keys(names.leagues).length || Object.keys(names.teams).length) post({ kind: "capture", url: "fct://webapp/names", body: names });
+      const formations = readFormations();
+      if (formations.length) post({ kind: "capture", url: "fct://webapp/formations", body: { formations } });
+    } catch {}
+    const O = s.Objectives;
+    if (!O?.requestCategories || stopped) return;
+    const res = await call(() => O.requestCategories());
+    let cats = res?.response?.categories ?? res?.data?.categories ?? [];
+    if (!cats.length) {
+      try {
+        cats = O.objectivesRepository?.getCategories?.() ?? [];
+      } catch {}
+    }
+    // open event groups (with an end time), soonest first – no milestones, no foundation groups
+    const open = [];
+    for (const c of cats) {
+      let groups = [];
+      try {
+        groups = Array.from(c.getGroups?.() ?? []);
+      } catch {}
+      for (const g of groups) {
+        try {
+          if (g.isMilestone?.() || g.isExpiringMilestone?.() || g.isFoundation?.() || g.isGraduatedAccess?.() || g.hasExpired?.()) continue;
+          if (!(g.endTime > 0)) continue;
+          open.push({ c, g });
+        } catch {}
+      }
+    }
+    open.sort((a, b) => a.g.endTime - b.g.endTime);
+    const out = [];
+    for (const { c, g } of open.slice(0, MAX_OBJECTIVE_GROUPS)) {
+      if (stopped) break;
+      if (typeof O.requestGroup === "function") await call(() => O.requestGroup(c, g.compositeId));
+      let group = g;
+      try {
+        group = c.getGroup?.(g.compositeId) ?? g;
+      } catch {}
+      let objectives = [];
+      try {
+        objectives = Array.from(group.getObjectives?.() ?? []);
+      } catch {}
+      out.push({
+        id: g.id,
+        categoryId: c.id,
+        title: shown(g.title ?? g.name),
+        description: shown(g.description),
+        endTime: g.endTime,
+        objectives: objectives.map((o) => ({
+          id: o.id,
+          name: shown(o.name),
+          description: shown(o.description),
+          progress: typeof o.progress === "number" ? o.progress : 0,
+          target: typeof o.multiplier === "number" ? o.multiplier : 1,
+          state: o.state,
+          done: objectiveDone(o),
+        })),
+      });
+    }
+    if (out.length) post({ kind: "capture", url: "fct://webapp/objectives", body: { groups: out } });
   }
 
   /**
