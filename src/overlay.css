@@ -1343,7 +1343,10 @@ html[data-view="toast"] #root {
 .sq-obj.unknown .sq-mark::before { background: var(--accent-2); }
 .sq-obj.done { opacity: 0.55; }
 .sq-req { display: block; margin-top: 4px; font-size: 12px; font-weight: 700; color: var(--text); }
-.sq-progress { font: 700 16px/1 var(--font-display); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sq-progress { font: 700 16px/1 var(--font-display); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.sq-mark-btn { font: 600 11px/1 var(--font-body); color: var(--muted); background: transparent; border: 1px solid var(--line); padding: 4px 7px; cursor: pointer; clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px); }
+.sq-mark-btn:hover, .sq-mark-btn:focus-visible { color: var(--text); border-color: var(--accent); }
+.sq-obj.done:has(.sq-mark-btn:hover) { opacity: 1; }
 
 .sq-squad { display: grid; gap: 10px; }
 .sq-squad-head { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; font-size: 12px; font-weight: 700; color: var(--muted); }

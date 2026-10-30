@@ -12,6 +12,16 @@ export interface SquadPrefs {
   must: number[];
   /** "Has to include" cards not owned yet (card definitions) – they play, marked "to get". */
   must_cards: number[];
+  /** Objectives the user marked done (or not done) by hand; a newer sync replaces them. */
+  done_marks: DoneMark[];
+}
+
+export interface DoneMark {
+  group: number;
+  objective: number;
+  done: boolean;
+  /** Unix ms. */
+  at: number;
 }
 
 export type Need =
@@ -44,6 +54,7 @@ export interface ReqView {
 }
 
 export interface ObjectiveView {
+  id: number;
   name: string;
   text: string;
   progress: number;
@@ -51,6 +62,8 @@ export interface ObjectiveView {
   done: boolean;
   req: number | null;
   unknown: string | null;
+  /** Done / not done by the user's own mark, not by the last sync. */
+  marked: boolean;
 }
 
 export interface SlotView {
@@ -132,7 +145,7 @@ export interface ClubEntry {
   price: number | null;
 }
 
-export const defaultSquadPrefs: SquadPrefs = { chem_target: 33, chem_first: false, hide_loans: true, budget: null, must: [], must_cards: [] };
+export const defaultSquadPrefs: SquadPrefs = { chem_target: 33, chem_first: false, hide_loans: true, budget: null, must: [], must_cards: [], done_marks: [] };
 
 export const emptySquads: SquadsView = { events: [], needs_sync: true, names_missing: true, club_players: 0, coins: null, read_at: null, prefs: defaultSquadPrefs, club: [] };
 

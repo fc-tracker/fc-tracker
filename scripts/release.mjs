@@ -147,6 +147,9 @@ fs.writeFileSync(path.join(pub, "updates", "feed.json"), JSON.stringify(feed, nu
 const vercelFile = path.join(root, "site", "vercel.json");
 const vercel = JSON.parse(fs.readFileSync(vercelFile, "utf8"));
 vercel.redirects = [
+  // dashboard.fc-tracker.com → the dashboard on the main site (a file there would win over a rewrite)
+  { source: "/", has: [{ type: "host", value: "dashboard.fc-tracker.com" }], destination: "https://www.fc-tracker.com/dashboard", permanent: false },
+  { source: "/:path*", has: [{ type: "host", value: "dashboard.fc-tracker.com" }], destination: "https://www.fc-tracker.com/dashboard", permanent: false },
   // one address for Google: fc-tracker.com → www (canonical links already point to www)
   // "/:path*" does not match the root itself, so "/" gets its own rule
   { source: "/", has: [{ type: "host", value: "fc-tracker.com" }], destination: "https://www.fc-tracker.com/", permanent: true },

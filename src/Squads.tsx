@@ -9,7 +9,7 @@ import { api, events, formatAge, IS_WEB } from "./api";
 import { num } from "./format";
 import { Flag } from "./flags";
 import { t, type MessageKey } from "./i18n";
-import { defaultSquadPrefs, pitchRows, type ClubEntry, type EventPlan, type GetOption, type ReqView, type SlotView, type SquadPrefs, type SquadsView } from "./squadsData";
+import { defaultSquadPrefs, pitchRows, type ClubEntry, type EventPlan, type GetOption, type ObjectiveView, type ReqView, type SlotView, type SquadPrefs, type SquadsView } from "./squadsData";
 import { removeSquad, saveSquad, useSavedSquads } from "./savedSquads";
 
 /** The XI as built now, kept to build later (in the game, from the dashboard, on another device). */
@@ -309,7 +309,7 @@ function Options({ r }: { r: ReqView }) {
 }
 
 /** The objectives of an event: ✓ met by the squad, ✕ missed, ? not readable, · nothing about the squad. */
-export function Checklist({ e, compact = false }: { e: EventPlan; compact?: boolean }) {
+export function Checklist({ e, compact = false, onMark }: { e: EventPlan; compact?: boolean; onMark?: (o: ObjectiveView) => void }) {
   return (
     <ul className={`sq-checklist ${compact ? "compact" : ""}`}>
       {e.objectives.map((o, i) => {
@@ -333,7 +333,16 @@ export function Checklist({ e, compact = false }: { e: EventPlan; compact?: bool
               )}
               {o.unknown && !o.done && <small className="sq-req warn">{t("squads.notRead", { text: o.unknown })}</small>}
             </div>
-            {!compact && <span className="sq-progress">{o.done ? t("squads.objDone") : `${o.progress}/${o.target}`}</span>}
+            {!compact && (
+              <span className="sq-progress">
+                {o.done ? t("squads.objDone") : `${o.progress}/${o.target}`}
+                {onMark && (
+                  <button className="sq-mark-btn" title={o.marked ? t("squads.markedHint") : undefined} onClick={() => onMark(o)}>
+                    {o.marked ? t("squads.unmark") : o.done ? t("squads.markOpen") : t("squads.markDone")}
+                  </button>
+                )}
+              </span>
+            )}
           </li>
         );
       })}
@@ -463,8 +472,14 @@ function EventTabs({ list, current, pick }: { list: EventPlan[]; current: EventP
   );
 }
 
-function Event({ e }: { e: EventPlan }) {
+function Event({ e, prefs, onPrefs }: { e: EventPlan; prefs: SquadPrefs; onPrefs: (p: SquadPrefs) => void }) {
   const ends = endsIn(e.ends_at);
+  // a hand mark counts until the next sync reads the objective; clicking a marked one takes it back
+  const mark = (o: ObjectiveView) => {
+    const marks = (prefs.done_marks ?? []).filter((m) => !(m.group === e.id && m.objective === o.id));
+    if (!o.marked) marks.push({ group: e.id, objective: o.id, done: !o.done, at: Date.now() });
+    onPrefs({ ...prefs, done_marks: marks });
+  };
   return (
     <article className="sq-event">
       <header className="sq-event-head">
@@ -487,7 +502,7 @@ function Event({ e }: { e: EventPlan }) {
       </header>
       <div className="sq-split">
         <div className="sq-col">
-          <Checklist e={e} />
+          <Checklist e={e} onMark={mark} />
         </div>
         <div className="sq-col">
           <Pitch e={e} />
@@ -544,7 +559,7 @@ export default function Squads() {
       {current && (
         <>
           {view.events.length > 1 && <EventTabs list={view.events} current={current} pick={pick} />}
-          <Event e={current} />
+          <Event e={current} prefs={prefs} onPrefs={setPrefs} />
         </>
       )}
       <SavedSquads />

@@ -36,11 +36,25 @@ pub struct SquadPrefs {
     pub must: Vec<u64>,
     /// "Has to include" cards the user doesn't own yet (card definitions) – they play, marked "to get".
     pub must_cards: Vec<u64>,
+    /// Objectives the user marked done (or not done) by hand (user 2026-10-30). A mark counts
+    /// only while it is newer than the objectives' last read: the next sync says what EA says, so
+    /// a wrong mark is put right by itself.
+    pub done_marks: Vec<DoneMark>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct DoneMark {
+    /// The event (objective group).
+    pub group: u64,
+    pub objective: u64,
+    pub done: bool,
+    /// When it was marked (ms).
+    pub at: u64,
 }
 
 impl Default for SquadPrefs {
     fn default() -> Self {
-        Self { chem_target: 33, chem_first: false, hide_loans: true, budget: None, must: Vec::new(), must_cards: Vec::new() }
+        Self { chem_target: 33, chem_first: false, hide_loans: true, budget: None, must: Vec::new(), must_cards: Vec::new(), done_marks: Vec::new() }
     }
 }
 
@@ -968,6 +982,9 @@ pub struct EventPlan {
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct ObjectiveView {
+    pub id: u64,
+    /// Done / not done by the user's own mark (newer than the last sync).
+    pub marked: bool,
     pub name: String,
     pub text: String,
     pub progress: u32,
@@ -1158,7 +1175,9 @@ pub fn plan(input: &Input, prefs: &SquadPrefs) -> SquadsView {
     // "has to include" cards not owned yet play as cards to get (a must by their definition)
     let owned_now: BTreeSet<u64> = input.club.iter().map(|p| p.def_id).collect();
     // the settings as the user made them go back to the UI; the plan adds the cards to get to `must`
-    let shown_prefs = prefs.clone();
+    let mut shown_prefs = prefs.clone();
+    // marks a later sync has overtaken are dropped (EA's word stands from then on)
+    shown_prefs.done_marks.retain(|m| m.at > input.read_at.unwrap_or(0));
     let mut prefs = prefs.clone();
     for &def in &prefs.must_cards.clone() {
         if owned_now.contains(&def) {
@@ -1173,9 +1192,27 @@ pub fn plan(input: &Input, prefs: &SquadPrefs) -> SquadsView {
     let owned_defs: BTreeSet<u64> = input.club.iter().map(|p| p.def_id).collect();
     let budget = prefs.budget.or(input.coins);
     let mut events = Vec::new();
-    for g in &input.groups {
+    // the user's own marks, while newer than the last read (a later sync says what EA says)
+    let read_at = input.read_at.unwrap_or(0);
+    let marks: Vec<&DoneMark> = prefs.done_marks.iter().filter(|m| m.at > read_at).collect();
+    for g0 in &input.groups {
+        let mut g_owned = g0.clone();
+        let mut g_marked: BTreeSet<u64> = BTreeSet::new();
+        for o in &mut g_owned.objectives {
+            if let Some(m) = marks.iter().find(|m| m.group == g0.id && m.objective == o.id) {
+                o.done = m.done;
+                if m.done {
+                    o.progress = o.target;
+                }
+                g_marked.insert(o.id);
+            }
+        }
+        let g = &g_owned;
         let (reqs, per_obj) = event_reqs(g, &input.names);
-        let has_squad_part = per_obj.iter().any(|(r, u)| r.is_some() || u.is_some());
+        // an event with squad objectives stays, also when they are all done (or marked done – the
+        // mark must stay reachable to take it back)
+        let has_squad_part = per_obj.iter().any(|(r, u)| r.is_some() || u.is_some())
+            || g.objectives.iter().any(|o| !matches!(parse_requirement(&o.text, &input.names), Parsed::None));
         if !has_squad_part {
             continue;
         }
@@ -1183,7 +1220,7 @@ pub fn plan(input: &Input, prefs: &SquadPrefs) -> SquadsView {
             .objectives
             .iter()
             .zip(&per_obj)
-            .map(|(o, (r, u))| ObjectiveView { name: o.name.clone(), text: o.text.clone(), progress: o.progress.min(o.target), target: o.target, done: o.done, req: *r, unknown: u.clone() })
+            .map(|(o, (r, u))| ObjectiveView { id: o.id, marked: g_marked.contains(&o.id), name: o.name.clone(), text: o.text.clone(), progress: o.progress.min(o.target), target: o.target, done: o.done, req: *r, unknown: u.clone() })
             .collect();
         let solved = if reqs.is_empty() && club.len() < 11 { None } else { solve(&club, &reqs, &formations, prefs, &links, &input.active) };
         let mut req_views: Vec<ReqView> = reqs
@@ -1666,6 +1703,28 @@ mod tests {
     /// A striker to buy: PAC SHO PAS DRI DEF PHY.
     fn st(key: u64, rating: u32, league: u64, face: [u32; 6]) -> Player {
         Player { owned: false, face: Some(face), ..pl(key, &letters(key), rating, &["ST"], league, 200 + key, 30) }
+    }
+
+    #[test]
+    fn a_hand_mark_counts_until_a_newer_sync_says_otherwise() {
+        let mut input = Input::empty();
+        input.read_at = Some(1_000);
+        input.groups = vec![Group {
+            id: 7,
+            title: "Event".into(),
+            ends_at: None,
+            objectives: vec![Objective { id: 1, name: "A".into(), text: "Win 1 match with min. 2 85+ rated players in your starting 11".into(), progress: 0, target: 1, done: false }],
+        }];
+        let obj = |p: &SquadPrefs| plan(&input, p).events[0].objectives[0].clone();
+        // marked done after the last read: done, and its squad part drops out
+        let mark = |at| SquadPrefs { done_marks: vec![DoneMark { group: 7, objective: 1, done: true, at }], ..SquadPrefs::default() };
+        let o = obj(&mark(2_000));
+        assert!(o.done && o.marked && o.req.is_none());
+        assert_eq!(plan(&input, &mark(2_000)).prefs.done_marks.len(), 1);
+        // a sync after the mark (EA says not done): the mark no longer counts and is dropped
+        let o = obj(&mark(500));
+        assert!(!o.done && !o.marked && o.req.is_some());
+        assert!(plan(&input, &mark(500)).prefs.done_marks.is_empty());
     }
 
     fn market(cards: Vec<Player>, prices: &[(u64, u64)]) -> Input {
