@@ -18,6 +18,16 @@ export interface SquadPrefs {
   primary: number | null;
   /** Where to play it; null = the best place. */
   place: Mode | null;
+  /** "progress" (most objectives per match) | "buys" | "changes" | "matches". */
+  goal: string;
+  /** Most cards to buy for one squad; null = no limit, 0 = club only. */
+  max_buys: number | null;
+  /** A formation the user picked; null = the best. */
+  formation: string | null;
+  /** Follow the plan in the game (count matches, say when to change). */
+  track: boolean;
+  played: number;
+  played_at: number;
 }
 
 /** Where a match counts (squads.rs `Mode`). */
@@ -41,6 +51,37 @@ export type Need =
   | { kind: "rating" | "weak_foot" | "skill_moves" | "chemistry" | "rarity"; id: number }
   | { kind: "accel"; id: string }
   | { kind: "playstyle"; id: [string, boolean] };
+
+export interface ManagerView {
+  league: number;
+  league_name: string | null;
+  nation: number;
+  nation_name: string | null;
+  /** Chemistry it adds over the squad's manager now. */
+  gain: number;
+  current: boolean;
+}
+
+export interface Stage {
+  from: number;
+  to: number | null;
+  squad: SquadView;
+  reqs: ReqView[];
+  swaps: Swap[];
+  finishing: string[];
+}
+
+export interface Swap {
+  pos: string;
+  out_name: string;
+  in_name: string;
+  in_rating: number;
+  in_owned: boolean;
+  in_price: number | null;
+  nation: number;
+  nation_name: string | null;
+  league_name: string | null;
+}
 
 export interface GetOption {
   kind: "owned" | "reward" | "sbc" | "cheapest" | "value" | "upgrade";
@@ -77,6 +118,8 @@ export interface ObjectiveView {
   unknown: string | null;
   /** Done / not done by the user's own mark, not by the last sync. */
   marked: boolean;
+  /** Moved on by playing matches. */
+  playable: boolean;
 }
 
 export interface SlotView {
@@ -107,6 +150,12 @@ export interface SlotView {
   /** Not in the club yet (a "has to include" card to get) and its price. */
   owned: boolean;
   price: number | null;
+  league: number;
+  league_name: string | null;
+  /** Out of its positions: 0 chemistry, it counts for a requirement. */
+  out_of_position: boolean;
+  /** To buy without a recent price: a profile to search for. */
+  generic: boolean;
 }
 
 export interface SquadView {
@@ -119,6 +168,9 @@ export interface SquadView {
   changes: number | null;
   /** "Has to include" cards that found no place in this squad. */
   must_missing: string[];
+  buys: number;
+  cost: number;
+  manager: ManagerView | null;
 }
 
 export interface EventPlan {
@@ -133,6 +185,13 @@ export interface EventPlan {
   squad: SquadView | null;
   /** The session (`SessionPlan.id`) shown for this event. */
   combo: number | null;
+  /** EA's category and its id (the Web App's order). */
+  category: string;
+  category_id: number | null;
+  /** Ends within a season (not Foundations / Milestones / Mastery). */
+  live: boolean;
+  /** Has open objectives a match moves on. */
+  playable: boolean;
 }
 
 /** One way to play now: a place, the XI for it and every open objective a match there moves on. */
@@ -147,7 +206,13 @@ export interface SessionPlan {
   items: SessionItem[];
   squad: SquadView | null;
   counted: number;
+  /** Long-running objectives that move on too (free extras). */
+  bonus: number;
   primary: number | null;
+  /** The match plan: squads in turn (the first is `squad`). */
+  stages: Stage[];
+  /** Matches the app counted since the last read. */
+  played: number;
 }
 
 export interface SessionItem {
@@ -163,6 +228,9 @@ export interface SessionItem {
   /** The requirement is about who scores / assists. */
   scorer: boolean;
   counts: boolean;
+  bonus: boolean;
+  /** About how many matches it still takes (the user's own results). */
+  matches: number | null;
 }
 
 export interface Apart {
@@ -209,7 +277,7 @@ export interface ClubEntry {
   price: number | null;
 }
 
-export const defaultSquadPrefs: SquadPrefs = { chem_target: 33, chem_first: false, hide_loans: true, budget: null, must: [], must_cards: [], done_marks: [], primary: null, place: null };
+export const defaultSquadPrefs: SquadPrefs = { chem_target: 33, chem_first: false, hide_loans: true, budget: null, must: [], must_cards: [], done_marks: [], primary: null, place: null, goal: "progress", max_buys: 3, formation: null, track: true, played: 0, played_at: 0 };
 
 export const emptySquads: SquadsView = { events: [], combos: [], apart: [], places: [], primary: null, needs_sync: true, names_missing: true, club_players: 0, coins: null, read_at: null, prefs: defaultSquadPrefs, club: [] };
 

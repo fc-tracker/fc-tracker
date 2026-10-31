@@ -296,6 +296,10 @@ export type ToastPayload =
   | { kind: "welcome"; players: number }
   /** An event's hub is on screen: its squad checklist is in the side panel. */
   | { kind: "squads"; event: string }
+  /** A match of the objective plan was counted: the squad changes now … */
+  | { kind: "squads-swap"; played: number; swaps: { pos: string; out: string; in: string; buy: boolean }[] }
+  /** … or not yet (matches until the next change). */
+  | { kind: "squads-match"; played: number; next: number | null }
   /** An incomplete set page: cards in the club can fill its open slots (names/points when certain). */
   | { kind: "fill"; set_name: string; count: number; names: string[]; points: number | null }
   /** A game page is being read (every wait visible). */
@@ -702,6 +706,7 @@ const appEvents = {
   onChampions: (cb: (d: ChampsData) => void) => (browserDev ? noListen() : listen<ChampsData>("champions", (e) => cb(e.payload))),
   /** The app read an event's hub in the game: its squad checklist (the objective group id). */
   onSquadsFocus: (cb: (id: number) => void) => (browserDev ? noListen() : listen<number>("squads-focus", (e) => cb(e.payload))),
+  onSquadsChanged: (cb: () => void) => (browserDev ? noListen() : listen("squads-changed", () => cb())),
   /** The update watcher found a release (or one went away) – at once, no reload needed. */
   onUpdate: (cb: (u: UpdateInfo | null) => void) => (browserDev ? noListen() : listen<UpdateInfo | null>("update", (e) => cb(e.payload))),
 };
@@ -719,6 +724,7 @@ export const events: typeof appEvents = IS_WEB
       onToast: () => noListen(),
       onChampions: () => noListen(),
       onSquadsFocus: () => noListen(),
+      onSquadsChanged: () => noListen(),
       onUpdate: () => noListen(),
     }
   : appEvents;

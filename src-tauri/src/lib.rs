@@ -933,6 +933,68 @@ async fn squads_plan(app: AppHandle) -> squads::SquadsView {
     tauri::async_runtime::spawn_blocking(move || squads::plan(&input, &prefs)).await.unwrap_or_else(|_| squads::plan(&squads::Input::empty(), &Default::default()))
 }
 
+/// The game shows an event's hub: that's what the user plays now (Objectives → "What are you
+/// playing?" follows; the user can pick another any time).
+pub fn objective_focus(app: &AppHandle, id: u64) {
+    {
+        let state = app.state::<AppState>();
+        let mut ui = state.ui.lock().unwrap();
+        if ui.squads.primary == Some(id) {
+            return;
+        }
+        ui.squads.primary = Some(id);
+        ui.squads.place = None;
+    }
+    save_ui(app);
+    let _ = app.emit("squads-changed", ());
+}
+
+/// A match ended (≥ 4 minutes, back in a menu): the objective plan counts it and says what's next –
+/// the players to change when a stage of the plan is done, otherwise how many matches until the
+/// next change – and to check the progress in the game (the plan counts from the user's own
+/// results; the next sync puts in EA's real numbers).
+pub fn objective_match_played(app: &AppHandle) {
+    // the plan as it stood before this match: it knows when the squad was to change
+    let (input, before, played) = {
+        let state = app.state::<AppState>();
+        let mut ui = state.ui.lock().unwrap();
+        if !ui.squads.track {
+            return;
+        }
+        let input = squads_input(&state.store.lock().unwrap());
+        let read_at = input.read_at.unwrap_or(0);
+        let before = ui.squads.clone();
+        let p = &mut ui.squads;
+        p.played = if p.played_at == read_at { p.played + 1 } else { 1 };
+        p.played_at = read_at;
+        (input, before, p.played)
+    };
+    save_ui(app);
+    let app2 = app.clone();
+    std::thread::spawn(move || {
+        let view = squads::plan(&input, &before);
+        let _ = app2.emit("squads-changed", ());
+        let Some(s) = view.combos.first() else { return };
+        // the match after this one
+        let next = played + 1;
+        let stage = s.stages.iter().find(|st| st.from <= next && st.to.is_none_or(|t| next <= t));
+        let notice = match stage {
+            Some(st) if st.from == next && !st.swaps.is_empty() => serde_json::json!({
+                "kind": "squads-swap",
+                "played": played,
+                "swaps": st.swaps.iter().map(|w| serde_json::json!({ "pos": w.pos, "out": w.out_name, "in": w.in_name, "buy": !w.in_owned })).collect::<Vec<_>>(),
+            }),
+            _ => serde_json::json!({
+                "kind": "squads-match",
+                "played": played,
+                "next": stage.and_then(|st| st.to).map(|t| t.saturating_sub(played)),
+            }),
+        };
+        let a3 = app2.clone();
+        let _ = app2.run_on_main_thread(move || show_notice(&a3, notice, 8));
+    });
+}
+
 /// "Has to include" search over every card that exists (not owned ones; the club list has those).
 #[tauri::command]
 async fn squads_search(app: AppHandle, q: String) -> Vec<squads::ClubEntry> {
@@ -979,7 +1041,20 @@ fn squads_input(store: &store::Store) -> squads::Input {
         }
     }
     squads::Input {
-        groups: web.objectives.as_ref().map(|o| squads::groups_from_value(&o.body)).unwrap_or_default(),
+        groups: {
+            let mut groups = web.objectives.as_ref().map(|o| squads::groups_from_value(&o.body)).unwrap_or_default();
+            // EA's category for events read before it was kept (from the full list the sync stored)
+            if let Some(cats) = web.latest.iter().find(|(k, _)| k.ends_with("/scmp/objective/categories/all")) {
+                let all = squads::groups_from_value(&serde_json::json!({ "groups": squads::groups_from_categories(&cats.1.body, &|t| web.text(t).to_string()) }));
+                for g in groups.iter_mut().filter(|g| g.category.is_empty()) {
+                    if let Some(c) = all.iter().find(|c| c.id == g.id) {
+                        g.category = c.category.clone();
+                        g.category_id = c.category_id;
+                    }
+                }
+            }
+            groups
+        },
         names,
         names_known,
         club: snap.items.values().filter_map(|i| squads::club_player(i, &snap.gallery, &attrs)).collect(),
@@ -990,6 +1065,8 @@ fn squads_input(store: &store::Store) -> squads::Input {
         team_links: snap.team_links.clone(),
         active: web.latest.iter().find(|(k, _)| k.ends_with("/usermassinfo")).map(|(_, v)| squads::active_squad(&v.body)).unwrap_or_default(),
         active_formation: web.latest.iter().find(|(k, _)| k.ends_with("/usermassinfo")).and_then(|(_, v)| squads::active_formation(&v.body)),
+        manager: web.latest.iter().find(|(k, _)| k.ends_with("/usermassinfo")).and_then(|(_, v)| squads::active_manager(&v.body)),
+        rates: web.club.as_ref().map(|c| squads::Rates::from_record(c.wins.unwrap_or(0), c.draws.unwrap_or(0), c.losses.unwrap_or(0))).unwrap_or_default(),
         coins: snap.coins.map(|[c, _]| c),
         read_at: web.objectives.as_ref().map(|o| o.at),
         now_ms: now,
@@ -1662,10 +1739,14 @@ mod real_plan {
             println!("SESSION {} @ {} [{}] counted {}", c.id, c.place_name, c.title, c.counted);
             for it in &c.items {
                 let r = it.req.map(|k| &c.reqs[k]);
-                println!("    {} {} | {} {}", if it.counts { "✓" } else { "✗" }, it.event_title, it.text.chars().take(90).collect::<String>(), r.map(|r| format!("[{}x{} have {}{}]", r.count, r.name, r.have, if it.scorer { " scorer" } else { "" })).unwrap_or_default());
+                println!("    {}{} {} | {} {} ≈{:?}", if it.counts { "✓" } else { "✗" }, if it.bonus { "b" } else { "" }, it.event_title, it.text.chars().take(90).collect::<String>(), r.map(|r| format!("[{}x{} have {}{}]", r.count, r.name, r.have, if it.scorer { " scorer" } else { "" })).unwrap_or_default(), it.matches);
             }
             if let Some(sq) = &c.squad {
-                println!("    {} chem {} changes {:?}: {}", sq.formation, sq.chem, sq.changes, sq.slots.iter().map(|s| format!("{} {}", s.name, s.rating)).collect::<Vec<_>>().join(", "));
+                println!("    {} chem {} changes {:?} buys {} cost {} manager {:?}: {}", sq.formation, sq.chem, sq.changes, sq.buys, sq.cost, sq.manager.as_ref().map(|m| (m.nation_name.clone(), m.league_name.clone(), m.gain, m.current)), sq.slots.iter().map(|s| format!("{} {} {}{}{}{}", s.pos, s.name, s.rating, if s.owned { "" } else { " BUY" }, if s.generic { " GENERIC" } else { "" }, if s.out_of_position { " OOP" } else { "" })).collect::<Vec<_>>().join(", "));
+            }
+            println!("    counted {} bonus {} played {}", c.counted, c.bonus, c.played);
+            for st in &c.stages {
+                println!("    STAGE {}-{:?} {} chem {} swaps [{}] finishing {:?}", st.from, st.to, st.squad.formation, st.squad.chem, st.swaps.iter().map(|w| format!("{}: {} -> {}{}", w.pos, w.out_name, w.in_name, if w.in_owned { "" } else { " (buy)" })).collect::<Vec<_>>().join("; "), st.finishing);
             }
         }
         for a in &view.apart {

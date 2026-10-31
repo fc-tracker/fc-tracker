@@ -1324,7 +1324,45 @@ html[data-view="toast"] #root {
 .sq-title { margin: 0; font: 700 30px/1 var(--font-display); letter-spacing: 0.02em; text-transform: uppercase; }
 .sq-muted { color: var(--muted); font-size: 12px; margin: 0; }
 .sq-muted.warn, .sq-req.warn { color: var(--result-quit, var(--accent-2)); }
-.sq-settings { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+/* Objectives, 2026-10-31: settings as labelled rows, one toolbar (what you play + filter), the
+   match plan as a short timeline, buys / profiles / out-of-position marked on the cards */
+.sq-settings { display: grid; gap: 10px; padding: 12px 14px; background: var(--surface); clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut)); }
+.sq-choice { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+.sq-choice-label { min-width: 92px; font: 700 12px/1 var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.sq-select { min-width: 0; max-width: 100%; padding: 7px 10px; font: 700 13px var(--font-body); color: var(--text); background: var(--surface-hi); border: 1px solid var(--line); }
+.sq-select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.sq-event-select { flex: 1 1 260px; max-width: 520px; }
+.sq-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.sq-toolbar .sq-play { flex: 1 1 420px; }
+.sq-filter { display: flex; flex-wrap: wrap; gap: 4px; }
+.sq-sessions { display: flex; flex-wrap: wrap; gap: 6px; }
+.sq-why { margin: 2px 0 0; color: var(--muted); font-size: 12px; font-weight: 700; }
+.sq-plan { display: grid; gap: 6px; padding: 10px 12px; background: var(--bg-2); border-left: 3px solid var(--accent-2); }
+.sq-plan h4 { margin: 0; font: 700 14px/1.2 var(--font-display); letter-spacing: 0.04em; text-transform: uppercase; }
+.sq-plan ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.sq-plan-stage { all: unset; box-sizing: border-box; width: 100%; cursor: pointer; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 6px 8px; background: var(--surface); }
+.sq-plan-stage b { font: 700 14px/1.1 var(--font-display); letter-spacing: 0.03em; }
+.sq-plan-stage small { flex-basis: 100%; color: var(--muted); font-size: 11px; font-weight: 700; }
+.sq-plan li.open .sq-plan-stage { background: var(--surface-hi); box-shadow: inset 2px 0 0 var(--accent); }
+.sq-plan-stage:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.sq-now { font: 800 10px/1 var(--font-body); text-transform: uppercase; letter-spacing: 0.08em; color: var(--on-accent, var(--text)); background: var(--accent-2); padding: 3px 6px; }
+.sq-plan-swap { display: grid; gap: 2px; padding: 4px 8px; font-size: 12px; font-weight: 700; color: var(--text); }
+.sq-plan-swap b { font: 700 11px/1 var(--font-display); text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent-2); }
+.sq-plan-swap small { color: var(--muted); }
+.sq-bonus summary, .sq-apart summary { cursor: pointer; font-weight: 700; color: var(--muted); font-size: 12px; }
+.sq-bonus .sq-checklist { margin-top: 6px; }
+.sq-manager { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0 0; font-size: 12px; font-weight: 700; }
+.sq-manager small { color: var(--muted); }
+.sq-manager.tip small { color: var(--accent-2); }
+.sq-card.buy { box-shadow: inset 0 0 0 1px var(--accent-2); }
+.sq-card.oop { box-shadow: inset 0 0 0 1px var(--result-loss); }
+.sq-oop { font-size: 10px; font-weight: 800; color: var(--result-loss); text-transform: uppercase; }
+.sq-progress small { display: block; font: 700 11px/1.2 var(--font-body); color: var(--muted); }
+.sq-all { display: grid; gap: 10px; }
+.sq-all-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+@container ovframe (max-width: 620px) {
+  .sq-choice-label { min-width: 0; flex-basis: 100%; }
+}
 .sq-chem { display: grid; gap: 4px; font-size: 12px; font-weight: 700; color: var(--muted); min-width: 220px; }
 .sq-chem input { accent-color: var(--accent); width: 100%; }
 .sq-order { display: flex; gap: 4px; }

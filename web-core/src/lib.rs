@@ -105,6 +105,9 @@ struct Web {
     attributes: Option<Value>,
     active: BTreeSet<u64>,
     active_formation: Option<String>,
+    /// The active squad's manager (league, nation) and the club's record (wins, draws, losses).
+    active_manager: Option<(u64, u64)>,
+    record: Option<(u64, u64, u64)>,
     squad_prefs: squads::SquadPrefs,
 }
 
@@ -318,6 +321,7 @@ fn ingest_sync(w: &mut Web, sync: SyncData) -> Value {
         if key.ends_with("/usermassinfo") {
             w.active = squads::active_squad(&e.body);
             w.active_formation = squads::active_formation(&e.body);
+            w.active_manager = squads::active_manager(&e.body);
         }
         if key.ends_with("/club") || e.url.starts_with(sync_data::CLUB_READ_PREFIX) {
             let mut found = Vec::new();
@@ -410,6 +414,8 @@ fn squads_input(w: &Web) -> squads::Input {
         team_links: w.links.clone(),
         active: w.active.clone(),
         active_formation: w.active_formation.clone(),
+        manager: w.active_manager,
+        rates: w.record.map(|(a, b, c)| squads::Rates::from_record(a, b, c)).unwrap_or_default(),
         coins: w.coins.map(|[c, _]| c),
         read_at: w.objectives.as_ref().map(|(at, _)| *at),
         now_ms: clock::ms(),
@@ -452,6 +458,8 @@ fn dispatch(req: Value) -> Result<Value, String> {
                 w.attributes = s.get("attributes").cloned().filter(|v| !v.is_null());
                 w.active = serde_json::from_value(s.get("active").cloned().unwrap_or(json!([]))).unwrap_or_default();
                 w.active_formation = s.get("active_formation").and_then(Value::as_str).map(str::to_string);
+                w.active_manager = serde_json::from_value(s.get("active_manager").cloned().unwrap_or(Value::Null)).unwrap_or(None);
+                w.record = serde_json::from_value(s.get("record").cloned().unwrap_or(Value::Null)).unwrap_or(None);
                 w.squad_prefs = serde_json::from_value(s.get("squad_prefs").cloned().unwrap_or(json!({}))).unwrap_or_default();
                 let extra: Vec<GalleryCard> = serde_json::from_value(s.get("extra").cloned().unwrap_or(json!([]))).unwrap_or_default();
                 for c in extra {
@@ -588,10 +596,15 @@ fn dispatch(req: Value) -> Result<Value, String> {
                         }
                     }
                 }
+                if let Some(c) = s.get("club").filter(|c| c.is_object()) {
+                    let n = |k: &str| c.get(k).and_then(Value::as_u64).unwrap_or(0);
+                    w.record = Some((n("wins"), n("draws"), n("losses")));
+                }
                 // the squad the PC's user plays (objective squads keep it where they can)
                 if let Some(m) = s.get("latest").and_then(Value::as_object).and_then(|l| l.iter().find(|(k, _)| k.ends_with("/usermassinfo"))).and_then(|(_, v)| v.get("body")) {
                     w.active = squads::active_squad(m);
                     w.active_formation = squads::active_formation(m);
+                    w.active_manager = squads::active_manager(m);
                 }
                 Ok(json!(true))
             }
@@ -612,7 +625,7 @@ fn dispatch(req: Value) -> Result<Value, String> {
                             .flatten()
                             .map(|o| json!({ "id": o.get("id"), "name": o.get("name"), "description": o.get("description"), "target": o.get("target") }))
                             .collect();
-                        json!({ "id": g.get("id"), "title": g.get("title"), "endTime": g.get("endTime"), "objectives": objectives })
+                        json!({ "id": g.get("id"), "title": g.get("title"), "endTime": g.get("endTime"), "category": g.get("category"), "categoryId": g.get("categoryId"), "objectives": objectives })
                     })
                     .collect();
                 Ok(json!({ "groups": groups, "names": w.names, "formations": w.formations }))
@@ -656,7 +669,7 @@ fn dispatch(req: Value) -> Result<Value, String> {
                 let extra: Vec<&GalleryCard> = w.gallery.values().filter(|c| !w.base_ids.contains(&c.def_id)).collect();
                 Ok(json!({ "collected": collected, "observed": w.observed, "listed": w.listed, "scanned": w.scanned, "manual": w.manual,
                     "known": w.known, "club_no": w.club_no, "synced_at": w.synced_at, "extra": extra, "prices": w.prices, "platform": w.platform, "coins": w.coins,
-                    "club": w.club, "objectives": w.objectives, "names": w.names, "formations": w.formations, "attributes": w.attributes, "active": w.active, "active_formation": w.active_formation, "squad_prefs": w.squad_prefs }))
+                    "club": w.club, "objectives": w.objectives, "names": w.names, "formations": w.formations, "attributes": w.attributes, "active": w.active, "active_formation": w.active_formation, "active_manager": w.active_manager, "record": w.record, "squad_prefs": w.squad_prefs }))
             }
             "reset" => {
                 w.observed.clear();
@@ -676,6 +689,8 @@ fn dispatch(req: Value) -> Result<Value, String> {
                 w.attributes = None;
                 w.active.clear();
                 w.active_formation = None;
+                w.active_manager = None;
+                w.record = None;
                 let base = w.base_ids.clone();
                 w.gallery.retain(|id, _| base.contains(id));
                 for c in w.gallery.values_mut() {

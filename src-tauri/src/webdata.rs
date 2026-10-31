@@ -111,7 +111,7 @@ pub fn objectives_for_sharing(w: &WebData) -> Option<Value> {
                 .flatten()
                 .map(|o| serde_json::json!({ "id": o.get("id"), "name": o.get("name"), "description": o.get("description"), "target": o.get("target") }))
                 .collect();
-            serde_json::json!({ "id": g.get("id"), "title": g.get("title"), "endTime": g.get("endTime"), "objectives": objectives })
+            serde_json::json!({ "id": g.get("id"), "title": g.get("title"), "endTime": g.get("endTime"), "category": g.get("category"), "categoryId": g.get("categoryId"), "objectives": objectives })
         })
         .collect();
     Some(serde_json::json!({
@@ -306,7 +306,16 @@ impl WebData {
             let id = g.get("id").and_then(Value::as_u64);
             match list.iter().position(|m| m.get("id").and_then(Value::as_u64) == id) {
                 Some(i) if fresh => list[i] = g,
-                Some(_) => {}
+                // the extension's copy of an event: EA's category comes from the full list
+                Some(i) => {
+                    for k in ["category", "categoryId"] {
+                        if list[i].get(k).is_none_or(Value::is_null) {
+                            if let Some(v) = g.get(k) {
+                                list[i][k] = v.clone();
+                            }
+                        }
+                    }
+                }
                 None => list.push(g),
             }
         }

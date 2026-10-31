@@ -739,6 +739,7 @@ fn squads_menu(app: &AppHandle, frame: &scan::Frame) {
     *last = Some(*id);
     drop(last);
     log(&app.state::<AppState>().data_dir, &format!("squads: event hub seen ({id})"));
+    crate::objective_focus(app, *id);
     let _ = app.emit("squads-focus", *id);
     crate::show_notice(app, serde_json::json!({ "kind": "squads", "event": title }), 6);
 }
@@ -817,6 +818,19 @@ pub fn set_session(app: &AppHandle, next: GameSession) {
     if next == GameSession::InMatch || previous == GameSession::InMatch {
         *crate::champions::LIVE.lock().unwrap() = None;
     }
+    // The objective plan follows the matches (a match is ≥ 4 minutes: matchmaking left before
+    // kickoff doesn't count); back in a menu the user hears what's next.
+    {
+        let mut started = MATCH_STARTED.lock().unwrap();
+        if next == GameSession::InMatch {
+            *started = Some(std::time::Instant::now());
+        } else if previous == GameSession::InMatch {
+            let played = started.take().is_some_and(|t| t.elapsed() >= Duration::from_secs(240));
+            if played && next != GameSession::Closed {
+                crate::objective_match_played(app);
+            }
+        }
+    }
     // A match starts: step aside (no window of ours over the game – Windows can then present
     // it like fullscreen). After it: the missing list comes back if it was open.
     if next == GameSession::InMatch {
@@ -869,6 +883,9 @@ pub fn set_session(app: &AppHandle, next: GameSession) {
     }
     let _ = app.emit("game-session", next);
 }
+
+/// When the current match started (the objective plan counts matches that lasted).
+static MATCH_STARTED: std::sync::Mutex<Option<std::time::Instant>> = std::sync::Mutex::new(None);
 
 /// When a purchase was last confirmed (by the coins or the success dialog): its New Items screen
 /// right after must not say "nothing new" over the purchase notice (live 2026-10-17: Oblak bought,

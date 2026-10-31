@@ -162,6 +162,37 @@ export default function Toast() {
     );
   }
 
+  if (toast.kind === "squads-swap") {
+    return (
+      <div className="toast read best" key="squads-swap" role="status">
+        <span className="toast-mark read" aria-hidden="true" />
+        <div className="toast-body">
+          <p className="toast-title">{t("squads.toast.swapTitle", { count: toast.played })}</p>
+          {toast.swaps.slice(0, 3).map((w, i) => (
+            <p className="toast-line" key={i}>
+              {w.out ? t("squads.plan.swap", { out: w.out, in: w.in, pos: w.pos }) : t("squads.plan.in", { in: w.in, pos: w.pos })}
+              {w.buy ? ` · ${t("squads.toast.buy")}` : ""}
+            </p>
+          ))}
+          <p className="toast-line">{t("squads.toast.check")}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (toast.kind === "squads-match") {
+    return (
+      <div className="toast read" key="squads-match" role="status">
+        <span className="toast-mark read" aria-hidden="true" />
+        <div className="toast-body">
+          <p className="toast-title">{t("squads.toast.matchTitle", { count: toast.played })}</p>
+          <p className="toast-line">{toast.next != null && toast.next > 0 ? t("squads.toast.next", { count: toast.next }) : t("squads.toast.keep")}</p>
+          <p className="toast-line">{t("squads.toast.check")}</p>
+        </div>
+      </div>
+    );
+  }
+
   if (toast.kind === "recording") {
     return (
       <div className="toast better" key="recording" role="status">
