@@ -45,6 +45,28 @@
     return value;
   }
 
+  /**
+   * A player in an evolution comes in the Evolutions hub without a name (and is off the club list):
+   * the Web App's own player data names him (repositories.Item.getStaticDataByDefId – 2026-11-01,
+   * Suhonen showed as his club).
+   */
+  function nameEvoPlayers(body) {
+    for (const slot of Array.isArray(body?.slots) ? body.slots : []) {
+      const p = slot?.player;
+      if (!p || typeof p !== "object" || (typeof p.name === "string" && /[a-z]/i.test(p.name))) continue;
+      for (const id of [p.resourceId, p.assetId]) {
+        try {
+          const s = id != null ? window.repositories?.Item?.getStaticDataByDefId?.(id) : null;
+          const name = s?.name ?? [s?.firstName, s?.lastName].filter(Boolean).join(" ");
+          if (typeof name === "string" && /[a-z]/i.test(name)) {
+            p.name = name;
+            break;
+          }
+        } catch {}
+      }
+    }
+  }
+
   function emit(url, status, text) {
     if (status < 200 || status >= 300 || !text) return;
     let body;
@@ -53,6 +75,7 @@
     } catch {
       return;
     }
+    if (/\/academy\/hub\//.test(url)) nameEvoPlayers(body);
     post({ kind: "capture", url: url.split("?")[0], body: scrub(body) });
     if (TEXT_PATHS.test(url)) postTexts(body);
   }

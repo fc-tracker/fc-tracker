@@ -3322,7 +3322,10 @@ pub fn club_player(item: &crate::types::Item, catalog: &BTreeMap<u64, crate::typ
         return None;
     }
     let card = catalog.get(&def_id);
-    let positions = play.map(|p| p.positions.clone()).filter(|v| !v.is_empty()).or_else(|| card.map(|c| c.positions.clone()).filter(|v| !v.is_empty())).unwrap_or_default();
+    let positions = play.map(|p| p.positions.clone()).filter(|v| !v.is_empty()).or_else(|| card.map(|c| c.positions.clone()).filter(|v| !v.is_empty()))
+        // a card the catalog does not have (FC-Tracker Web, 2026-11-01: Therkildsen): its own position
+        .or_else(|| item.position.clone().filter(|p| !p.is_empty() && p.chars().all(|c| c.is_ascii_uppercase())).map(|p| vec![p]))
+        .unwrap_or_default();
     let face = play
         .filter(|p| p.face.len() == 6)
         .map(|p| std::array::from_fn(|i| p.face[i] as u32))
