@@ -57,7 +57,8 @@
       for (const id of [p.resourceId, p.assetId]) {
         try {
           const s = id != null ? window.repositories?.Item?.getStaticDataByDefId?.(id) : null;
-          const name = s?.name ?? [s?.firstName, s?.lastName].filter(Boolean).join(" ");
+          // the name the card shows ("Suhonen"), not the full one ("Anssi Suhonen")
+          const name = [s?.name, s?.lastName, [s?.firstName, s?.lastName].filter(Boolean).join(" ")].find((n) => typeof n === "string" && /[a-z]/i.test(n));
           if (typeof name === "string" && /[a-z]/i.test(name)) {
             p.name = name;
             break;

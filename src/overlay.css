@@ -1421,6 +1421,11 @@ html[data-view="toast"] #root {
 .sq-line { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
 .sq-card { position: relative; width: 104px; padding: 6px 8px 7px; display: grid; gap: 3px; background: var(--surface-hi); border-top: 2px solid transparent; clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); }
 .sq-card.counts { border-top-color: var(--accent-2); }
+/* the bench under the pitch: evo players and cards for objectives a sub does */
+.sq-bench-row { display: grid; gap: 6px; padding: 8px 10px 12px; background: var(--bg-2); border-top: 1px dashed var(--line); }
+.sq-bench-label { font: 700 12px/1.2 var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.sq-card.bench { opacity: 0.92; border-top-color: var(--accent); }
+.sq-bench-why { font-size: 10px; line-height: 1.2; color: var(--muted); overflow-wrap: anywhere; }
 .sq-card-top { display: flex; justify-content: space-between; align-items: baseline; }
 .sq-card-top b { font: 700 20px/1 var(--font-display); }
 .sq-card-top span { font-size: 11px; font-weight: 800; color: var(--muted); }

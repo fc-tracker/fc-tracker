@@ -2026,6 +2026,11 @@ pub fn match_brief(s: &ComboPlan) -> MatchBrief {
 pub struct SessionEvo {
     pub name: String,
     pub player: String,
+    /// The card, for the bench under the pitch.
+    pub pos: String,
+    pub rating: u32,
+    pub nation: u64,
+    pub nation_name: Option<String>,
     pub level: u32,
     pub levels: u32,
     pub goal: String,
@@ -2624,6 +2629,10 @@ impl<'a> Planner<'a> {
                 Some(SessionEvo {
                     name: e.name.clone(),
                     player: p.name.clone(),
+                    pos: p.positions.first().cloned().unwrap_or_default(),
+                    rating: p.rating,
+                    nation: p.nation,
+                    nation_name: self.input.names.nations.get(&p.nation).cloned(),
                     level: e.level,
                     levels: e.levels,
                     goal: g.text.clone(),
@@ -3326,6 +3335,12 @@ pub fn club_player(item: &crate::types::Item, catalog: &BTreeMap<u64, crate::typ
         // a card the catalog does not have (FC-Tracker Web, 2026-11-01: Therkildsen): its own position
         .or_else(|| item.position.clone().filter(|p| !p.is_empty() && p.chars().all(|c| c.is_ascii_uppercase())).map(|p| vec![p]))
         .unwrap_or_default();
+    // the card's own position first (EA lists the others in a fixed order: Suhonen CDM, CM, CAM is a CAM)
+    let mut positions = positions;
+    if let Some(i) = item.position.as_ref().and_then(|p| positions.iter().position(|x| x == p)) {
+        let p = positions.remove(i);
+        positions.insert(0, p);
+    }
     let face = play
         .filter(|p| p.face.len() == 6)
         .map(|p| std::array::from_fn(|i| p.face[i] as u32))

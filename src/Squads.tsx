@@ -575,7 +575,26 @@ function ManagerLine({ sq }: { sq: SquadView }) {
 }
 
 /** The XI on a pitch, attack at the top; a card opens its details. */
-export function Pitch({ e, compact = false }: { e: SquadSource; compact?: boolean }) {
+/** A card on the bench: an evolution player or one for objectives a sub does. */
+interface BenchCard {
+  name: string;
+  pos: string;
+  rating: number;
+  nation: number;
+  nation_name: string | null;
+  /** The evo, or the objectives he counts for. */
+  why: string;
+}
+
+/** The session's bench: evo players not in the XI first, then the bench cards. */
+export function benchOf(s: SessionPlan): BenchCard[] {
+  const evos = (s.evos ?? []).filter((x) => !x.in_xi).map((x) => ({ name: x.player, pos: x.pos ?? "", rating: x.rating ?? 0, nation: x.nation ?? 0, nation_name: x.nation_name ?? null, why: x.name }));
+  const picks = (s.bench ?? []).map((b) => ({ name: b.name, pos: b.pos, rating: b.rating, nation: b.nation, nation_name: b.nation_name, why: b.objectives.slice(0, 2).join(", ") }));
+  return [...evos, ...picks];
+}
+
+export function Pitch({ e, compact = false, bench = [] }: { e: SquadSource; compact?: boolean; bench?: BenchCard[] }) {
+  const subAt = useSubAt();
   const [open, setOpen] = useState<number | null>(null);
   const sq = e.squad;
   useEffect(() => setOpen(null), [e.id]);
@@ -626,6 +645,24 @@ export function Pitch({ e, compact = false }: { e: SquadSource; compact?: boolea
           </div>
         ))}
       </div>
+      {bench.length > 0 && (
+        <div className="sq-bench-row" aria-label={t("squads.bench.title", { minute: subAt })}>
+          <span className="sq-bench-label">{t("squads.bench.title", { minute: subAt })}</span>
+          <div className="sq-line">
+            {bench.map((b, i) => (
+              <div key={i} className="sq-card bench" title={b.why}>
+                <span className="sq-card-top">
+                  <b>{b.rating || ""}</b>
+                  {b.nation > 0 && <Flag nation={b.nation} name={b.nation_name} size={compact ? 14 : 18} />}
+                  <span>{b.pos}</span>
+                </span>
+                <span className="sq-name">{b.name}</span>
+                {!compact && <small className="sq-bench-why">{b.why}</small>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       {!compact && <ManagerLine sq={sq} />}
       {shown && <CardDetail s={shown} e={e} onClose={() => setOpen(null)} />}
     </div>
@@ -1051,7 +1088,7 @@ function Sessions({ view, prefs, onPrefs }: { view: SquadsView; prefs: SquadPref
             <SessionList s={s} elsewhere={s.id === list[0].id ? elsewhere : undefined} />
           </div>
           <div className="sq-col">
-            {s.place.kind !== "rush" && <Pitch e={shown} />}
+            {s.place.kind !== "rush" && <Pitch e={shown} bench={benchOf(s)} />}
             {s.squad && gaps(s.reqs, asked(s))
               .filter((r) => !(s.id === list[0].id && quick.some((q) => q.reqs.some((x) => x.met && reqLabel(x) === reqLabel(r)))))
               .map((r, i) => (
@@ -1273,7 +1310,7 @@ export function SquadQuick({ inMatch = false }: { inMatch?: boolean }) {
               {st.to != null && <> · {t("squads.plan.nextChange", { count: Math.max(0, st.to - s.played) })}</>}
             </p>
           )}
-          {shown && s.place.kind !== "rush" && <Pitch e={shown} compact />}
+          {shown && s.place.kind !== "rush" && <Pitch e={shown} compact bench={benchOf(s)} />}
           <details className="sq-brief-all">
             <summary>{t("brief.all", { count: s.items.length })}</summary>
             <SessionList s={s} compact />

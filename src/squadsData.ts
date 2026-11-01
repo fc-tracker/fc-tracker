@@ -259,6 +259,10 @@ export interface BenchPick {
 export interface SessionEvo {
   name: string;
   player: string;
+  pos?: string;
+  rating?: number;
+  nation?: number;
+  nation_name?: string | null;
   level: number;
   levels: number;
   goal: string;
