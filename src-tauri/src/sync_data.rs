@@ -79,7 +79,8 @@ impl GalleryCard {
         self.league = self.league.or(old.league);
         self.team = self.team.or(old.team);
         self.nation = self.nation.or(old.nation);
-        self.name = self.name.take().or_else(|| old.name.clone());
+        // EA's "---" placeholder never replaces a real name
+        self.name = self.name.take().filter(|n| n.chars().any(char::is_alphanumeric)).or_else(|| old.name.clone());
         self.position = self.position.take().or_else(|| old.position.clone());
         self.weak_foot = self.weak_foot.or(old.weak_foot);
         self.skill_moves = self.skill_moves.or(old.skill_moves);

@@ -2380,6 +2380,11 @@ pub fn plan(input: &Input, prefs: &SquadPrefs) -> SquadsView {
     let links = link_map(&input.team_links);
     let formations = if input.formations.is_empty() { builtin_formations() } else { input.formations.clone() };
     let mut club: Vec<Player> = input.club.iter().filter(|p| !p.positions.is_empty() && (!(prefs.hide_loans && p.loan) || prefs.must.contains(&p.key))).cloned().collect();
+    // a card EA names "---" that no catalog knows: its club and position, never an empty name
+    for p in club.iter_mut().filter(|p| p.name.trim().is_empty()) {
+        let team = input.names.team_name(p.club).unwrap_or("?");
+        p.name = format!("{team} ({})", p.positions.first().map(String::as_str).unwrap_or(""));
+    }
     // "has to include" cards not owned yet play as cards to get (a must by their definition)
     let owned_now: BTreeSet<u64> = input.club.iter().map(|p| p.def_id).collect();
     // the settings as the user made them go back to the UI; the plan adds the cards to get to `must`
@@ -2858,7 +2863,8 @@ pub fn club_player(item: &crate::types::Item, catalog: &BTreeMap<u64, crate::typ
         key: item.id,
         def_id,
         // EA names some cards "---" (no licence): the club stands in
-        name: item.name.clone().or_else(|| card.and_then(|c| c.name.clone())).filter(|n| n.chars().any(char::is_alphanumeric)).or_else(|| card.and_then(|c| c.team_name.clone())).unwrap_or_default(),
+        // each source in turn: EA writes "---" for many cards in the club data – the catalog has the name
+        name: [item.name.clone(), card.and_then(|c| c.name.clone())].into_iter().flatten().find(|n| n.chars().any(char::is_alphanumeric)).or_else(|| card.and_then(|c| c.team_name.clone())).unwrap_or_default(),
         rating: item.rating.or(card.and_then(|c| c.rating)).unwrap_or(0) as u32,
         positions,
         league: item.league_id.or(card.and_then(|c| c.league)).unwrap_or(0),

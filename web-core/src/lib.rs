@@ -309,7 +309,11 @@ fn ingest_sync(w: &mut Web, sync: SyncData) -> Value {
     let at = sync.at.unwrap_or_else(clock::ms);
     // a sync reads the whole club: it replaces the last one (sold players go)
     let mut club: BTreeMap<u64, types::Item> = BTreeMap::new();
+    let mut categories: Option<&Value> = None;
     for e in &sync.entries {
+        if sync_data::endpoint_key(&e.url).ends_with("/scmp/objective/categories/all") {
+            categories = Some(&e.body);
+        }
         match e.url.as_str() {
             "fct://webapp/objectives" => w.objectives = Some((at, e.body.clone())),
             "fct://webapp/names" => w.names = Some(e.body.clone()),
@@ -368,6 +372,25 @@ fn ingest_sync(w: &mut Web, sync: SyncData) -> Value {
                     owners.push((id, n));
                 }
             }
+        }
+    }
+    // EA's whole objectives list: every event with its progress and category (as the app keeps it)
+    if let Some(cats) = categories {
+        let groups = squads::groups_from_categories(cats, &|t| t.to_string());
+        if !groups.is_empty() {
+            let own = w.objectives.get_or_insert_with(|| (at, json!({ "groups": [] })));
+            if !own.1.get("groups").is_some_and(Value::is_array) {
+                own.1["groups"] = json!([]);
+            }
+            let list = own.1["groups"].as_array_mut().unwrap();
+            for g in groups {
+                let id = g.get("id").and_then(Value::as_u64);
+                match list.iter().position(|m| m.get("id").and_then(Value::as_u64) == id) {
+                    Some(i) => list[i] = g,
+                    None => list.push(g),
+                }
+            }
+            own.0 = own.0.max(at);
         }
     }
     let n = cards.len();
