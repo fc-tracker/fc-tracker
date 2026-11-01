@@ -1516,6 +1516,22 @@ button.sq-card.must { box-shadow: inset 0 0 0 1px var(--accent); }
 .sq-head > .cat-tab { align-self: center; }
 /* the side panel's quick overview */
 .sq-quick { display: grid; gap: 10px; align-content: start; overflow-y: auto; }
+/* the match brief: before the match (numbered), in the match by player */
+.sq-brief { display: grid; gap: 6px; padding: 10px 12px; background: var(--bg-2); border-left: 3px solid var(--accent); min-width: 0; }
+.sq-brief h4 { margin: 4px 0 0; font: 700 13px/1.2 var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.sq-brief h4:first-child { margin-top: 0; }
+.sq-brief-before { margin: 0; padding-left: 20px; display: grid; gap: 3px; font-weight: 700; }
+.sq-brief-before li { overflow-wrap: anywhere; }
+.sq-brief-before li::marker { color: var(--accent); font-family: var(--font-display); }
+.sq-brief-players { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.sq-brief-players ul { list-style: none; margin: 2px 0 0; padding: 0 0 0 10px; display: grid; gap: 2px; border-left: 1px solid var(--line); }
+.sq-brief-players ul li { overflow-wrap: anywhere; }
+.sq-brief-players small { color: var(--muted); }
+.sq-brief-who { margin: 0; display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
+.sq-brief-who b { font: 700 15px/1.2 var(--font-display); }
+.sq-brief-who span { font-size: 11px; font-weight: 800; color: var(--accent-2); text-transform: uppercase; }
+.sq-brief.in-match { font-size: 14px; }
+.sq-brief-all summary { cursor: pointer; font-weight: 700; color: var(--muted); }
 .sq-pick { display: flex; align-items: center; gap: 6px; }
 .sq-pick .ml-title { flex: 1; min-width: 0; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sq-pick button { width: 26px; height: 26px; border: 0; background: var(--surface-hi); color: var(--text); cursor: pointer; font-size: 16px; line-height: 1; }

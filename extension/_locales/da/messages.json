@@ -193,5 +193,13 @@
         "content": "$2"
       }
     }
+  },
+  "badgeNamesMissing": {
+    "message": "FC-Tracker: synket – men EA's Web App viste $COUNT$ spillere uden navn. Luk andre Web App-faner, genindlæs denne og synk igen.",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
   }
 }

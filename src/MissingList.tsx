@@ -61,6 +61,13 @@ export default function MissingList({ embedded = false }: { embedded?: boolean }
   // opened from the Planner: the shopping list; from Squads: the squad checklist
   const fromSection = (): { key: string; tab: Tab } | null => (lastSection() === "planner" ? { key: "", tab: "shop" } : lastSection() === "squads" ? { key: "", tab: "squad" } : null);
   const [picked, setPicked] = useState<{ key: string; tab: Tab } | null>(fromSection);
+  // in a match the panel is the match brief (opened by a double-tap of View, or left open)
+  const [inMatch, setInMatch] = useState(false);
+  useEffect(() => {
+    api.gameSession().then((g) => setInMatch(g === "in_match")).catch(() => {});
+    const u = events.onGameSession((g) => setInMatch(g === "in_match"));
+    return () => void u.then((f) => f());
+  }, []);
   useEffect(() => {
     api.uiPrefs().then((p) => setSide(p.missing_side)).catch(() => {});
   }, []);
@@ -111,9 +118,17 @@ export default function MissingList({ embedded = false }: { embedded?: boolean }
 
   const squadTab = (on: boolean, choose: (t: Tab) => void) => (
     <button role="tab" aria-selected={on} className={on ? "on" : ""} onClick={() => choose("squad")}>
-      {t("squads.tab")}
+      {t("brief.tab")}
     </button>
   );
+
+  if (inMatch && !embedded && !IS_WEB) {
+    return (
+      <div className="ml">
+        <SquadQuick inMatch />
+      </div>
+    );
+  }
 
   if (!list || picked?.tab === "squad") {
     const squad = picked?.tab === "squad";

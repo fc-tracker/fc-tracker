@@ -154,7 +154,7 @@
     window.postMessage({ source: COMMAND_SOURCE, cmd: "syncClub", gallerySets }, window.location.origin);
   }
 
-  async function finish() {
+  async function finish(nameless = 0) {
     clearInterval(abortWatch);
     done = true;
     syncing = false;
@@ -163,6 +163,8 @@
     // App closed: the sync is saved in the extension and delivered when the app runs.
     if (res?.queued) return render(msg("badgeSaved"), false);
     // No app, FC-Tracker Web: the page picks it up by itself
+    // the Web App didn't load EA's player names (often: a second Web App tab): say how to fix it
+    if (res?.ok && nameless >= 3) return render(msg("badgeNamesMissing", [String(nameless)]), true);
     if (res?.web) return render(msg("badgeWebSynced"), false);
     render(res?.ok ? msg("badgeSynced", [String(res.players ?? items)]) : msg("badgeNoApp"), !res?.ok);
   }
@@ -203,7 +205,7 @@
         }
         return;
       case "syncComplete":
-        return finish();
+        return finish(data.nameless ?? 0);
       case "syncError":
         syncing = false;
         send({ type: "syncFailed" }); // FC-Tracker Web stops showing "syncing"

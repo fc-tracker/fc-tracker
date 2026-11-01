@@ -267,6 +267,9 @@
     throw new Error("club_search_failed");
   }
 
+  /** Club cards the Web App showed without a name in the last sync. */
+  let nameless = 0;
+
   async function syncClub() {
     post({ kind: "progress", phase: "waiting" });
     await waitForWebApp();
@@ -291,6 +294,8 @@
       await sleep(PAGE_DELAY_MS);
     }
     const total = seen.size;
+    // EA's player database didn't load (another Web App tab open, 2026-11-01): many cards come as "---"
+    nameless = players.filter((e) => !/[a-z]/i.test(String(staticData(e).name ?? ""))).length;
 
     // New pack items waiting in Unassigned also count as owned.
     try {
@@ -681,7 +686,7 @@
     // the Gallery and the rest start once the Web App is signed in and loaded
     await waitForWebApp();
     const [players] = await Promise.all([club, syncGallery(sets), syncExtras().catch(() => {})]);
-    post({ kind: "syncComplete", count: players });
+    post({ kind: "syncComplete", count: players, nameless });
   }
 
   let running = false;

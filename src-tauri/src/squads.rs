@@ -1844,6 +1844,180 @@ pub struct ComboPlan {
     pub evos: Vec<SessionEvo>,
     /// Club cards on the bench for objectives that count for a sub.
     pub bench: Vec<BenchPick>,
+    /// The match brief: before the match in broad strokes, in the match who does what.
+    pub brief: MatchBrief,
+}
+
+/// The match brief (user 2026-11-01): a to-do list for the next match – before it in broad strokes
+/// (build the squad, buy, the kit, the bench), in it something specific to go for, by player
+/// ("Mandžukić: score a header, score as a ST").
+#[derive(Debug, Clone, Serialize, PartialEq, Default)]
+pub struct MatchBrief {
+    pub before: Vec<BriefStep>,
+    /// In the match, by the player who can do it (the one who covers the most first).
+    pub players: Vec<BriefPlayer>,
+    /// In the match, for anyone: win, keep a clean sheet …
+    pub anyone: Vec<BriefTask>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct BriefStep {
+    /// "squad" (build it: `count` changes) | "ready" (the squad as it is) | "buy" (`text` = card,
+    /// `count` = price) | "use" (`text` = a kit, stadium, ball …) | "bench" (`text` = names)
+    pub kind: String,
+    pub text: String,
+    pub count: Option<u64>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct BriefPlayer {
+    pub name: String,
+    pub pos: String,
+    /// On the bench: subbed on late.
+    pub bench: bool,
+    pub tasks: Vec<BriefTask>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct BriefTask {
+    /// The objective's ask, short ("Score 1 header").
+    pub text: String,
+    /// Still to do.
+    pub left: u32,
+}
+
+/// "Score 1 header in the Ghoul Fest Live Event." → "Score 1 header": the place and the squad part
+/// are said elsewhere (the session, the player it's under).
+fn short_task(text: &str) -> String {
+    let t = text.trim().trim_end_matches('.');
+    let l = t.to_lowercase();
+    let cut = [" in the ", " in any ", " in squad battles", " in rivals", " in champions", " in rush", " while ", " using ", " with ", " in your ", " in a ", " across "]
+        .iter()
+        .filter_map(|k| l.find(k))
+        .filter(|&i| i > 4)
+        .min()
+        .unwrap_or(t.len());
+    t[..cut].trim().to_string()
+}
+
+/// A kit, stadium or ball an objective asks to use ("… using the Mexico Away kit").
+fn gear(text: &str) -> Option<String> {
+    let l = text.to_lowercase();
+    let end = [" kit", " stadium", " match ball", " ball", " tifo", " badge"].iter().filter_map(|k| l.find(k).map(|i| i + k.len())).min()?;
+    let start = ["using the ", "with the ", "wearing the ", "in the ", "using ", "with "].iter().filter_map(|k| l[..end].rfind(k).map(|i| i + k.len())).max().unwrap_or(0);
+    let s = text[start..end].trim();
+    (!s.is_empty()).then(|| s.to_string())
+}
+
+fn is_attacker(pos: &str) -> bool {
+    matches!(pos, "ST" | "CF" | "LW" | "RW" | "LF" | "RF")
+}
+
+/// The brief of a session for its next match (the stage being played now).
+pub fn match_brief(s: &ComboPlan) -> MatchBrief {
+    let next = s.played + 1;
+    let stage = s.stages.iter().find(|st| st.from <= next && st.to.is_none_or(|t| next <= t));
+    let (sq, sreqs) = match (stage, &s.squad) {
+        (Some(st), _) => (Some(&st.squad), &st.reqs),
+        (None, Some(q)) => (Some(q), &s.reqs),
+        _ => (None, &s.reqs),
+    };
+    let mut b = MatchBrief::default();
+    // before: the squad, what to buy, what to wear, the bench
+    if let Some(q) = sq {
+        match q.changes {
+            Some(0) => b.before.push(BriefStep { kind: "ready".into(), text: q.formation.clone(), count: None }),
+            n => b.before.push(BriefStep { kind: "squad".into(), text: q.formation.clone(), count: n.map(|n| n as u64) }),
+        }
+        for x in q.slots.iter().filter(|x| !x.owned) {
+            b.before.push(BriefStep { kind: "buy".into(), text: format!("{} · {}", x.name, x.pos), count: x.price });
+        }
+    }
+    for it in s.items.iter().filter(|x| x.counts) {
+        if let Some(g) = gear(&it.text) {
+            if !b.before.iter().any(|x| x.kind == "use" && x.text.eq_ignore_ascii_case(&g)) {
+                b.before.push(BriefStep { kind: "use".into(), text: g, count: None });
+            }
+        }
+    }
+    let benched: Vec<String> = s.evos.iter().filter(|e| !e.in_xi).map(|e| e.player.clone()).chain(s.bench.iter().map(|p| p.name.clone())).collect();
+    if !benched.is_empty() {
+        b.before.push(BriefStep { kind: "bench".into(), text: benched.join(", "), count: None });
+    }
+    // in the match: what a match moves on, by who can do it
+    let mut tasks: Vec<(BriefTask, Vec<(String, String, bool)>)> = Vec::new();
+    for it in s.items.iter().filter(|x| x.counts && !x.bonus) {
+        let l = it.text.to_lowercase();
+        let doable = scores(&l) || ["header", "clean sheet", "win "].iter().any(|k| l.contains(k)) || l.starts_with("win");
+        if !doable || it.progress >= it.target {
+            continue;
+        }
+        let task = BriefTask { text: short_task(&it.text), left: it.target - it.progress };
+        let mut who: Vec<(String, String, bool)> = Vec::new();
+        if let (true, Some(k), Some(q)) = (it.scorer, it.req, sq) {
+            let need = &s.reqs[k].need;
+            if let Some(j) = sreqs.iter().position(|r| &r.need == need) {
+                // a goal or an assist is not the keeper's job
+                who.extend(q.slots.iter().filter(|x| x.counts_for.contains(&j) && x.pos != "GK").map(|x| (x.name.clone(), x.pos.clone(), false)));
+            }
+            who.extend(s.bench.iter().filter(|p| p.reqs.contains(&k) && p.pos != "GK").map(|p| (p.name.clone(), p.pos.clone(), true)));
+        }
+        tasks.push((task, who));
+    }
+    // the player who covers the most open tasks first, until every task with a player has one
+    let mut left: Vec<usize> = (0..tasks.len()).filter(|&i| !tasks[i].1.is_empty()).collect();
+    while !left.is_empty() {
+        let mut best: Option<((String, String, bool), usize)> = None;
+        for &i in &left {
+            for w in &tasks[i].1 {
+                let n = left.iter().filter(|&&j| tasks[j].1.contains(w)).count();
+                if best.as_ref().is_none_or(|b| n > b.1 || (n == b.1 && !w.2 && b.0 .2)) {
+                    best = Some((w.clone(), n));
+                }
+            }
+        }
+        let Some((w, _)) = best else { break };
+        let mine: Vec<usize> = left.iter().copied().filter(|&j| tasks[j].1.contains(&w)).collect();
+        left.retain(|j| !mine.contains(j));
+        b.players.push(BriefPlayer { name: w.0, pos: w.1, bench: w.2, tasks: mine.iter().map(|&j| tasks[j].0.clone()).collect() });
+    }
+    // no player named: a special goal (a header, a chip shot, outside the box …) goes to the striker –
+    // the one already in the list, else the XI's first attacker; the rest is for anyone
+    let striker = sq.and_then(|q| q.slots.iter().find(|x| is_attacker(&x.pos)).map(|x| (x.name.clone(), x.pos.clone())));
+    for (t, _) in tasks.into_iter().filter(|(_, w)| w.is_empty()) {
+        let l = t.text.to_lowercase();
+        let special = ["header", "chip", "outside the box", "volley", "finesse", "free kick", "penalt", "long shot", "power shot", "trivela", "bicycle", "first time"].iter().any(|k| l.contains(k));
+        if special && !b.players.iter().any(|p| is_attacker(&p.pos) && !p.bench) {
+            if let Some((n, pos)) = &striker {
+                b.players.push(BriefPlayer { name: n.clone(), pos: pos.clone(), bench: false, tasks: Vec::new() });
+            }
+        }
+        let target = if special { b.players.iter_mut().find(|p| is_attacker(&p.pos) && !p.bench) } else { None };
+        match target {
+            Some(p) if !p.tasks.iter().any(|x| x.text == t.text) => p.tasks.push(t),
+            Some(_) => {}
+            None => match b.anyone.iter_mut().find(|x| x.text == t.text) {
+                Some(x) => x.left = x.left.max(t.left),
+                None => b.anyone.push(t),
+            },
+        }
+    }
+    // anyone: what asks the most of one match first (3 goals in a match, a clean sheet), then wins,
+    // then plain goal counts – a short list to play for, not every objective again
+    let rank = |t: &BriefTask| {
+        let l = t.text.to_lowercase();
+        if l.contains("one match") || l.contains("clean sheet") {
+            0
+        } else if l.starts_with("win") {
+            1
+        } else if l.contains("assist") {
+            2
+        } else {
+            3
+        }
+    };
+    b.anyone.sort_by_key(|t| (rank(t), t.left));
+    b
 }
 
 /// An active evolution in a session: on the bench to be subbed on, or starting when it needs him
@@ -1903,6 +2077,8 @@ pub struct BenchPick {
     pub nation_name: Option<String>,
     /// The objectives it counts for once subbed on.
     pub objectives: Vec<String>,
+    /// The session's requirements (indices) it meets.
+    pub reqs: Vec<usize>,
 }
 
 /// One step of the match plan.
@@ -2416,7 +2592,7 @@ impl<'a> Planner<'a> {
         events_in.sort_by_key(|&e| (primary != Some(self.evs[e].g.id), self.evs[e].g.ends_at.unwrap_or(u64::MAX)));
         let title = events_in.iter().map(|&e| self.evs[e].g.title.as_str()).collect::<Vec<_>>().join(" · ");
         let ends_at = events_in.iter().filter_map(|&e| self.evs[e].g.ends_at).min();
-        let plan = ComboPlan { id: 0, place: place.clone(), place_name: self.place_name(place), title, ends_at, reqs: req_views, items, squad, counted, bonus, primary, stages: Vec::new(), played: self.played(), quick: None, evos, bench: Vec::new() };
+        let plan = ComboPlan { id: 0, place: place.clone(), place_name: self.place_name(place), title, ends_at, reqs: req_views, items, squad, counted, bonus, primary, stages: Vec::new(), played: self.played(), quick: None, evos, bench: Vec::new(), brief: MatchBrief::default() };
         let mut plan = plan;
         plan.bench = bench_picks
             .iter()
@@ -2427,6 +2603,7 @@ impl<'a> Planner<'a> {
                 nation: p.nation,
                 nation_name: self.input.names.nations.get(&p.nation).cloned(),
                 objectives: plan.items.iter().filter(|x| x.req.is_some_and(|k| ks.contains(&k))).map(|x| if x.name.is_empty() { x.text.clone() } else { x.name.clone() }).collect(),
+                reqs: ks.clone(),
             })
             .collect();
         (plan, solved)
@@ -2934,7 +3111,13 @@ pub fn plan(input: &Input, prefs: &SquadPrefs) -> SquadsView {
         .collect();
     SquadsView {
         events,
-        combos: sessions.into_iter().map(|(c, _)| c).collect(),
+        combos: sessions
+            .into_iter()
+            .map(|(mut c, _)| {
+                c.brief = match_brief(&c);
+                c
+            })
+            .collect(),
         apart,
         places: place_options,
         primary,
@@ -3718,6 +3901,30 @@ mod tests {
         let play = s.items.iter().find(|x| x.objective == 21).unwrap();
         assert!(play.counts && play.bench);
         assert!(!s.items.iter().find(|x| x.objective == 22).unwrap().bench, "starting 11 never counts from the bench");
+    }
+
+    #[test]
+    fn the_match_brief_says_what_to_do_before_and_who_does_what_in_the_match() {
+        assert_eq!(short_task("Score 1 header in the Ghoul Fest Live Event."), "Score 1 header");
+        assert_eq!(short_task("Score 10 goals in any FUT game mode using a player from Germany."), "Score 10 goals");
+        assert_eq!(gear("Play 1 match using the Mexico National team Away kit in any FUT game mode.").as_deref(), Some("Mexico National team Away kit"));
+        let mut input = scenario(json!({ "groups": [
+            ev(1, "Ghoul Fest", &[
+                (11, "Score 3 goals using a player from Spain in Squad Battles.", 0, 3),
+                (12, "Score 1 header in Squad Battles.", 0, 1),
+                (13, "Win 2 matches in Squad Battles.", 0, 2),
+                (14, "Play 1 match using the Mexico National team Away kit in Squad Battles.", 0, 1) ]) ] }));
+        input.club.push(pl(99, "Corona", 70, &["RW"], 99, 99, 83));
+        let v = plan(&input, &SquadPrefs::default());
+        let b = &v.combos[0].brief;
+        // before: the squad, the kit
+        assert!(b.before.iter().any(|x| x.kind == "squad" || x.kind == "ready"));
+        assert!(b.before.iter().any(|x| x.kind == "use" && x.text == "Mexico National team Away kit"));
+        // in the match: a Spaniard (never the keeper) scores, the striker heads one in, anyone wins
+        let spain = b.players.iter().find(|p| p.tasks.iter().any(|t| t.text == "Score 3 goals")).expect("a scorer");
+        assert_ne!(spain.pos, "GK");
+        assert!(b.players.iter().any(|p| is_attacker(&p.pos) && p.tasks.iter().any(|t| t.text == "Score 1 header")));
+        assert!(b.anyone.iter().any(|t| t.text == "Win 2 matches" && t.left == 2));
     }
 
     #[test]

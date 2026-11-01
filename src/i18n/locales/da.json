@@ -1088,5 +1088,22 @@
   "remind.subFor": "Skift {{player}} ind nu – {{what}}",
   "squads.bench.title": "Bænk – skift ind ved {{minute}}:00",
   "squads.bench.for": "Tæller for {{names}}",
-  "squads.slot.bench": "Fra bænken"
+  "squads.slot.bench": "Fra bænken",
+  "brief.tab": "Kamp",
+  "brief.title": "Kamp-brief",
+  "brief.before": "Før kampen",
+  "brief.during": "I kampen",
+  "brief.ready": "Dit hold er klar ({{formation}})",
+  "brief.squad": "Byg holdet: {{formation}} · {{count}} skift",
+  "brief.squadNew": "Byg holdet: {{formation}}",
+  "brief.buy": "Køb {{card}} – ca. {{price}}",
+  "brief.buySearch": "Køb {{card}} – søg på markedet",
+  "brief.use": "Brug {{what}}",
+  "brief.bench": "Bænk: {{names}} – skift ind ved {{minute}}:00",
+  "brief.fromBench": "{{pos}} · fra bænken",
+  "brief.anyone": "Alle",
+  "brief.left": "{{count}} tilbage",
+  "brief.more": "+{{count}} mere i listen nedenfor",
+  "brief.nothing": "Intet specifikt – spil dit spil.",
+  "brief.all": "Alle objectives ({{count}})"
 }

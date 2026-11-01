@@ -1088,5 +1088,22 @@
   "remind.subFor": "Wechsle {{player}} jetzt ein – {{what}}",
   "squads.bench.title": "Bank – bei {{minute}}:00 einwechseln",
   "squads.bench.for": "Zählt für {{names}}",
-  "squads.slot.bench": "Von der Bank"
+  "squads.slot.bench": "Von der Bank",
+  "brief.tab": "Spiel",
+  "brief.title": "Spiel-Briefing",
+  "brief.before": "Vor dem Spiel",
+  "brief.during": "Im Spiel",
+  "brief.ready": "Dein Team ist bereit ({{formation}})",
+  "brief.squad": "Team aufstellen: {{formation}} · {{count}} Wechsel",
+  "brief.squadNew": "Team aufstellen: {{formation}}",
+  "brief.buy": "Kaufe {{card}} – ca. {{price}}",
+  "brief.buySearch": "Kaufe {{card}} – auf dem Markt suchen",
+  "brief.use": "Nutze {{what}}",
+  "brief.bench": "Bank: {{names}} – bei {{minute}}:00 einwechseln",
+  "brief.fromBench": "{{pos}} · von der Bank",
+  "brief.anyone": "Alle",
+  "brief.left": "noch {{count}}",
+  "brief.more": "+{{count}} weitere in der Liste unten",
+  "brief.nothing": "Nichts Bestimmtes – spiel dein Spiel.",
+  "brief.all": "Alle Aufgaben ({{count}})"
 }

@@ -1088,5 +1088,22 @@
   "remind.subFor": "Sub on {{player}} now – {{what}}",
   "squads.bench.title": "Bench – sub on at {{minute}}:00",
   "squads.bench.for": "Counts for {{names}}",
-  "squads.slot.bench": "From the bench"
+  "squads.slot.bench": "From the bench",
+  "brief.tab": "Match",
+  "brief.title": "Match brief",
+  "brief.before": "Before the match",
+  "brief.during": "In the match",
+  "brief.ready": "Your squad is ready ({{formation}})",
+  "brief.squad": "Build the squad: {{formation}} · {{count}} changes",
+  "brief.squadNew": "Build the squad: {{formation}}",
+  "brief.buy": "Buy {{card}} – about {{price}}",
+  "brief.buySearch": "Buy {{card}} – search the market",
+  "brief.use": "Use the {{what}}",
+  "brief.bench": "Bench: {{names}} – sub on at {{minute}}:00",
+  "brief.fromBench": "{{pos}} · from the bench",
+  "brief.anyone": "Anyone",
+  "brief.left": "{{count}} left",
+  "brief.more": "+{{count}} more in the list below",
+  "brief.nothing": "Nothing specific – play your game.",
+  "brief.all": "All objectives ({{count}})"
 }

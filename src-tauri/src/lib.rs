@@ -197,21 +197,13 @@ fn close_overlay_now(app: &AppHandle) {
     save_ui(app);
 }
 
-/// A match starts: hide everything of ours (the overlay, the missing list, a toast) and remember
-/// whether the list was open.
+/// A match starts: the overlay and a toast step aside; the side panel stays (it shows the match brief).
 pub(crate) fn enter_match_mode(app: &AppHandle) {
     let app2 = app.clone();
     let _ = app.run_on_main_thread(move || {
         let state = app2.state::<AppState>();
-        // Entered twice (matchmaking, then kit selection): keep the first answer.
-        let list_open = app2.get_webview_window(MISSING).is_some_and(|w| ui::is_shown(&w));
-        state.missing_before_match.fetch_or(list_open, Ordering::Relaxed);
-        if let Some(w) = app2.get_webview_window(MISSING) {
-            if ui::is_shown(&w) {
-                ui::hide(&w);
-                let _ = app2.emit("missing-visible", false);
-            }
-        }
+        // The side panel stays as it is: open, it turns into the match brief (user 2026-11-01:
+        // "keep it open the whole time"); closed, a double-tap of View opens it.
         *state.notice_until.lock().unwrap() = None;
         hide_toast_now(&app2);
         if app2.get_webview_window(OVERLAY).is_some_and(|w| w.is_visible().unwrap_or(false)) {
@@ -304,8 +296,9 @@ fn toggle_missing(app: &AppHandle) {
         ui::place_missing(&win, &app.state::<AppState>().ui.lock().unwrap());
         ui::set_click_through(&win, true);
         ui::show_without_focus(&win);
-        // The list follows the set on screen, even one switched to a moment ago.
-        if scan::game_in_view() {
+        // The list follows the set on screen, even one switched to a moment ago (never in a match:
+        // there only the scoreboard is looked at).
+        if scan::game_in_view() && !in_match(app) {
             follow_screen(app);
         }
     }
@@ -1647,8 +1640,10 @@ pub fn run() {
                 let h = handle.clone();
                 // Windows must be managed from the main thread.
                 let _ = handle.run_on_main_thread(move || match pad {
-                    // In a match View / Create belongs to the game: nothing of ours pops up.
-                    gamepad::Pad::ToggleOverlay | gamepad::Pad::ToggleMissing if in_match(&h) => {}
+                    // In a match the overlay stays away; the side panel opens as the match brief (user
+                    // 2026-11-01: "an in-game list you can open or keep open") – a double-tap of View
+                    // does nothing in the game for an outfield player.
+                    gamepad::Pad::ToggleOverlay if in_match(&h) => {}
                     gamepad::Pad::ToggleOverlay => toggle_overlay(&h),
                     gamepad::Pad::ControllerChanged => {
                         let _ = h.emit("controller", gamepad::controller());

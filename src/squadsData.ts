@@ -230,6 +230,19 @@ export interface SessionPlan {
   evos?: SessionEvo[];
   /** Club cards on the bench for objectives a sub does. */
   bench?: BenchPick[];
+  /** The match brief: before the match in broad strokes, in the match who does what. */
+  brief?: MatchBrief;
+}
+
+export interface MatchBrief {
+  before: { kind: "squad" | "ready" | "buy" | "use" | "bench"; text: string; count: number | null }[];
+  players: { name: string; pos: string; bench: boolean; tasks: BriefTask[] }[];
+  anyone: BriefTask[];
+}
+
+export interface BriefTask {
+  text: string;
+  left: number;
 }
 
 /** A club card on the bench: subbed on late, it counts for these objectives. */

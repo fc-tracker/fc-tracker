@@ -1088,5 +1088,22 @@
   "remind.subFor": "Fais entrer {{player}} maintenant – {{what}}",
   "squads.bench.title": "Banc – entrée à {{minute}}:00",
   "squads.bench.for": "Compte pour {{names}}",
-  "squads.slot.bench": "Depuis le banc"
+  "squads.slot.bench": "Depuis le banc",
+  "brief.tab": "Match",
+  "brief.title": "Brief du match",
+  "brief.before": "Avant le match",
+  "brief.during": "Pendant le match",
+  "brief.ready": "Ton équipe est prête ({{formation}})",
+  "brief.squad": "Monte l'équipe : {{formation}} · {{count}} changements",
+  "brief.squadNew": "Monte l'équipe : {{formation}}",
+  "brief.buy": "Achète {{card}} – environ {{price}}",
+  "brief.buySearch": "Achète {{card}} – cherche sur le marché",
+  "brief.use": "Utilise {{what}}",
+  "brief.bench": "Banc : {{names}} – entrée à {{minute}}:00",
+  "brief.fromBench": "{{pos}} · depuis le banc",
+  "brief.anyone": "N'importe qui",
+  "brief.left": "encore {{count}}",
+  "brief.more": "+{{count}} de plus dans la liste ci-dessous",
+  "brief.nothing": "Rien de précis – joue ton jeu.",
+  "brief.all": "Tous les objectifs ({{count}})"
 }

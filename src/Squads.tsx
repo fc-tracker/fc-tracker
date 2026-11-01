@@ -9,7 +9,7 @@ import { api, events, formatAge, IS_WEB } from "./api";
 import { num } from "./format";
 import { Flag } from "./flags";
 import { t, type MessageKey } from "./i18n";
-import { defaultSquadPrefs, pitchRows, type ClubEntry, type EventPlan, type GetOption, type Mode, type ObjectiveView, type ReqView, type SessionItem, type BenchPick, type SessionEvo, type SessionPlan, type SlotView, type SquadPrefs, type SquadView, type SquadsView, sameMode } from "./squadsData";
+import { defaultSquadPrefs, pitchRows, type ClubEntry, type EventPlan, type GetOption, type Mode, type ObjectiveView, type ReqView, type SessionItem, type BenchPick, type MatchBrief, type SessionEvo, type SessionPlan, type SlotView, type SquadPrefs, type SquadView, type SquadsView, sameMode } from "./squadsData";
 import { removeSquad, saveSquad, useSavedSquads } from "./savedSquads";
 import { voteAvailability } from "./objectives";
 
@@ -1044,6 +1044,7 @@ function Sessions({ view, prefs, onPrefs }: { view: SquadsView; prefs: SquadPref
         <AskCards s={s} prefs={prefs} onPrefs={onPrefs} />
         <div className="sq-split">
           <div className="sq-col">
+            {s.id === list[0].id && <MatchBriefView s={s} />}
             <MatchPlan s={s} stage={stage} onStage={setStage} quick={s.id === list[0].id ? quick : []} onPick={setPicked} />
             <EvoList s={s} />
             <BenchList s={s} />
@@ -1152,7 +1153,84 @@ const FORMATIONS = ["4-3-3", "4-3-3 (2)", "4-4-2", "4-4-2 (2)", "4-2-3-1", "4-2-
 
 /** The side panel's quick overview: what to play now (the first session – the user's pick or
  *  Auto), the stage of the plan, what counts and the XI – one narrow column. */
-export function SquadQuick() {
+/** "For anyone" in the brief: the first few (what asks most of one match first). */
+const ANYONE_SHOWN = 4;
+
+/** The match brief (user 2026-11-01): before the match in broad strokes, in it something specific
+ *  to go for, by player. In a match only the second half shows. */
+export function MatchBriefView({ s, inMatch = false }: { s: SessionPlan; inMatch?: boolean }) {
+  const subAt = useSubAt();
+  const b = s.brief;
+  if (!b) return null;
+  const step = (x: MatchBrief["before"][number]) => {
+    switch (x.kind) {
+      case "ready":
+        return t("brief.ready", { formation: x.text });
+      case "squad":
+        return x.count != null ? t("brief.squad", { formation: x.text, count: x.count }) : t("brief.squadNew", { formation: x.text });
+      case "buy":
+        return x.count != null ? t("brief.buy", { card: x.text, price: num(x.count) }) : t("brief.buySearch", { card: x.text });
+      case "use":
+        return t("brief.use", { what: x.text });
+      case "bench":
+        return t("brief.bench", { names: x.text, minute: subAt });
+    }
+  };
+  const more = Math.max(0, b.anyone.length - ANYONE_SHOWN);
+  return (
+    <section className={`sq-brief ${inMatch ? "in-match" : ""}`} aria-label={t("brief.title")}>
+      {!inMatch && b.before.length > 0 && (
+        <>
+          <h4>{t("brief.before")}</h4>
+          <ol className="sq-brief-before">
+            {b.before.map((x, i) => (
+              <li key={i} className={x.kind}>
+                {step(x)}
+              </li>
+            ))}
+          </ol>
+        </>
+      )}
+      <h4>{t("brief.during")}</h4>
+      {b.players.length === 0 && b.anyone.length === 0 && <p className="sq-muted">{t("brief.nothing")}</p>}
+      <ul className="sq-brief-players">
+        {b.players.map((p, i) => (
+          <li key={i}>
+            <p className="sq-brief-who">
+              <b>{p.name}</b> <span>{p.bench ? t("brief.fromBench", { pos: p.pos }) : p.pos}</span>
+            </p>
+            <ul>
+              {p.tasks.map((x, k) => (
+                <li key={k}>
+                  {x.text}
+                  {x.left > 1 && <small> · {t("brief.left", { count: x.left })}</small>}
+                </li>
+              ))}
+            </ul>
+          </li>
+        ))}
+        {b.anyone.length > 0 && (
+          <li>
+            <p className="sq-brief-who">
+              <b>{t("brief.anyone")}</b>
+            </p>
+            <ul>
+              {b.anyone.slice(0, ANYONE_SHOWN).map((x, k) => (
+                <li key={k}>
+                  {x.text}
+                  {x.left > 1 && <small> · {t("brief.left", { count: x.left })}</small>}
+                </li>
+              ))}
+              {more > 0 && <li className="sq-muted">{t("brief.more", { count: more })}</li>}
+            </ul>
+          </li>
+        )}
+      </ul>
+    </section>
+  );
+}
+
+export function SquadQuick({ inMatch = false }: { inMatch?: boolean }) {
   const [view, busy] = useSquads();
   const [k, setK] = useState(0);
   if (!view) return <p className="ml-empty ml-loading">{t("squads.loading")}</p>;
@@ -1164,7 +1242,7 @@ export function SquadQuick() {
   return (
     <div className="ml-frame sq-quick">
       <header className="ml-head">
-        <span className="eyebrow">{t("squads.tab")}</span>
+        <span className="eyebrow">{t("brief.title")}</span>
         {s ? (
           // arrows, not a dropdown: the side panel never takes the focus a dropdown needs
           <div className="sq-pick" role="group" aria-label={t("squads.play.sessions")}>
@@ -1184,17 +1262,22 @@ export function SquadQuick() {
           </div>
         ) : null}
       </header>
-      <Notes view={view} busy={busy} />
-      {s && (
+      {!inMatch && <Notes view={view} busy={busy} />}
+      {s && inMatch && <MatchBriefView s={s} inMatch />}
+      {s && !inMatch && (
         <>
+          <MatchBriefView s={s} />
           {st && (
             <p className="sq-muted">
               {st.to == null ? t("squads.plan.from", { from: st.from }) : t("squads.plan.range", { from: st.from, to: st.to })}
               {st.to != null && <> · {t("squads.plan.nextChange", { count: Math.max(0, st.to - s.played) })}</>}
             </p>
           )}
-          <SessionList s={s} compact />
           {shown && s.place.kind !== "rush" && <Pitch e={shown} compact />}
+          <details className="sq-brief-all">
+            <summary>{t("brief.all", { count: s.items.length })}</summary>
+            <SessionList s={s} compact />
+          </details>
           {gaps(s.reqs, asked(s)).map((r, i) => (
             <Options key={i} r={r} />
           ))}

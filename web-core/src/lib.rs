@@ -497,6 +497,7 @@ fn dispatch(req: Value) -> Result<Value, String> {
                 w.active = serde_json::from_value(s.get("active").cloned().unwrap_or(json!([]))).unwrap_or_default();
                 w.active_formation = s.get("active_formation").and_then(Value::as_str).map(str::to_string);
                 w.active_manager = serde_json::from_value(s.get("active_manager").cloned().unwrap_or(Value::Null)).unwrap_or(None);
+                w.evo_hub = s.get("evo_hub").cloned().filter(|v| !v.is_null());
                 w.record = serde_json::from_value(s.get("record").cloned().unwrap_or(Value::Null)).unwrap_or(None);
                 w.squad_prefs = serde_json::from_value(s.get("squad_prefs").cloned().unwrap_or(json!({}))).unwrap_or_default();
                 let extra: Vec<GalleryCard> = serde_json::from_value(s.get("extra").cloned().unwrap_or(json!([]))).unwrap_or_default();
@@ -707,7 +708,7 @@ fn dispatch(req: Value) -> Result<Value, String> {
                 let extra: Vec<&GalleryCard> = w.gallery.values().filter(|c| !w.base_ids.contains(&c.def_id)).collect();
                 Ok(json!({ "collected": collected, "observed": w.observed, "listed": w.listed, "scanned": w.scanned, "manual": w.manual,
                     "known": w.known, "club_no": w.club_no, "synced_at": w.synced_at, "extra": extra, "prices": w.prices, "platform": w.platform, "coins": w.coins,
-                    "club": w.club, "objectives": w.objectives, "names": w.names, "formations": w.formations, "attributes": w.attributes, "active": w.active, "active_formation": w.active_formation, "active_manager": w.active_manager, "record": w.record, "squad_prefs": w.squad_prefs }))
+                    "club": w.club, "objectives": w.objectives, "names": w.names, "formations": w.formations, "attributes": w.attributes, "active": w.active, "active_formation": w.active_formation, "active_manager": w.active_manager, "record": w.record, "squad_prefs": w.squad_prefs, "evo_hub": w.evo_hub }))
             }
             "reset" => {
                 w.observed.clear();
@@ -729,6 +730,7 @@ fn dispatch(req: Value) -> Result<Value, String> {
                 w.active_formation = None;
                 w.active_manager = None;
                 w.record = None;
+                w.evo_hub = None;
                 let base = w.base_ids.clone();
                 w.gallery.retain(|id, _| base.contains(id));
                 for c in w.gallery.values_mut() {

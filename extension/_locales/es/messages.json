@@ -193,5 +193,13 @@
         "content": "$2"
       }
     }
+  },
+  "badgeNamesMissing": {
+    "message": "FC-Tracker: sincronizado, pero la Web App de EA mostró $COUNT$ jugadores sin nombre. Cierra las demás pestañas de la Web App, recarga esta y sincroniza otra vez.",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
   }
 }

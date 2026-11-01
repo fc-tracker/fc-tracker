@@ -1088,5 +1088,22 @@
   "remind.subFor": "Saca ahora a {{player}} – {{what}}",
   "squads.bench.title": "Banquillo – sácalos en el {{minute}}:00",
   "squads.bench.for": "Cuenta para {{names}}",
-  "squads.slot.bench": "Desde el banquillo"
+  "squads.slot.bench": "Desde el banquillo",
+  "brief.tab": "Partido",
+  "brief.title": "Plan del partido",
+  "brief.before": "Antes del partido",
+  "brief.during": "En el partido",
+  "brief.ready": "Tu plantilla está lista ({{formation}})",
+  "brief.squad": "Monta la plantilla: {{formation}} · {{count}} cambios",
+  "brief.squadNew": "Monta la plantilla: {{formation}}",
+  "brief.buy": "Compra {{card}} – unas {{price}}",
+  "brief.buySearch": "Compra {{card}} – búscalo en el mercado",
+  "brief.use": "Usa {{what}}",
+  "brief.bench": "Banquillo: {{names}} – sácalos en el {{minute}}:00",
+  "brief.fromBench": "{{pos}} · desde el banquillo",
+  "brief.anyone": "Cualquiera",
+  "brief.left": "faltan {{count}}",
+  "brief.more": "+{{count}} más en la lista de abajo",
+  "brief.nothing": "Nada concreto: juega tu partido.",
+  "brief.all": "Todos los objetivos ({{count}})"
 }
