@@ -1100,7 +1100,7 @@
   "brief.buySearch": "Buy {{card}} – search the market",
   "brief.use": "Use the {{what}}",
   "brief.fromBench": "{{pos}} · from the bench",
-  "brief.anyone": "Anyone",
+  "brief.anyone": "As a team",
   "brief.left": "{{count}} left",
   "brief.more": "+{{count}} more in the list below",
   "brief.nothing": "Nothing specific – play your game.",
@@ -1119,5 +1119,7 @@
   "squads.evo.pace_one": "1 match in {{days}} days",
   "brief.squad_one": "Build the squad: {{formation}} · 1 change",
   "squads.why.clears_one": "Clears 1 objective in {{events}} events",
-  "squads.play.counted_one": "1 objective moves on · {{events}} events"
+  "squads.play.counted_one": "1 objective moves on · {{events}} events",
+  "value.tabTokens": "+{{step}} tokens · {{total}} in total",
+  "value.gradeNeedsTotal": "Grade {{grade}} needs a score of {{score}} and gives {{tokens}} tokens ({{total}} in total)."
 }

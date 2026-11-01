@@ -1100,7 +1100,7 @@
   "brief.buySearch": "Køb {{card}} – søg på markedet",
   "brief.use": "Brug {{what}}",
   "brief.fromBench": "{{pos}} · fra bænken",
-  "brief.anyone": "Alle",
+  "brief.anyone": "Som hold",
   "brief.left": "{{count}} tilbage",
   "brief.more": "+{{count}} mere i listen nedenfor",
   "brief.nothing": "Intet specifikt – spil dit spil.",
@@ -1119,5 +1119,7 @@
   "squads.evo.pace_one": "1 kamp på {{days}} dage",
   "brief.squad_one": "Byg holdet: {{formation}} · 1 skift",
   "squads.why.clears_one": "Klarer 1 objective i {{events}} events",
-  "squads.play.counted_one": "1 objective rykker · {{events}} events"
+  "squads.play.counted_one": "1 objective rykker · {{events}} events",
+  "value.tabTokens": "+{{step}} tokens · {{total}} i alt",
+  "value.gradeNeedsTotal": "Grade {{grade}} kræver en score på {{score}} og giver {{tokens}} tokens ({{total}} i alt)."
 }

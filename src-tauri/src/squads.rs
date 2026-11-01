@@ -2627,6 +2627,13 @@ impl<'a> Planner<'a> {
                 }
             })
             .collect();
+        // who has to score or assist is never the keeper (user 2026-11-01): he leaves those lists
+        if let Some(sq) = &squad {
+            let keepers: Vec<&str> = sq.slots.iter().filter(|x| x.pos == "GK").map(|x| x.name.as_str()).collect();
+            for k in items.iter().filter(|x| x.scorer).filter_map(|x| x.req) {
+                req_views[k].players.retain(|n| !keepers.contains(&n.as_str()));
+            }
+        }
         let counted = items.iter().filter(|x| x.counts && !x.bonus).count();
         let bonus = items.iter().filter(|x| x.counts && x.bonus).count();
         // the events it moves on (all of them when nothing counts yet), the picked one first

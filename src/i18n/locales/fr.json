@@ -1100,7 +1100,7 @@
   "brief.buySearch": "Achète {{card}} – cherche sur le marché",
   "brief.use": "Utilise {{what}}",
   "brief.fromBench": "{{pos}} · depuis le banc",
-  "brief.anyone": "N'importe qui",
+  "brief.anyone": "En équipe",
   "brief.left": "encore {{count}}",
   "brief.more": "+{{count}} de plus dans la liste ci-dessous",
   "brief.nothing": "Rien de précis – joue ton jeu.",
@@ -1119,5 +1119,7 @@
   "squads.evo.pace_one": "1 match en {{days}} jours",
   "brief.squad_one": "Monte l'équipe : {{formation}} · 1 changement",
   "squads.why.clears_one": "Remplit 1 objectif dans {{events}} événements",
-  "squads.play.counted_one": "1 objectif avance · {{events}} événements"
+  "squads.play.counted_one": "1 objectif avance · {{events}} événements",
+  "value.tabTokens": "+{{step}} jetons · {{total}} au total",
+  "value.gradeNeedsTotal": "La note {{grade}} demande un score de {{score}} et donne {{tokens}} jetons ({{total}} au total)."
 }

@@ -157,14 +157,19 @@ export function GradeCosts({ value, compactView = false }: { value: SetValue; co
             </span>
             {/* every tab has the same rows (diamond · cost · after tax · tokens), so they line up */}
             <span className="bv-tab-sub">{g.state === "buy" ? t("value.afterTax") : ""}</span>
-            <span className="bv-tab-tokens">{g.tokens_total > 0 ? t("overlay.tokens", { count: g.tokens_total }) : " "}</span>
+            {/* what this grade adds and what you have at it (user 2026-11-01: "45" next to "gives 35" confused) */}
+            <span className="bv-tab-tokens">{g.tokens_total > 0 ? (g.tokens > 0 && g.tokens !== g.tokens_total ? t("value.tabTokens", { step: g.tokens, total: g.tokens_total }) : t("overlay.tokens", { count: g.tokens_total })) :" "}</span>
           </button>
         ))}
       </div>
       <ExcludedBar />
       {p && (
         <div className="bv-plan">
-          <p className="bv-needs">{t("value.gradeNeeds", { grade: p.grade, score: num(p.score_needed), tokens: p.tokens })}</p>
+          <p className="bv-needs">
+            {p.tokens !== p.tokens_total
+              ? t("value.gradeNeedsTotal", { grade: p.grade, score: num(p.score_needed), tokens: p.tokens, total: p.tokens_total })
+              : t("value.gradeNeeds", { grade: p.grade, score: num(p.score_needed), tokens: p.tokens })}
+          </p>
           {p.state === "reached" && <p className="bv-note ok">{t("value.reachedNote", { grade: p.grade })}</p>}
           {p.state === "buy" && (
             <>

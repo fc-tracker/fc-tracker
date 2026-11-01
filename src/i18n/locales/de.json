@@ -1100,7 +1100,7 @@
   "brief.buySearch": "Kaufe {{card}} – auf dem Markt suchen",
   "brief.use": "Nutze {{what}}",
   "brief.fromBench": "{{pos}} · von der Bank",
-  "brief.anyone": "Alle",
+  "brief.anyone": "Als Team",
   "brief.left": "noch {{count}}",
   "brief.more": "+{{count}} weitere in der Liste unten",
   "brief.nothing": "Nichts Bestimmtes – spiel dein Spiel.",
@@ -1119,5 +1119,7 @@
   "squads.evo.pace_one": "1 Spiel in {{days}} Tagen",
   "brief.squad_one": "Team aufstellen: {{formation}} · 1 Wechsel",
   "squads.why.clears_one": "Schafft 1 Aufgabe in {{events}} Events",
-  "squads.play.counted_one": "1 Aufgabe geht voran · {{events}} Events"
+  "squads.play.counted_one": "1 Aufgabe geht voran · {{events}} Events",
+  "value.tabTokens": "+{{step}} Tokens · {{total}} insgesamt",
+  "value.gradeNeedsTotal": "Note {{grade}} braucht {{score}} Punkte und gibt {{tokens}} Tokens ({{total}} insgesamt)."
 }
