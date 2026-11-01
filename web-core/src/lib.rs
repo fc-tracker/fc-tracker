@@ -412,6 +412,8 @@ fn ingest_sync(w: &mut Web, sync: SyncData) -> Value {
     if !club.is_empty() {
         w.club = club;
     }
+    // names EA wrote as "---": from another card of the same player (the base card first)
+    sync_data::fill_names(&mut w.gallery, Some(&mut w.club));
     w.synced_at = sync.at.or(w.synced_at);
     json!({ "cards": n, "collected": w.gallery.values().filter(|c| c.collected).count(), "first_owner": w.known.len(), "synced_at": w.synced_at })
 }

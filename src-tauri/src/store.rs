@@ -132,6 +132,8 @@ pub struct Summary {
 
 /// Brings a snapshot written by an older version up to date (in place, idempotent).
 pub(crate) fn migrate(snapshot: &mut Snapshot) {
+    // names EA wrote as "---": from another card of the same player (idempotent)
+    crate::sync_data::fill_names(&mut snapshot.gallery, Some(&mut snapshot.items));
     // cards from dream squads / opponents' squads were kept as club items: their id is the card's
     // own id, never an owned item's
     snapshot.items.retain(|&id, i| Some(id) != i.asset_id && Some(id) != i.play.as_ref().and_then(|p| p.def_id));
@@ -249,6 +251,11 @@ impl Item {
         self.stats = self.stats.take().or_else(|| old.stats.clone());
         self.assists = self.assists.or(old.assists);
         self.play = self.play.take().or_else(|| old.play.clone());
+        self.full_name = self.full_name.take().or_else(|| old.full_name.clone());
+        // EA's "---" placeholder never replaces a real name
+        if !self.name.as_deref().is_some_and(crate::sync_data::real) && old.name.as_deref().is_some_and(crate::sync_data::real) {
+            self.name = old.name.clone();
+        }
         self
     }
 }
@@ -973,6 +980,7 @@ impl Store {
         self.sync_blocked = None;
         self.sync_sets_read.clear();
         // Only prune after a full club read; passive captures alone never remove items.
+        crate::sync_data::fill_names(&mut self.snapshot.gallery, Some(&mut self.snapshot.items));
         if let Some(started) = self.club_read_started.take() {
             self.snapshot.items.retain(|_, i| i.last_seen >= started);
         }
@@ -1254,6 +1262,24 @@ mod tests {
         assert_eq!(ids, vec![1]);
         assert_eq!(s.snapshot.items[&1].name.as_deref(), Some("Kept"));
         let _ = fs::remove_dir_all(s.dir());
+    }
+
+    #[test]
+    fn a_promo_card_ea_names_dashes_gets_its_players_name() {
+        // EA writes "---" for some promo cards; the base card (id mod 2^24) has the name
+        let mut gallery: BTreeMap<u64, crate::types::GalleryCard> = BTreeMap::new();
+        let card = |id: u64, name: &str| serde_json::from_value::<crate::types::GalleryCard>(serde_json::json!({ "def_id": id, "name": name, "score": 0, "collected": false })).unwrap();
+        gallery.insert(190045, card(190045, "Cruyff"));
+        gallery.insert(67298909, card(67298909, "---"));
+        let mut items: BTreeMap<u64, crate::types::Item> = BTreeMap::new();
+        let item = |id: u64, asset: u64, first: Option<&str>| crate::sync_data::parse_item(&serde_json::json!({ "id": id, "assetId": asset, "itemType": "player", "name": "---", "firstName": first, "lastName": first.map(|_| "Hancko") }), 1).unwrap();
+        items.insert(1, item(1, 190045, None));
+        items.insert(2, item(2, 226853, Some("Dávid")));
+        crate::sync_data::fill_names(&mut gallery, Some(&mut items));
+        assert_eq!(gallery[&67298909].name.as_deref(), Some("Cruyff"));
+        assert_eq!(items[&1].name.as_deref(), Some("Cruyff"));
+        // no card of the player known: EA's first and last name
+        assert_eq!(items[&2].name.as_deref(), Some("Dávid Hancko"));
     }
 
     #[test]

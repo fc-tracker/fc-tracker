@@ -185,7 +185,56 @@ pub(crate) fn parse_item(v: &Value, now: u64) -> Option<Item> {
         assists: v.get("lifetimeAssists").and_then(Value::as_u64),
         play: parse_play(v),
         last_seen: now,
+        full_name: {
+            let s = |k: &str| v.get(k).and_then(Value::as_str).map(str::trim).filter(|n| real(n)).map(str::to_string);
+            match (s("firstName"), s("lastName")) {
+                (Some(f), Some(l)) => Some(format!("{f} {l}")),
+                (f, l) => l.or(f),
+            }
+        },
     })
+}
+
+/// A name EA really gave (not its "---" placeholder).
+pub fn real(n: &str) -> bool {
+    n.chars().any(char::is_alphanumeric)
+}
+
+/// The same player's base card: a promo card's definition id is the base id + n × 2^24
+/// (Cruyff 67298909 = 190045 + 4 × 16777216).
+pub fn base_id(def_id: u64) -> u64 {
+    def_id & 0xFF_FFFF
+}
+
+/// EA writes "---" for some (promo) cards everywhere – in the Gallery and in the club. Every card
+/// of a player gets the name another card of the same player has (the base card first). Global:
+/// the Gallery, the club, the overlay, the side panel and FC-Tracker Web all read these names.
+pub fn fill_names(gallery: &mut std::collections::BTreeMap<u64, GalleryCard>, items: Option<&mut std::collections::BTreeMap<u64, Item>>) {
+    let mut by_player: std::collections::BTreeMap<u64, String> = std::collections::BTreeMap::new();
+    // the base card first, then any card of the player
+    for c in gallery.values().filter(|c| c.def_id == base_id(c.def_id)).chain(gallery.values()) {
+        if let Some(n) = c.name.as_deref().filter(|n| real(n)) {
+            by_player.entry(base_id(c.def_id)).or_insert_with(|| n.to_string());
+        }
+    }
+    for c in gallery.values_mut() {
+        if !c.name.as_deref().is_some_and(real) {
+            if let Some(n) = by_player.get(&base_id(c.def_id)) {
+                c.name = Some(n.clone());
+            }
+        }
+    }
+    let Some(items) = items else { return };
+    for i in items.values_mut() {
+        if i.name.as_deref().is_some_and(real) {
+            continue;
+        }
+        let def = i.play.as_ref().and_then(|p| p.def_id).or(i.asset_id).unwrap_or(0);
+        let found = gallery.get(&def).and_then(|c| c.name.clone()).filter(|n| real(n)).or_else(|| by_player.get(&base_id(def)).cloned()).or_else(|| i.asset_id.and_then(|a| by_player.get(&base_id(a)).cloned())).or_else(|| i.full_name.clone());
+        if found.is_some() {
+            i.name = found;
+        }
+    }
 }
 
 /// A club player's in-game data – only EA's raw club items carry it.

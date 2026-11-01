@@ -2864,7 +2864,7 @@ pub fn club_player(item: &crate::types::Item, catalog: &BTreeMap<u64, crate::typ
         def_id,
         // EA names some cards "---" (no licence): the club stands in
         // each source in turn: EA writes "---" for many cards in the club data – the catalog has the name
-        name: [item.name.clone(), card.and_then(|c| c.name.clone())].into_iter().flatten().find(|n| n.chars().any(char::is_alphanumeric)).or_else(|| card.and_then(|c| c.team_name.clone())).unwrap_or_default(),
+        name: [item.name.clone(), card.and_then(|c| c.name.clone()), catalog.get(&crate::sync_data::base_id(def_id)).and_then(|c| c.name.clone()), item.full_name.clone()].into_iter().flatten().find(|n| n.chars().any(char::is_alphanumeric)).or_else(|| card.and_then(|c| c.team_name.clone())).unwrap_or_default(),
         rating: item.rating.or(card.and_then(|c| c.rating)).unwrap_or(0) as u32,
         positions,
         league: item.league_id.or(card.and_then(|c| c.league)).unwrap_or(0),
