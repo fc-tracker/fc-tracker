@@ -325,7 +325,7 @@ pub enum Need {
     /// The squad's chemistry ("with 30+ chemistry") – the squad's, not a card's.
     Chemistry(u32),
     /// A rarity / program (EA `rareflag`): "Ultimate Scream", "Future Stars Academy".
-    Rarity(u64),
+    Rarity(Vec<u64>),
     /// AcceleRATE: "explosive" | "controlled" | "lengthy".
     Accel(String),
     /// A PlayStyle by its name as the text gives it ("finesse shot"); PlayStyle+ when asked for.
@@ -337,7 +337,7 @@ impl Need {
         match *self {
             Need::SkillMoves(min) => p.skill_moves >= min,
             Need::Chemistry(_) => false,
-            Need::Rarity(r) => p.rareflag == r,
+            Need::Rarity(ref r) => r.contains(&p.rareflag),
             Need::Accel(ref kind) => accelerate(p) == Some(kind.as_str()),
             Need::PlayStyle(ref name, plus) => p.playstyles.iter().any(|(n, pl)| norm(n) == norm(name) && (*pl || !plus)),
             Need::League(id) => p.league == id,
@@ -564,12 +564,14 @@ fn named_need(phrase: &str, count: u32, names: &Names) -> Parsed {
 /// A program by its name ("Ultimate Scream"): the exact name, or a longer name the phrase begins
 /// ("Ultimate Scream" for "Ultimate Scream Heroes" is not taken). Never a shorter one: "Future Stars
 /// Academy" (an evolution, user 2026-11-01) is not the "Future Stars" program.
-fn find_rarity(phrase: &str, names: &Names) -> Option<u64> {
+fn find_rarity(phrase: &str, names: &Names) -> Option<Vec<u64>> {
     let p = norm(phrase);
     if p.len() < 4 {
         return None;
     }
-    names.rarities.iter().find(|(_, n)| norm(n) == p).map(|(&id, _)| id)
+    // EA gives some programs more than one id ("Future Stars Academy" 66 and 67): any of them
+    let ids: Vec<u64> = names.rarities.iter().filter(|(_, n)| norm(n) == p).map(|(&id, _)| id).collect();
+    (!ids.is_empty()).then_some(ids)
 }
 
 /// "3 premier league players in your starting 11 …" (what follows "min.").
@@ -1533,7 +1535,7 @@ fn need_name(need: &Need, names: &Names) -> String {
         Need::Nation(id) => names.nations.get(&id).cloned().unwrap_or_else(|| format!("#{id}")),
         Need::Icon | Need::Hero => String::new(),
         Need::Rating(min) | Need::WeakFoot(min) | Need::SkillMoves(min) | Need::Chemistry(min) => min.to_string(),
-        Need::Rarity(r) => names.rarities.get(&r).cloned().unwrap_or_else(|| format!("#{r}")),
+        Need::Rarity(ref r) => r.first().and_then(|id| names.rarities.get(id)).cloned().unwrap_or_default(),
         Need::Accel(ref k) => k.clone(),
         Need::PlayStyle(ref n, _) => n.clone(),
     }
@@ -2424,6 +2426,8 @@ pub fn plan(input: &Input, prefs: &SquadPrefs) -> SquadsView {
         evs.push(Ev { g, marked, reqs, per_obj, live });
     }
     evs.sort_by_key(|e| e.g.ends_at.unwrap_or(u64::MAX));
+    // the club is read (asking whether a card still exists makes sense only then)
+    let club_known = club.len() >= 11;
     // a card in the club or among every card that exists meets it
     let obtainable = |need: &Need| matches!(need, Need::Chemistry(_)) || club.iter().any(|p| need.met_by(p, &links)) || input.catalog.iter().any(|p| need.met_by(p, &links));
     let items: Vec<Item> = evs
@@ -2446,7 +2450,7 @@ pub fn plan(input: &Input, prefs: &SquadPrefs) -> SquadsView {
                 }
                 // asked only for live objectives, and only about cards (a "starting squad of First Owned
                 // players" is no card that can close)
-                let ask = doubt.clone().filter(|d| ev.live && !d.contains("first owned") && !d.contains("starting squad") && !prefs.keep.contains(d) && !prefs.facts.contains_key(d));
+                let ask = doubt.clone().filter(|d| club_known && ev.live && !d.contains("first owned") && !d.contains("starting squad") && !prefs.keep.contains(d) && !prefs.facts.contains_key(d));
                 // an unreadable part with nothing to ask: not planned (the event's checklist shows it)
                 if u.is_some() && ask.is_none() && !doubt.as_ref().is_some_and(|d| prefs.keep.contains(d)) {
                     return None;
@@ -3141,9 +3145,9 @@ mod tests {
         assert_eq!(p("Play 1 match with 3 Mexican players in your starting XI in any FUT game mode."), sq(Need::Nation(83), 3));
         assert_eq!(p("Score 10 goals in any FUT game mode using a player from Germany."), sq(Need::Nation(21), 1));
         assert_eq!(p("Score 4 goals in any FUT game mode with a Player Item from Bundesliga."), sq(Need::League(19), 1));
-        assert_eq!(p("Play 10 matches while having min. 1 Future Stars Academy player in your starting XI in Squad Battles"), sq(Need::Rarity(161), 1));
-        assert_eq!(p("Score 50 goals while having Min. 1 Ultimate Scream Player in your starting XI"), sq(Need::Rarity(160), 1));
-        assert_eq!(p("Score at least 1 goal with a Future Stars Academy player in Squad Battles"), sq(Need::Rarity(161), 1));
+        assert_eq!(p("Play 10 matches while having min. 1 Future Stars Academy player in your starting XI in Squad Battles"), sq(Need::Rarity(vec![161]), 1));
+        assert_eq!(p("Score 50 goals while having Min. 1 Ultimate Scream Player in your starting XI"), sq(Need::Rarity(vec![160]), 1));
+        assert_eq!(p("Score at least 1 goal with a Future Stars Academy player in Squad Battles"), sq(Need::Rarity(vec![161]), 1));
         // no requirement hides in these
         for t in ["Play 3 matches with the Mexico National team Away kit equipped in any FUT game mode.", "Score at least one Chip Shot goal in 5 separate matches", "Win 10 matches in Squad Battles on min. Semi-Pro difficulty (or Rivals/Champions/Live Events/Rush)."] {
             assert_eq!(p(t), Parsed::None, "{t}");

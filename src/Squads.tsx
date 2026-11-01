@@ -977,7 +977,7 @@ function Sessions({ view, prefs, onPrefs }: { view: SquadsView; prefs: SquadPref
           </div>
           <div className="sq-col">
             {s.place.kind !== "rush" && <Pitch e={shown} />}
-            {gaps(s.reqs, asked(s))
+            {s.squad && gaps(s.reqs, asked(s))
               .filter((r) => !(s.id === list[0].id && quick.some((q) => q.reqs.some((x) => x.met && reqLabel(x) === reqLabel(r)))))
               .map((r, i) => (
                 <Options key={i} r={r} />

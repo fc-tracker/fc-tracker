@@ -53,7 +53,8 @@ export interface DoneMark {
 export type Need =
   | { kind: "league" | "club" | "nation"; id: number }
   | { kind: "icon" | "hero" }
-  | { kind: "rating" | "weak_foot" | "skill_moves" | "chemistry" | "rarity"; id: number }
+  | { kind: "rating" | "weak_foot" | "skill_moves" | "chemistry"; id: number }
+  | { kind: "rarity"; id: number[] }
   | { kind: "accel"; id: string }
   | { kind: "playstyle"; id: [string, boolean] };
 
