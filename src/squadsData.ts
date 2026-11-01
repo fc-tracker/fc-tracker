@@ -110,6 +110,9 @@ export interface ReqView {
   players: string[];
   options: GetOption[];
   unpriced: number;
+  /** Club cards that meet it (in the squad or not) and the first of them. */
+  club: number;
+  club_players: string[];
 }
 
 export interface ObjectiveView {

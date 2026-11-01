@@ -381,11 +381,21 @@ const asked = (s: SessionPlan) => new Set(s.items.filter((x) => x.ask && x.req !
 
 const OPTION_SEARCH = "search";
 
+/** What a gap is: what the club has for it, and how many more to get. */
+function gapLine(r: ReqView): string {
+  const need = reqLabel(r);
+  const club = r.club ?? 0;
+  const more = Math.max(0, r.count - club);
+  if (club === 0) return t("squads.missingNone", { need });
+  if (more > 0) return t("squads.missingClub", { need, count: club, names: (r.club_players ?? []).join(", "), more });
+  return t("squads.missingFit", { need, names: (r.club_players ?? []).join(", ") });
+}
+
 function Options({ r }: { r: ReqView }) {
   if (r.met) return null;
   return (
     <div className="sq-gap">
-      <small>{r.have === 0 ? t("squads.missingNone", { need: reqLabel(r) }) : t("squads.missingSome", { need: reqLabel(r), have: r.have })}</small>
+      <small>{gapLine(r)}</small>
       {r.options.length === 0 ? (
         <p className="sq-muted">{t("squads.noOptions")}</p>
       ) : (
@@ -489,7 +499,7 @@ type SquadSource = Pick<EventPlan, "id" | "reqs" | "squad">;
 /** What a card is in this squad: in the club, to buy (with EA's price), or a profile to search for. */
 function slotKind(s: SlotView): string {
   if (s.owned) return "";
-  if (s.generic) return t("squads.slot.search");
+  if (s.generic) return t("squads.slot.searchAny", { pos: s.pos });
   return s.price != null ? t("squads.slot.buy", { price: num(s.price) }) : t("squads.toGet");
 }
 
@@ -596,11 +606,11 @@ export function Pitch({ e, compact = false }: { e: SquadSource; compact?: boolea
                 onClick={() => setOpen(open === s.def_id ? null : s.def_id)}
               >
                 <span className="sq-card-top">
-                  <b>{s.generic ? "?" : s.rating}</b>
+                  <b>{s.rating}</b>
                   <Flag nation={s.nation} name={s.nation_name} size={compact ? 14 : 18} />
                   <span>{s.pos}</span>
                 </span>
-                <span className="sq-name">{s.generic ? s.league_name ?? s.nation_name ?? "?" : s.name || "?"}</span>
+                <span className="sq-name">{s.generic ? t("squads.slot.eg", { name: s.name }) : s.name || "?"}</span>
                 {!compact && !s.generic && <Bio s={s} />}
                 <span className="sq-chem-dots" aria-label={t("squads.cardChem", { chem: s.chem })}>
                   {[0, 1, 2].map((d) => (

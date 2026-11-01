@@ -115,6 +115,9 @@ pub fn endpoint_key(url: &str) -> String {
 /// uses; for special cards it differs from `assetId` (the base player).
 pub(crate) fn collect_items(v: &Value, out: &mut Vec<(Item, Option<u64>, Option<u64>)>, now: u64) {
     match v {
+        // a sold card on the transfer list stays there until the list is cleared: not the club's any
+        // more (2026-11-01: a sold Bonmatí kept coming back in objective squads)
+        Value::Object(map) if map.get("tradeState").and_then(Value::as_str) == Some("closed") => {}
         Value::Object(map) => {
             for (k, child) in map {
                 if k == "itemData" {
@@ -152,7 +155,7 @@ pub(crate) fn is_card_database_search(url: &str) -> bool {
 pub(crate) fn parse_item(v: &Value, now: u64) -> Option<Item> {
     // concept cards, and cards in a dream squad or an opponent's squad (Squad Battles hub): EA marks
     // those `dream` – the user doesn't own them (2026-10-30: Cruyff, Buffon, Puskás from a dream squad)
-    if v.get("concept").and_then(Value::as_bool) == Some(true) || v.get("dream").and_then(Value::as_bool) == Some(true) {
+    if v.get("concept").and_then(Value::as_bool) == Some(true) || v.get("dream").and_then(Value::as_bool) == Some(true) || v.get("itemState").and_then(Value::as_str) == Some("invalid") {
         return None;
     }
     // id 0 = placeholder slots (empty squad/SBC positions), not owned items.

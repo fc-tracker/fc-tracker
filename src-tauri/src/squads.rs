@@ -187,9 +187,30 @@ impl Names {
         e.1 = e.1.or(league);
     }
 
-    pub fn league_name(&self, id: u64) -> Option<&str> {
-        self.leagues.get(&id).and_then(|v| v.first()).map(String::as_str)
+    /// A league as players say it (user 2026-11-01): the short name without the sponsor and EA's
+    /// own code – "LaLiga (ESP 1)", "Ligue 1 (FRA 1)", "WSL (ENG 1)".
+    pub fn league_short(&self, id: u64) -> Option<String> {
+        let v = self.leagues.get(&id)?;
+        let code = v.iter().find(|n| n.len() <= 6 && n.chars().any(|c| c.is_ascii_digit()) && n.contains(' '));
+        let name = v.iter().filter(|n| Some(*n) != code).min_by_key(|n| n.chars().count())?;
+        const SPONSORS: [&str; 12] = ["EA SPORTS", "McDonald's", "Enilive", "Moeve", "Barclays", "BBVA", "ROSHN", "Arkema", "Betclic", "Hyundai", "Credit Suisse", "Admiral"];
+        let mut short = name.to_string();
+        for sp in SPONSORS {
+            short = short.replace(sp, "");
+        }
+        let mut short = short.split_whitespace().collect::<Vec<_>>().join(" ");
+        if short.eq_ignore_ascii_case("laliga") {
+            short = "LaLiga".into();
+        }
+        if short.is_empty() {
+            short = name.clone();
+        }
+        Some(match code {
+            Some(c) => format!("{short} ({c})"),
+            None => short,
+        })
     }
+
     pub fn team_name(&self, id: u64) -> Option<&str> {
         self.teams.get(&id).and_then(|v| v.0.first()).map(String::as_str)
     }
@@ -1360,6 +1381,9 @@ pub struct ReqView {
     pub options: Vec<GetOption>,
     /// Cards that would do but have no recent price.
     pub unpriced: usize,
+    /// Club cards that meet it (in this squad or not), and the first of them by name.
+    pub club: u32,
+    pub club_players: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -1504,7 +1528,7 @@ pub struct Input {
 
 fn need_name(need: &Need, names: &Names) -> String {
     match *need {
-        Need::League(id) => names.league_name(id).map(str::to_string).unwrap_or_else(|| format!("#{id}")),
+        Need::League(id) => names.league_short(id).unwrap_or_else(|| format!("#{id}")),
         Need::Club(id) => names.team_name(id).map(str::to_string).unwrap_or_else(|| format!("#{id}")),
         Need::Nation(id) => names.nations.get(&id).cloned().unwrap_or_else(|| format!("#{id}")),
         Need::Icon | Need::Hero => String::new(),
@@ -1786,7 +1810,7 @@ fn goal_weights(prefs: &SquadPrefs) -> (f64, f64) {
 fn squad_view(club: &[Player], f: &Formation, pick: &Pick, reqs: &[Req], prefs: &SquadPrefs, input: &Input, links: &BTreeMap<u64, u64>) -> (SquadView, Vec<ReqView>) {
     let mut req_views: Vec<ReqView> = reqs
         .iter()
-        .map(|r| ReqView { need: r.need.clone(), name: need_name(&r.need, &input.names), count: r.count, have: 0, met: false, players: vec![], options: vec![], unpriced: 0 })
+        .map(|r| ReqView { need: r.need.clone(), name: need_name(&r.need, &input.names), count: r.count, have: 0, met: false, players: vec![], options: vec![], unpriced: 0, club: 0, club_players: vec![] })
         .collect();
     let placed: Vec<(usize, &String)> = pick.slots.iter().zip(&f.slots).filter_map(|(s, pos)| s.map(|i| (i, pos))).collect();
     let xi: Vec<(&Player, bool)> = placed.iter().map(|&(i, pos)| (&club[i], club[i].positions.iter().any(|x| x == pos))).collect();
@@ -1822,7 +1846,7 @@ fn squad_view(club: &[Player], f: &Formation, pick: &Pick, reqs: &[Req], prefs: 
             nation: p.nation,
             nation_name: input.names.nations.get(&p.nation).cloned(),
             league: p.league,
-            league_name: input.names.league_name(p.league).map(str::to_string),
+            league_name: input.names.league_short(p.league),
             foot: p.foot,
             weak_foot: p.weak_foot,
             skill_moves: p.skill_moves,
@@ -1832,6 +1856,12 @@ fn squad_view(club: &[Player], f: &Formation, pick: &Pick, reqs: &[Req], prefs: 
             out_of_position: !in_pos,
             generic: !p.owned && price.is_none() && !prefs.must_cards.contains(&p.def_id),
         });
+    }
+    // what the club has for each (the box says "your club has 1 (Corona) – get 2 more")
+    for (k, r) in reqs.iter().enumerate() {
+        let with: Vec<&Player> = club.iter().filter(|p| p.owned && r.need.met_by(p, links)).collect();
+        req_views[k].club = with.len() as u32;
+        req_views[k].club_players = with.iter().take(3).map(|p| p.name.clone()).collect();
     }
     // a chemistry requirement is the squad's, not a card's
     let total: u32 = chem.iter().sum();
@@ -1862,13 +1892,13 @@ fn squad_view(club: &[Player], f: &Formation, pick: &Pick, reqs: &[Req], prefs: 
         match (best, input.manager) {
             (Some((m, c)), cur) if c > total && Some(m) != cur => Some(ManagerView {
                 league: m.0,
-                league_name: input.names.league_name(m.0).map(str::to_string),
+                league_name: input.names.league_short(m.0),
                 nation: m.1,
                 nation_name: input.names.nations.get(&m.1).cloned(),
                 gain: c - total,
                 current: false,
             }),
-            (_, Some(m)) => Some(ManagerView { league: m.0, league_name: input.names.league_name(m.0).map(str::to_string), nation: m.1, nation_name: input.names.nations.get(&m.1).cloned(), gain: 0, current: true }),
+            (_, Some(m)) => Some(ManagerView { league: m.0, league_name: input.names.league_short(m.0), nation: m.1, nation_name: input.names.nations.get(&m.1).cloned(), gain: 0, current: true }),
             _ => None,
         }
     };
@@ -2121,7 +2151,7 @@ impl<'a> Planner<'a> {
                     .map(|r| {
                         let with: Vec<&Player> = if *place == Mode::Rush { self.club.iter().filter(|p| r.need.met_by(p, self.links)).collect() } else { Vec::new() };
                         let have = (with.len() as u32).min(r.count);
-                        ReqView { need: r.need.clone(), name: need_name(&r.need, &self.input.names), count: r.count, have, met: have >= r.count && !matches!(r.need, Need::Chemistry(_)), players: with.iter().take(3).map(|p| p.name.clone()).collect(), options: vec![], unpriced: 0 }
+                        ReqView { need: r.need.clone(), name: need_name(&r.need, &self.input.names), count: r.count, have, met: have >= r.count && !matches!(r.need, Need::Chemistry(_)), players: with.iter().take(3).map(|p| p.name.clone()).collect(), options: vec![], unpriced: 0, club: with.len() as u32, club_players: with.iter().take(3).map(|p| p.name.clone()).collect() }
                     })
                     .collect(),
             ),
@@ -2334,7 +2364,7 @@ fn swaps_between(old: &[(String, Player)], new: &[(String, Player)], input: &Inp
                 in_price: (!p.owned).then(|| fresh_price(input, p.def_id)).flatten(),
                 nation: p.nation,
                 nation_name: input.names.nations.get(&p.nation).cloned(),
-                league_name: input.names.league_name(p.league).map(str::to_string),
+                league_name: input.names.league_short(p.league),
             }
         })
         .collect()
@@ -2565,7 +2595,7 @@ pub fn plan(input: &Input, prefs: &SquadPrefs) -> SquadsView {
                 .zip(&ev.per_obj)
                 .map(|(o, (r, u))| ObjectiveView { id: o.id, marked: ev.marked.contains(&o.id), name: o.name.clone(), text: o.text.clone(), progress: o.progress.min(o.target), target: o.target, done: o.done, req: *r, unknown: u.clone(), playable: objective_modes(&o.text).is_some() })
                 .collect();
-            let empty = || ev.reqs.iter().map(|r| ReqView { need: r.need.clone(), name: need_name(&r.need, &input.names), count: r.count, have: 0, met: false, players: vec![], options: vec![], unpriced: 0 }).collect::<Vec<_>>();
+            let empty = || ev.reqs.iter().map(|r| ReqView { need: r.need.clone(), name: need_name(&r.need, &input.names), count: r.count, have: 0, met: false, players: vec![], options: vec![], unpriced: 0, club: 0, club_players: vec![] }).collect::<Vec<_>>();
             let best = sessions
                 .iter()
                 .filter(|(s, _)| s.items.iter().any(|x| x.event == ev.g.id))
@@ -2916,6 +2946,13 @@ mod tests {
             "nations": { "18": "France", "14": "England", "34": "Netherlands", "7": "Belgium", "54": "Brazil" },
             "teams": { "243": { "names": ["Real Madrid", "RMA"], "league": 53 }, "21": { "names": ["FC Bayern", "FCB"], "league": 19 }, "73": { "names": ["Paris SG", "PSG"], "league": 16 }, "1": { "names": ["Arsenal", "ARS"], "league": 13 } }
         }))
+    }
+
+    #[test]
+    fn leagues_show_as_players_say_them() {
+        let n = Names::from_value(&json!({ "leagues": { "53": ["LALIGA EA SPORTS", "LALIGA EA SPORTS", "ESP 1"], "16": ["Ligue 1 McDonald's", "Ligue 1 McDonald's", "FRA 1"], "2216": ["Barclays Women’s Super League", "Barclays WSL", "ENG 1"], "341": ["Liga BBVA MX", "Liga BBVA MX", "MEX 1"], "13": ["Premier League", "Premier League", "ENG 1"] } }));
+        let s = |id| n.league_short(id).unwrap();
+        assert_eq!((s(53), s(16), s(2216), s(341), s(13)), ("LaLiga (ESP 1)".into(), "Ligue 1 (FRA 1)".into(), "WSL (ENG 1)".into(), "Liga MX (MEX 1)".into(), "Premier League (ENG 1)".into()));
     }
 
     #[test]

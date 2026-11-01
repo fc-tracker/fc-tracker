@@ -1257,6 +1257,23 @@ mod tests {
     }
 
     #[test]
+    fn a_sold_card_left_on_the_transfer_list_is_not_the_clubs() {
+        let mut s = temp_store();
+        s.ingest("fct://club/players", &serde_json::json!({ "itemData": [{ "id": 1, "name": "Kept" }, { "id": 2, "name": "Bonmati" }] }));
+        s.finish_sync();
+        std::thread::sleep(std::time::Duration::from_millis(2));
+        // she's sold: the next club read lacks her, the transfer list still shows the closed trade
+        s.ingest("fct://club/players", &serde_json::json!({ "itemData": [{ "id": 1 }] }));
+        s.ingest("https://x/ut/game/fc27/tradepile", &serde_json::json!({ "auctionInfo": [
+            { "tradeState": "closed", "itemData": { "id": 2, "itemState": "invalid" } },
+            { "tradeState": "expired", "itemData": { "id": 3, "itemState": "free" } } ] }));
+        s.finish_sync();
+        let ids: Vec<u64> = s.snapshot.items.keys().copied().collect();
+        assert_eq!(ids, vec![1, 3], "the sold card goes, an unsold one on the list stays");
+        let _ = fs::remove_dir_all(s.dir());
+    }
+
+    #[test]
     fn first_owner_is_remembered_after_the_card_is_sold() {
         let mut s = temp_store();
         s.ingest("fct://club/players", &serde_json::json!({ "itemData": [
