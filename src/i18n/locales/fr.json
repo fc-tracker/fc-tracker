@@ -919,7 +919,7 @@
   "squads.plan.nextChange": "changement dans {{count}}",
   "squads.plan.note": "Les matchs viennent de tes propres résultats (victoires, buts) : vérifie ta progression en jeu – la prochaine synchro met les chiffres d'EA.",
   "squads.play.bonus": "+{{count}} objectifs longs comptent aussi (gratuit)",
-  "squads.play.rush": "Rush se joue avec sa propre équipe à cinq : choisis les cartes que ces objectifs demandent.",
+  "squads.play.rush": "Rush : tu contrôles un seul joueur tout le match. Les maillots et les TIFO n'y comptent pas, et seul ce qu'il fait lui-même – ses buts, ses passes décisives – fait avancer tes objectifs ; les victoires comptent pour l'équipe.",
   "squads.why.clears": "Remplit {{count}} objectifs dans {{events}} événements",
   "squads.why.bonus": "+{{count}} gratuits",
   "squads.why.buys": "{{count}} à acheter ({{coins}})",
@@ -1121,5 +1121,17 @@
   "squads.why.clears_one": "Remplit 1 objectif dans {{events}} événements",
   "squads.play.counted_one": "1 objectif avance · {{events}} événements",
   "value.tabTokens": "+{{step}} jetons · {{total}} au total",
-  "value.gradeNeedsTotal": "La note {{grade}} demande un score de {{score}} et donne {{tokens}} jetons ({{total}} au total)."
+  "value.gradeNeedsTotal": "La note {{grade}} demande un score de {{score}} et donne {{tokens}} jetons ({{total}} au total).",
+  "squads.play.sessionRush": "Joue {{place}} avec ce joueur",
+  "squads.rush.title": "Ton joueur Rush",
+  "squads.rush.none": "Aucune carte de ton club ne convient à ce Rush – rien à proposer pour l'instant.",
+  "squads.rush.search": "Cherche sur le marché",
+  "squads.rules.chip": "Conditions d'entrée : {{range}} GÉN",
+  "squads.rules.unread": "Ouvre {{event}} dans le jeu : ses conditions d'entrée ne sont pas encore lues, donc aucune équipe n'est proposée.",
+  "brief.rush": "Emmène {{card}} en Rush",
+  "brief.rushBuy": "Achète {{card}} ({{price}}) et emmène-le en Rush",
+  "brief.rushSearch": "Achète {{card}} – cherche sur le marché – et emmène-le en Rush",
+  "brief.rules": "Seulement des cartes notées {{range}}",
+  "brief.unread": "Ouvre {{event}} dans le jeu – ses conditions d'entrée ne sont pas encore lues",
+  "squads.play.sessionUnread": "{{place}} – conditions d'entrée pas encore lues"
 }

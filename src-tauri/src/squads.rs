@@ -1536,6 +1536,8 @@ pub struct Input {
     pub now_ms: u64,
     /// The active evolutions (`/academy/hub/v2`).
     pub evos: Vec<Evo>,
+    /// Live events' entry rules as read in the game (lower-case event name without "event" → rules).
+    pub event_rules: BTreeMap<String, EntryRules>,
 }
 
 fn need_name(need: &Need, names: &Names) -> String {
@@ -1678,8 +1680,14 @@ pub fn objective_modes(text: &str) -> Option<Vec<Mode>> {
         }
     }
     let named = !out.is_empty();
+    // a mode's word inside an event's name is that event, not the mode ("Silver Bullets Flash Rush" is
+    // no plain Rush match)
+    let rest = out.iter().fold(l.clone(), |acc, m| match m {
+        Mode::Event(n) => acc.replace(n.as_str(), ""),
+        _ => acc,
+    });
     for (k, m) in [("squad battle", Mode::SquadBattles), ("rivals", Mode::Rivals), ("champions", Mode::Champions), ("rush", Mode::Rush), ("draft", Mode::Draft), ("co-op", Mode::CoOp)] {
-        if l.contains(k) && !out.contains(&m) {
+        if rest.contains(k) && !out.contains(&m) {
             out.push(m);
         }
     }
@@ -1701,6 +1709,55 @@ pub fn plays_in(modes: &[Mode], place: &Mode) -> bool {
         (Mode::LiveEvents, Mode::Event(_)) => true,
         (a, b) => a == b,
     })
+}
+
+/// Rush and a Rush live event ("Silver Bullets Flash Rush"): 5v5, the user controls one player
+/// picked from the club (user 2026-11-01) – no kit, TIFO or XI, and what the other three humans do
+/// counts for nobody's objectives but their own.
+pub fn is_rush(place: &Mode) -> bool {
+    match place {
+        Mode::Rush => true,
+        Mode::Event(n) => n.split(' ').any(|w| w == "rush"),
+        _ => false,
+    }
+}
+
+/// Does an objective move on in Rush with the one player the user brings? Not when it asks for a
+/// kit, TIFO, stadium or ball, nor for more than one card of a kind in the squad.
+fn rush_counts(text: &str, req: Option<&Req>) -> bool {
+    gear(text).is_none() && req.is_none_or(|r| r.count <= 1 && !matches!(r.need, Need::Chemistry(_)))
+}
+
+/// A live event's entry rules: which cards may play in it. Read from the event's page in the game
+/// (the reader is planned, LIVE-EVENTS.md – one user's read serves everyone); until then the ones
+/// confirmed by hand below.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct EntryRules {
+    pub min_rating: Option<u32>,
+    pub max_rating: Option<u32>,
+}
+
+impl EntryRules {
+    pub fn allows(&self, p: &Player) -> bool {
+        self.min_rating.is_none_or(|m| p.rating >= m) && self.max_rating.is_none_or(|m| p.rating <= m)
+    }
+}
+
+/// Entry rules confirmed by hand (lower-case event name → rules). Silver Bullets Flash Rush: silver
+/// cards only, 65–74 (user 2026-11-01).
+const KNOWN_RULES: &[(&str, EntryRules)] = &[("silver bullets flash rush", EntryRules { min_rating: Some(65), max_rating: Some(74) })];
+
+/// What a place lets in: Some(rules) known (an empty set = any card), None = a live event whose
+/// rules aren't read yet – no squad is suggested for it (user 2026-11-01: be blunt).
+fn place_rules(place: &Mode, read: &BTreeMap<String, EntryRules>) -> Option<EntryRules> {
+    match place {
+        Mode::Event(n) => {
+            // "silver bullets flash rush event" and "… flash rush" are the same event
+            let n = n.trim_end_matches(" event");
+            read.get(n).cloned().or_else(|| KNOWN_RULES.iter().find(|(k, _)| *k == n).map(|(_, r)| r.clone()))
+        }
+        _ => Some(EntryRules::default()),
+    }
 }
 
 // ---------- evolutions ----------
@@ -1852,6 +1909,31 @@ pub struct ComboPlan {
     pub bench: Vec<BenchPick>,
     /// The match brief: before the match in broad strokes, in the match who does what.
     pub brief: MatchBrief,
+    /// Rush format (Rush, a Rush live event): one player, no XI – `rush` is who to bring.
+    pub rush_format: bool,
+    pub rush: Option<RushPick>,
+    /// The live event's entry rules the squad keeps to.
+    pub rules: Option<EntryRules>,
+    /// A live event whose entry rules aren't read yet: no squad suggested until they are.
+    pub rules_unread: bool,
+}
+
+/// The one player to bring to Rush: the club card (an evolution player counts) that does the most
+/// of what counts there, within the event's rules – else the cheapest one to buy.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct RushPick {
+    pub key: u64,
+    pub name: String,
+    pub pos: String,
+    pub rating: u32,
+    pub nation: u64,
+    pub nation_name: Option<String>,
+    pub owned: bool,
+    pub price: Option<u64>,
+    /// Not owned and no recent price: any card of his position within the rules will do.
+    pub generic: bool,
+    /// His active evolution that a match here moves on.
+    pub evo: Option<String>,
 }
 
 /// The match brief (user 2026-11-01): a to-do list for the next match – before it in broad strokes
@@ -1869,7 +1951,9 @@ pub struct MatchBrief {
 #[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct BriefStep {
     /// "squad" (build it: `count` changes) | "ready" (the squad as it is) | "buy" (`text` = card,
-    /// `count` = price) | "use" (`text` = a kit, stadium, ball …) | "bench" (`text` = names)
+    /// `count` = price) | "use" (`text` = a kit, stadium, ball …) | "bench" (`text` = names) |
+    /// "rush" / "rush_buy" (the one player to bring, `count` = price) | "rules" (`text` = "65–74") |
+    /// "unread" (`text` = the live event whose rules aren't read)
     pub kind: String,
     pub text: String,
     pub count: Option<u64>,
@@ -1909,6 +1993,12 @@ fn short_task(text: &str) -> String {
 /// "… with a ST (Main Position)", "… with a player with min. 85 PAC": the slots that do it. A task
 /// that names neither fits nobody in particular (false).
 fn task_fits(l: &str, x: &SlotView) -> bool {
+    card_fits(l, &x.pos, x.face) == Some(true)
+}
+
+/// Does a card in `pos` with these face stats do what the task names (a position, a min. stat)?
+/// None: the task names neither.
+fn card_fits(l: &str, pos_now: &str, face: Option<[u32; 6]>) -> Option<bool> {
     const STATS: [&str; 6] = ["pac", "sho", "pas", "dri", "def", "phy"];
     let mut named = false;
     let mut ok = true;
@@ -1918,17 +2008,17 @@ fn task_fits(l: &str, x: &SlotView) -> bool {
         if let (Ok(n), Some(k)) = (w[0].parse::<u32>(), STATS.iter().position(|s| *s == w[1])) {
             if (40..=99).contains(&n) {
                 named = true;
-                ok &= x.face.is_some_and(|f| f[k] >= n);
+                ok &= face.is_some_and(|f| f[k] >= n);
             }
         }
     }
     for pos in ["st", "cf", "lw", "rw", "cam", "cm", "cdm", "lb", "rb", "cb", "lm", "rm"] {
-        if l.contains(&format!(" a {pos} ")) || l.contains(&format!(" an {pos} ")) {
+        if l.contains(&format!(" a {pos} ")) || l.contains(&format!(" an {pos} ")) || (pos == "st" && l.contains(" a striker")) {
             named = true;
-            ok &= x.pos.eq_ignore_ascii_case(pos);
+            ok &= pos_now.eq_ignore_ascii_case(pos);
         }
     }
-    named && ok
+    named.then_some(ok)
 }
 
 /// A kit, stadium or ball an objective asks to use ("… using the Mexico Away kit").
@@ -1954,6 +2044,47 @@ pub fn match_brief(s: &ComboPlan) -> MatchBrief {
         _ => (None, &s.reqs),
     };
     let mut b = MatchBrief::default();
+    // a live event whose rules aren't read: open it in the game first, nothing else to build
+    if s.rules_unread {
+        b.before.push(BriefStep { kind: "unread".into(), text: s.place_name.clone(), count: None });
+    }
+    if let Some(r) = s.rules.as_ref().filter(|r| r.min_rating.is_some() || r.max_rating.is_some()) {
+        b.before.push(BriefStep { kind: "rules".into(), text: format!("{}–{}", r.min_rating.unwrap_or(40), r.max_rating.unwrap_or(99)), count: None });
+    }
+    if s.rush_format {
+        // Rush: one player to bring; what he scores or sets up is his to do, the rest the team's
+        if let Some(p) = &s.rush {
+            b.before.push(BriefStep { kind: if p.owned { "rush" } else { "rush_buy" }.into(), text: format!("{} · {}", p.name, p.pos), count: p.price });
+        }
+        let mine: Vec<BriefTask> = s
+            .items
+            .iter()
+            .filter(|x| x.counts && !x.bonus && x.progress < x.target)
+            .map(|x| (x, x.text.to_lowercase()))
+            .filter(|(_, l)| scores(l) || ["header", "clean sheet", "win "].iter().any(|k| l.contains(k)) || l.starts_with("win"))
+            .map(|(x, l)| (BriefTask { text: short_task(&x.text), left: x.target - x.progress }, scores(&l)))
+            .fold(Vec::new(), |mut acc: Vec<(BriefTask, bool)>, t| {
+                if !acc.iter().any(|a| a.0.text == t.0.text) {
+                    acc.push(t);
+                }
+                acc
+            })
+            .into_iter()
+            .filter_map(|(t, own)| {
+                if own && s.rush.is_some() {
+                    Some(t)
+                } else {
+                    b.anyone.push(t);
+                    None
+                }
+            })
+            .collect();
+        if let (Some(p), false) = (&s.rush, mine.is_empty()) {
+            b.players.push(BriefPlayer { name: p.name.clone(), pos: p.pos.clone(), bench: false, tasks: mine });
+        }
+        sort_team_tasks(&mut b.anyone);
+        return b;
+    }
     // before: the squad, what to buy, what to wear, the bench
     if let Some(q) = sq {
         match q.changes {
@@ -1972,7 +2103,7 @@ pub fn match_brief(s: &ComboPlan) -> MatchBrief {
         }
     }
     let benched: Vec<String> = s.evos.iter().filter(|e| !e.in_xi).map(|e| e.player.clone()).chain(s.bench.iter().map(|p| p.name.clone())).collect();
-    if !benched.is_empty() {
+    if !benched.is_empty() && !s.rules_unread {
         b.before.push(BriefStep { kind: "bench".into(), text: benched.join(", "), count: None });
     }
     // in the match: what a match moves on, by who can do it
@@ -2036,8 +2167,13 @@ pub fn match_brief(s: &ComboPlan) -> MatchBrief {
             },
         }
     }
-    // anyone: what asks the most of one match first (3 goals in a match, a clean sheet), then wins,
-    // then plain goal counts – a short list to play for, not every objective again
+    sort_team_tasks(&mut b.anyone);
+    b
+}
+
+/// The team's tasks: what asks the most of one match first (3 goals in a match, a clean sheet), then
+/// wins, then plain goal counts – a short list to play for, not every objective again.
+fn sort_team_tasks(tasks: &mut [BriefTask]) {
     let rank = |t: &BriefTask| {
         let l = t.text.to_lowercase();
         if l.contains("one match") || l.contains("clean sheet") {
@@ -2050,8 +2186,7 @@ pub fn match_brief(s: &ComboPlan) -> MatchBrief {
             3
         }
     };
-    b.anyone.sort_by_key(|t| (rank(t), t.left));
-    b
+    tasks.sort_by_key(|t| (rank(t), t.left));
 }
 
 /// An active evolution in a session: on the bench to be subbed on, or starting when it needs him
@@ -2399,6 +2534,8 @@ struct Planner<'a> {
     items: &'a [Item],
     /// Searches already run (the same requirements give the same XI).
     solved: std::cell::RefCell<BTreeMap<String, Option<Solved>>>,
+    /// The entry rules of the place being planned (a live event's): cards outside them never play.
+    rules: Option<EntryRules>,
 }
 
 /// A search's result: the formation, the pick and the cards it picked from (club + cards to buy).
@@ -2412,7 +2549,24 @@ struct Solved {
 impl<'a> Planner<'a> {
     /// The same data, ready for other settings.
     fn clone_ref(&self) -> Planner<'a> {
-        Planner { input: self.input, prefs: self.prefs, club: self.club, formations: self.formations, links: self.links, evs: self.evs, items: self.items, solved: Default::default() }
+        Planner { input: self.input, prefs: self.prefs, club: self.club, formations: self.formations, links: self.links, evs: self.evs, items: self.items, solved: Default::default(), rules: self.rules.clone() }
+    }
+
+    /// The same planner held to a place's entry rules (None: the place has no rules to keep).
+    fn ruled(&self, place: &Mode) -> Option<Planner<'a>> {
+        let r = place_rules(place, &self.input.event_rules).filter(|r| *r != EntryRules::default())?;
+        (self.rules.as_ref() != Some(&r)).then(|| Planner { rules: Some(r), ..self.clone_ref() })
+    }
+
+    /// May this card play here (the place's entry rules)?
+    fn allowed(&self, p: &Player) -> bool {
+        self.rules.as_ref().is_none_or(|r| r.allows(p))
+    }
+
+    /// Does a match at `place` move objective `i` on? In Rush only what the one player brought can do.
+    fn fits(&self, i: usize, place: &Mode) -> bool {
+        let it = &self.items[i];
+        plays_in(&it.modes, place) && (!is_rush(place) || rush_counts(&self.evs[it.ev].g.objectives[it.obj].text, it.req.as_ref()))
     }
 
     /// The place as the game names it: a live event by its event's title.
@@ -2448,12 +2602,12 @@ impl<'a> Planner<'a> {
             if w < 0.5 || matches!(r.need, Need::Chemistry(_)) {
                 continue;
             }
-            let have = self.club.iter().filter(|p| r.need.met_by(p, self.links)).count() as u32;
+            let have = self.club.iter().filter(|p| self.allowed(p) && r.need.met_by(p, self.links)).count() as u32;
             if have >= r.count {
                 continue;
             }
             let short = (r.count - have) as usize;
-            let fit: Vec<&Player> = self.input.catalog.iter().filter(|c| !owned.contains(&c.def_id) && !c.positions.is_empty() && !c.name.is_empty() && r.need.met_by(c, self.links)).collect();
+            let fit: Vec<&Player> = self.input.catalog.iter().filter(|c| !owned.contains(&c.def_id) && !c.positions.is_empty() && !c.name.is_empty() && self.allowed(c) && r.need.met_by(c, self.links)).collect();
             let mut priced: Vec<(&Player, u64)> = fit.iter().filter_map(|c| fresh_price(self.input, c.def_id).filter(|&p| budget.is_none_or(|b| p <= b)).map(|p| (*c, p))).collect();
             priced.sort_by_key(|x| x.1);
             let mut took = 0;
@@ -2478,7 +2632,7 @@ impl<'a> Planner<'a> {
 
     /// The XI for these requirements (club cards first, buys where they open objectives up).
     fn solve(&self, reqs: &[Req], weights: &[f64], keep_from: Option<&Solved>) -> Option<Solved> {
-        if self.club.len() < 11 {
+        if self.club.iter().filter(|p| self.allowed(p)).count() < 11 {
             return None;
         }
         // the squad to keep: the stage before, else the one the user plays
@@ -2491,7 +2645,7 @@ impl<'a> Planner<'a> {
         // between plan stages only what has to change changes (a kept card ≈ 1.25 chemistry points)
         let keep = if keep_from.is_some() { 5.0e5 } else { keep };
         let cands = self.candidates(reqs, weights);
-        let mut players: Vec<Player> = self.club.to_vec();
+        let mut players: Vec<Player> = self.club.iter().filter(|p| self.allowed(p)).cloned().collect();
         let mut cost = vec![0.0; players.len()];
         for (p, c) in cands {
             players.push(p);
@@ -2540,7 +2694,7 @@ impl<'a> Planner<'a> {
             let from_picks: Vec<usize> = (0..picks.len()).filter(|&j| need.met_by(&picks[j].0, self.links)).take(short).collect();
             let more = short - from_picks.len();
             let open_here = |p: &Player| (0..reqs.len()).filter(|&j| benchable[j] && !rv[j].met && reqs[j].need.met_by(p, self.links)).count();
-            let mut cands: Vec<&Player> = self.club.iter().filter(|p| p.owned && !xi.contains(&p.key) && !picks.iter().any(|(q, _)| q.key == p.key) && need.met_by(p, self.links)).collect();
+            let mut cands: Vec<&Player> = self.club.iter().filter(|p| p.owned && self.allowed(p) && !xi.contains(&p.key) && !picks.iter().any(|(q, _)| q.key == p.key) && need.met_by(p, self.links)).collect();
             // a card that meets more of the open ones first, then the strongest
             cands.sort_by_key(|p| (std::cmp::Reverse(open_here(p)), std::cmp::Reverse(p.rating)));
             if cands.len() < more || picks.len() + more > room {
@@ -2560,7 +2714,10 @@ impl<'a> Planner<'a> {
 
     /// A session at `place` over the open objectives in `avail`.
     fn session(&self, place: &Mode, avail: &[usize], primary: Option<u64>) -> (ComboPlan, Option<Solved>) {
-        let here: Vec<usize> = avail.iter().copied().filter(|&i| plays_in(&self.items[i].modes, place)).collect();
+        if let Some(me) = self.ruled(place) {
+            return me.session(place, avail, primary);
+        }
+        let here: Vec<usize> = avail.iter().copied().filter(|&i| self.fits(i, place)).collect();
         let mut reqs: Vec<Req> = Vec::new();
         let mut weights: Vec<f64> = Vec::new();
         let mut req_of: Vec<Option<usize>> = Vec::new();
@@ -2573,8 +2730,12 @@ impl<'a> Planner<'a> {
                 reqs.len() - 1
             }));
         }
-        // Rush is played with its own five-a-side squad: no XI, a requirement counts when the club has the cards
-        let solved = if here.is_empty() || *place == Mode::Rush { None } else { self.solve(&reqs, &weights, None) };
+        // a live event whose entry rules aren't read: no squad (user 2026-11-01 – never a guess)
+        let unread = place_rules(place, &self.input.event_rules).is_none();
+        let rush = is_rush(place);
+        // Rush: one player, no XI
+        let solved = if here.is_empty() || unread || rush { None } else { self.solve(&reqs, &weights, None) };
+        let pick = if rush && !unread && !here.is_empty() { self.rush_pick(place, &here, &reqs, &weights, primary) } else { None };
         let (squad, mut req_views) = match &solved {
             Some(s) => {
                 let (sq, rv) = squad_view(&s.players, &self.formations[s.fi], &s.pick, &reqs, self.prefs, self.input, self.links);
@@ -2584,15 +2745,16 @@ impl<'a> Planner<'a> {
                 None,
                 reqs.iter()
                     .map(|r| {
-                        let with: Vec<&Player> = if *place == Mode::Rush { self.club.iter().filter(|p| r.need.met_by(p, self.links)).collect() } else { Vec::new() };
+                        let with: Vec<&Player> = pick.iter().filter(|p| r.need.met_by(p, self.links)).collect();
+                        let club: Vec<&Player> = if rush { self.club.iter().filter(|p| p.owned && self.allowed(p) && r.need.met_by(p, self.links)).collect() } else { Vec::new() };
                         let have = (with.len() as u32).min(r.count);
-                        ReqView { need: r.need.clone(), name: need_name(&r.need, &self.input.names), count: r.count, have, met: have >= r.count && !matches!(r.need, Need::Chemistry(_)), players: with.iter().take(3).map(|p| p.name.clone()).collect(), options: vec![], unpriced: 0, club: with.len() as u32, club_players: with.iter().take(3).map(|p| p.name.clone()).collect() }
+                        ReqView { need: r.need.clone(), name: need_name(&r.need, &self.input.names), count: r.count, have, met: have >= r.count && !matches!(r.need, Need::Chemistry(_)), players: with.iter().map(|p| p.name.clone()).collect(), options: vec![], unpriced: 0, club: club.len() as u32, club_players: club.iter().take(3).map(|p| p.name.clone()).collect() }
                     })
                     .collect(),
             ),
         };
         // evolution players on the bench take subs first; the rest of the bench meets what the XI doesn't
-        let evos = self.session_evos(place, solved.as_ref());
+        let evos = self.session_evos(place, solved.as_ref(), pick.as_ref().map(|p| p.key));
         let mut bench_picks: Vec<(Player, Vec<usize>)> = Vec::new();
         if let Some(s) = &solved {
             let xi: BTreeSet<u64> = s.pick.slots.iter().flatten().filter(|&&i| s.players[i].owned).map(|&i| s.players[i].key).collect();
@@ -2607,7 +2769,9 @@ impl<'a> Planner<'a> {
                 let it = &self.items[i];
                 let ev = &self.evs[it.ev];
                 let o = &ev.g.objectives[it.obj];
-                let counts = it.unknown.is_none() && r.is_none_or(|k| req_views[k].met);
+                // in Rush "with a ST", "min. 85 PAC" is the one player brought
+                let brought = !rush || pick.as_ref().is_none_or(|p| card_fits(&o.text.to_lowercase(), p.positions.first().map(String::as_str).unwrap_or(""), p.face) != Some(false));
+                let counts = it.unknown.is_none() && r.is_none_or(|k| req_views[k].met) && brought;
                 SessionItem {
                     event: ev.g.id,
                     event_title: ev.g.title.clone(),
@@ -2643,8 +2807,19 @@ impl<'a> Planner<'a> {
         events_in.sort_by_key(|&e| (primary != Some(self.evs[e].g.id), self.evs[e].g.ends_at.unwrap_or(u64::MAX)));
         let title = events_in.iter().map(|&e| self.evs[e].g.title.as_str()).collect::<Vec<_>>().join(" · ");
         let ends_at = events_in.iter().filter_map(|&e| self.evs[e].g.ends_at).min();
-        let plan = ComboPlan { id: 0, place: place.clone(), place_name: self.place_name(place), title, ends_at, reqs: req_views, items, squad, counted, bonus, primary, stages: Vec::new(), played: self.played(), quick: None, evos, bench: Vec::new(), brief: MatchBrief::default() };
-        let mut plan = plan;
+        let mut plan = ComboPlan { id: 0, place: place.clone(), place_name: self.place_name(place), title, ends_at, reqs: req_views, items, squad, counted, bonus, primary, stages: Vec::new(), played: self.played(), quick: None, evos, bench: Vec::new(), brief: MatchBrief::default(), rush_format: rush, rush: None, rules: place_rules(place, &self.input.event_rules).filter(|r| *r != EntryRules::default()), rules_unread: unread };
+        plan.rush = pick.map(|p| RushPick {
+            key: p.key,
+            name: p.name.clone(),
+            pos: p.positions.first().cloned().unwrap_or_default(),
+            rating: p.rating,
+            nation: p.nation,
+            nation_name: self.input.names.nations.get(&p.nation).cloned(),
+            owned: p.owned,
+            price: (!p.owned).then(|| fresh_price(self.input, p.def_id)).flatten(),
+            generic: !p.owned && fresh_price(self.input, p.def_id).is_none(),
+            evo: self.input.evos.iter().find(|e| e.item == p.key && plays_in(&e.modes, place)).map(|e| e.name.clone()),
+        });
         plan.bench = bench_picks
             .iter()
             .map(|(p, ks)| BenchPick {
@@ -2661,15 +2836,50 @@ impl<'a> Planner<'a> {
         (plan, solved)
     }
 
-    /// The active evolutions a match at `place` moves on (their player in the club).
-    fn session_evos(&self, place: &Mode, solved: Option<&Solved>) -> Vec<SessionEvo> {
+    /// The one player to bring to Rush (user 2026-11-01): the club card within the place's rules that
+    /// meets the most of what counts there – his evolution moving on too, the position or stat a task
+    /// names ("with a Striker"), an attacker where goals are. A card to buy only when it does a whole
+    /// objective more than the best in the club (a Rush event's own ones weigh most).
+    fn rush_pick(&self, place: &Mode, here: &[usize], reqs: &[Req], weights: &[f64], primary: Option<u64>) -> Option<Player> {
+        let texts: Vec<(String, f64)> = here.iter().map(|&i| (self.evs[self.items[i].ev].g.objectives[self.items[i].obj].text.to_lowercase(), self.weight(i, primary))).collect();
+        let goals = texts.iter().any(|(l, _)| scores(l));
+        let evo_here = |p: &Player| self.input.evos.iter().any(|e| e.item == p.key && plays_in(&e.modes, place));
+        let score = |p: &Player| {
+            let first = p.positions.first().map(String::as_str).unwrap_or("");
+            reqs.iter().zip(weights).filter(|(r, _)| r.need.met_by(p, self.links)).map(|(_, w)| *w).sum::<f64>()
+                + if evo_here(p) { 1.0 } else { 0.0 }
+                + texts.iter().filter(|(l, _)| card_fits(l, first, p.face) == Some(true)).map(|(_, w)| *w).sum::<f64>()
+                + if goals && is_attacker(first) { 0.5 } else { 0.0 }
+                + p.rating as f64 * 0.001
+        };
+        let best = |c: Vec<&Player>, cost: &dyn Fn(&Player) -> f64| c.into_iter().max_by(|a, b| (score(a) - cost(a)).total_cmp(&(score(b) - cost(b)))).cloned();
+        let club: Option<Player> = best(self.club.iter().filter(|p| p.owned && !p.positions.is_empty() && self.allowed(p)).collect(), &|_| 0.0);
+        if self.prefs.max_buys == Some(0) {
+            return club;
+        }
+        let owned: BTreeSet<u64> = self.club.iter().map(|p| p.def_id).collect();
+        let budget = self.prefs.budget.or(self.input.coins);
+        // without a recent price a card is a profile to search for (any ST 65–74), as in the XI
+        let buy: Vec<&Player> = self.input.catalog.iter().filter(|c| !owned.contains(&c.def_id) && !c.positions.is_empty() && !c.name.is_empty() && self.allowed(c) && !c.is_icon() && !c.is_hero() && fresh_price(self.input, c.def_id).is_none_or(|p| budget.is_none_or(|b| p <= b))).collect();
+        let bought = best(buy, &|c| fresh_price(self.input, c.def_id).map_or(0.3, |p| p as f64 * 1e-6)).map(|p| Player { key: p.def_id, owned: false, loan: false, ..p });
+        match (club, bought) {
+            (Some(c), Some(b)) if score(&b) < score(&c) + 1.0 => Some(c),
+            (c, b) => b.or(c),
+        }
+    }
+
+    /// The active evolutions a match at `place` moves on (their player in the club). In Rush only the
+    /// one player brought (`rush`) plays: his evo, if he has one.
+    fn session_evos(&self, place: &Mode, solved: Option<&Solved>, rush: Option<u64>) -> Vec<SessionEvo> {
         let now_s = self.input.now_ms / 1000;
-        let xi: BTreeSet<u64> = solved.map(|s| s.pick.slots.iter().flatten().filter(|&&i| s.players[i].owned).map(|&i| s.players[i].key).collect()).unwrap_or_default();
+        let mut xi: BTreeSet<u64> = solved.map(|s| s.pick.slots.iter().flatten().filter(|&&i| s.players[i].owned).map(|&i| s.players[i].key).collect()).unwrap_or_default();
+        xi.extend(rush);
         self.input
             .evos
             .iter()
             // a session that plays anywhere ("Win 10 matches in any mode") can be played where the evo counts
             .filter(|e| !e.modes.is_empty() && (*place == Mode::Any || plays_in(&e.modes, place)))
+            .filter(|e| !is_rush(place) || rush == Some(e.item))
             .filter_map(|e| {
                 let p = self.club.iter().find(|p| p.key == e.item)?;
                 let g = e.goals.iter().find(|g| objective_modes(&g.text).is_some())?;
@@ -2713,7 +2923,9 @@ impl<'a> Planner<'a> {
                 }
             }
         }
-        if avail.iter().any(|&i| self.items[i].modes.contains(&Mode::Any)) && !out.iter().any(|m| matches!(m, Mode::SquadBattles | Mode::Rivals | Mode::Champions | Mode::Event(_))) {
+        // "any mode" gets its own session unless a place that plays an XI of any cards takes it in
+        let takes_any = |m: &Mode| matches!(m, Mode::SquadBattles | Mode::Rivals | Mode::Champions) || (matches!(m, Mode::Event(_)) && !is_rush(m) && place_rules(m, &self.input.event_rules) == Some(EntryRules::default()));
+        if avail.iter().any(|&i| self.items[i].modes.contains(&Mode::Any)) && !out.iter().any(takes_any) {
             out.push(Mode::Any);
         }
         out
@@ -2723,19 +2935,19 @@ impl<'a> Planner<'a> {
     /// The places are tried in the order of how many could count there, a full search only while
     /// one could still win.
     fn best(&self, places: &[Mode], avail: &[usize], primary: Option<u64>) -> Option<(ComboPlan, Option<Solved>)> {
-        let live = |p: &Mode| avail.iter().filter(|&&i| !self.items[i].bonus && plays_in(&self.items[i].modes, p)).count();
+        let live = |p: &Mode| avail.iter().filter(|&&i| !self.items[i].bonus && self.fits(i, p)).count();
         // Rush (its own squad) ranks at half, as its sessions do below
-        let mut ranked: Vec<(usize, &Mode)> = places.iter().map(|p| (if *p == Mode::Rush { live(p) / 2 } else { live(p) }, p)).filter(|(n, _)| *n > 0).collect();
+        let mut ranked: Vec<(usize, &Mode)> = places.iter().map(|p| (if is_rush(p) { live(p) / 2 } else { live(p) }, p)).filter(|(n, _)| *n > 0).collect();
         ranked.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.cmp(b.1)));
         let mut best: Option<(ComboPlan, Option<Solved>)> = None;
         let mut seen: Vec<Vec<usize>> = Vec::new();
         let mut tries = 0;
         for (upper, place) in ranked {
-            if best.as_ref().is_some_and(|b| if b.0.place == Mode::Rush { b.0.counted / 2 } else { b.0.counted } >= upper) || tries >= MAX_TRIES {
+            if best.as_ref().is_some_and(|b| if b.0.rush_format { b.0.counted / 2 } else { b.0.counted } >= upper) || tries >= MAX_TRIES {
                 break;
             }
             // places where the same objectives count give the same session
-            let set: Vec<usize> = avail.iter().copied().filter(|&i| plays_in(&self.items[i].modes, place)).collect();
+            let set: Vec<usize> = avail.iter().copied().filter(|&i| self.fits(i, place)).collect();
             if seen.contains(&set) {
                 continue;
             }
@@ -2743,7 +2955,7 @@ impl<'a> Planner<'a> {
             tries += 1;
             let s = self.session(place, avail, primary);
             // a mode with its own squad (Rush) counts half against one that uses the user's XI
-            let rank = |p: &ComboPlan| (if p.place == Mode::Rush { p.counted / 2 } else { p.counted }, p.bonus);
+            let rank = |p: &ComboPlan| (if p.rush_format { p.counted / 2 } else { p.counted }, p.bonus);
             if best.as_ref().is_none_or(|b| rank(&s.0) > rank(&b.0)) {
                 best = Some(s);
             }
@@ -2754,8 +2966,11 @@ impl<'a> Planner<'a> {
     /// The match plan of a session: play its squad until an objective with a squad requirement is
     /// done, then the squad for what's left, and so on – each change named (out → in).
     fn stages(&self, s: &ComboPlan, first: &Solved, avail: &[usize], primary: Option<u64>) -> Vec<Stage> {
+        if let Some(me) = self.ruled(&s.place) {
+            return me.stages(s, first, avail, primary);
+        }
         let played = self.played() as f64;
-        let here: Vec<usize> = avail.iter().copied().filter(|&i| plays_in(&self.items[i].modes, &s.place)).collect();
+        let here: Vec<usize> = avail.iter().copied().filter(|&i| self.fits(i, &s.place)).collect();
         let finish = |i: usize| self.items[i].matches.unwrap_or(f64::INFINITY);
         let mut out: Vec<Stage> = Vec::new();
         let mut cur = first.clone();
@@ -2985,7 +3200,7 @@ pub fn plan(input: &Input, prefs: &SquadPrefs) -> SquadsView {
             })
         })
         .collect();
-    let pl = Planner { input, prefs, club: &club, formations: &formations, links: &links, evs: &evs, items: &items, solved: Default::default() };
+    let pl = Planner { input, prefs, club: &club, formations: &formations, links: &links, evs: &evs, items: &items, solved: Default::default(), rules: None };
 
     // 2. sessions: the user's pick first (at the place they chose, else the best one for it), then
     // the most live objectives with what's left
@@ -3016,8 +3231,8 @@ pub fn plan(input: &Input, prefs: &SquadPrefs) -> SquadsView {
         }
         place_options = places
             .iter()
-            .filter(|m| mine.iter().any(|&i| plays_in(&items[i].modes, m)))
-            .map(|m| PlaceOption { place: m.clone(), name: pl.place_name(m), objectives: avail.iter().filter(|&&i| !items[i].bonus && plays_in(&items[i].modes, m)).count() })
+            .filter(|m| mine.iter().any(|&i| pl.fits(i, m)))
+            .map(|m| PlaceOption { place: m.clone(), name: pl.place_name(m), objectives: avail.iter().filter(|&&i| !items[i].bonus && pl.fits(i, m)).count() })
             .collect();
         place_options.sort_by(|a, b| b.objectives.cmp(&a.objectives));
         let chosen: Vec<Mode> = match &prefs.place {
@@ -3052,7 +3267,7 @@ pub fn plan(input: &Input, prefs: &SquadPrefs) -> SquadsView {
         let short: Vec<usize> = (0..items.len())
             .filter(|&i| {
                 let it = &items[i];
-                !it.bonus && it.req.is_some() && it.ask.is_none() && it.unknown.is_none() && it.matches.is_some_and(|m| m <= 3.0) && !cleared(i) && plays_in(&it.modes, &first.place)
+                !it.bonus && it.req.is_some() && it.ask.is_none() && it.unknown.is_none() && it.matches.is_some_and(|m| m <= 3.0) && !cleared(i) && pl.fits(i, &first.place)
             })
             .collect();
         if !short.is_empty() {
@@ -3095,7 +3310,7 @@ pub fn plan(input: &Input, prefs: &SquadPrefs) -> SquadsView {
         Some((s, _)) => evs
             .iter()
             .enumerate()
-            .filter(|(e, ev)| ev.live && items.iter().any(|i| i.ev == *e) && !items.iter().any(|i| i.ev == *e && plays_in(&i.modes, &s.place)))
+            .filter(|(e, ev)| ev.live && items.iter().any(|i| i.ev == *e) && !(0..items.len()).any(|i| items[i].ev == *e && pl.fits(i, &s.place)))
             .map(|(e, ev)| {
                 let mut places: Vec<String> = Vec::new();
                 for i in items.iter().filter(|i| i.ev == e) {
@@ -3777,6 +3992,61 @@ mod tests {
     }
 
     #[test]
+    fn a_rush_live_event_is_rush_played_with_one_silver_player_and_no_kit() {
+        // "Flash Rush" in an event's name is that event, not plain Rush
+        assert_eq!(objective_modes("Win 3 matches in the Silver Bullets Flash Rush Event.").unwrap(), vec![Mode::Event("silver bullets flash rush event".into())]);
+        let sb = Mode::Event("silver bullets flash rush event".into());
+        assert!(is_rush(&sb) && is_rush(&Mode::Rush) && !is_rush(&Mode::Event("ghoul fest".into())));
+        let mut input = scenario(json!({ "groups": [
+            ev(1, "Silver Bullets Flash Rush", &[
+                (11, "Win 3 matches in the Silver Bullets Flash Rush Event.", 0, 3),
+                (12, "Score at least 4 goals with a Striker in the Silver Bullets Flash Rush Event.", 0, 4)]),
+            ev(2, "Mexico", &[
+                (21, "Play 3 matches with the Mexico National team Away kit equipped in any FUT game mode.", 0, 3),
+                (22, "Play 3 matches while having min. 3 Spanish players in your starting 11 in any FUT game mode.", 0, 3)]) ] }));
+        // silver cards (65–74): a CM and a striker; the rest of the club is gold
+        input.club.push(pl(90, "Silvercm", 72, &["CM"], 53, 240, 45));
+        input.club.push(pl(91, "Silverst", 70, &["ST"], 53, 240, 45));
+        let v = plan(&input, &SquadPrefs { primary: Some(1), ..SquadPrefs::default() });
+        let s = &v.combos[0];
+        assert_eq!(s.place, sb);
+        assert!(s.rush_format && s.squad.is_none() && !s.rules_unread);
+        assert_eq!(s.rules, Some(EntryRules { min_rating: Some(65), max_rating: Some(74) }));
+        // one player within the rules – the striker, the event asks for a striker's goals
+        let p = s.rush.as_ref().expect("a Rush player");
+        assert_eq!((p.name.as_str(), p.rating), ("Silverst", 70));
+        // a kit and "3 Spanish players" can't be done with the one player brought
+        assert!(s.items.iter().all(|x| x.event == 1 || !x.counts), "{:?}", s.items.iter().map(|x| (&x.text, x.counts)).collect::<Vec<_>>());
+        assert!(!s.brief.before.iter().any(|x| x.kind == "use" || x.kind == "squad"));
+        assert!(s.brief.before.iter().any(|x| x.kind == "rush" && x.text.starts_with("Silverst")));
+        assert!(s.brief.before.iter().any(|x| x.kind == "rules" && x.text == "65–74"));
+        assert_eq!(s.brief.players.len(), 1);
+        assert_eq!(s.brief.players[0].name, "Silverst");
+        assert!(s.brief.anyone.iter().any(|x| x.text.starts_with("Win")), "winning is the team's");
+        // the kit and the Spanish XI get a session of their own, with an XI
+        assert!(v.combos.iter().any(|c| !c.rush_format && c.squad.is_some() && c.items.iter().any(|x| x.event == 2 && x.counts)));
+    }
+
+    #[test]
+    fn a_live_event_whose_rules_are_not_read_gets_no_squad_but_keeps_its_objectives() {
+        let input = scenario(json!({ "groups": [
+            ev(1, "Ghoul Fest", &[
+                (11, "Score at least 1 goal in 13 separate matches in the Ghoul Fest Live Event.", 0, 13),
+                (12, "Play 3 matches while having min. 3 Spanish players in your starting 11 in the Ghoul Fest Live Event.", 0, 3)]) ] }));
+        let v = plan(&input, &SquadPrefs { primary: Some(1), ..SquadPrefs::default() });
+        let s = &v.combos[0];
+        assert!(s.rules_unread && s.squad.is_none() && s.rush.is_none());
+        assert_eq!(s.items.len(), 2, "both objectives still shown");
+        assert_eq!(s.brief.before[0].kind, "unread");
+        assert_eq!(s.brief.before[0].text, "Ghoul Fest");
+        // once read (no limits), the squad is built as before
+        let mut read = input;
+        read.event_rules.insert("ghoul fest".into(), EntryRules::default());
+        let v = plan(&read, &SquadPrefs { primary: Some(1), ..SquadPrefs::default() });
+        assert!(!v.combos[0].rules_unread && v.combos[0].squad.is_some());
+    }
+
+    #[test]
     fn scenario_different_modes_are_never_combined_and_say_why() {
         let input = scenario(json!({ "groups": [
             ev(1, "Ghoul Fest", &[(11, "Score at least 1 goal in 13 separate matches in the Ghoul Fest Live Event.", 0, 13)]),
@@ -4190,6 +4460,7 @@ impl Input {
             read_at: None,
             now_ms: 0,
             evos: vec![],
+            event_rules: BTreeMap::new(),
         }
     }
 }
@@ -4287,6 +4558,7 @@ mod real_data {
             coins: snap["coins"][0].as_u64(),
             read_at: None,
             evos: vec![],
+            event_rules: BTreeMap::new(),
             now_ms: snap["prices"].as_object().unwrap().values().filter_map(|p| p["at"].as_u64()).max().unwrap_or(0),
         };
         println!("club players with positions: {}", input.club.iter().filter(|p| !p.positions.is_empty()).count());

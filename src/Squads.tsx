@@ -1075,6 +1075,37 @@ function EvoList({ s }: { s: SessionPlan }) {
 
 /** The bench (user 2026-11-01): club cards subbed on late for objectives a sub does – only where
  *  they open something the XI doesn't. */
+/** Rush (user 2026-11-01): the one player to bring – the whole match is played with him alone. */
+function RushCard({ s, compact = false }: { s: SessionPlan; compact?: boolean }) {
+  const p = s.rush;
+  if (!p) return <p className="sq-muted">{t("squads.rush.none")}</p>;
+  return (
+    <div className={`sq-squad sq-rush ${compact ? "compact" : ""}`}>
+      <span className="sq-bench-label">{t("squads.rush.title")}</span>
+      <div className="sq-line">
+        <div className={`sq-card counts ${p.owned ? "" : "buy"}`}>
+          <span className="sq-card-top">
+            <b>{p.rating}</b>
+            {p.nation > 0 && <Flag nation={p.nation} name={p.nation_name} size={compact ? 14 : 18} />}
+            <span>{p.pos}</span>
+          </span>
+          <span className="sq-name">{p.name}</span>
+          {!p.owned && <small className="sq-bench-why">{p.price != null ? t("squads.slot.buy", { price: num(p.price) }) : t("squads.rush.search")}</small>}
+          {p.evo && <small className="sq-bench-why">{p.evo}</small>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** What a session plays with: a live event's rules not read (blunt: no squad), Rush's one player,
+ *  else the XI. */
+function Lineup({ s, shown, compact = false }: { s: SessionPlan; shown: SquadSource; compact?: boolean }) {
+  if (s.rules_unread) return <p className="sq-unread">{t("squads.rules.unread", { event: s.place_name })}</p>;
+  if (s.rush_format) return <RushCard s={s} compact={compact} />;
+  return <Pitch e={shown} compact={compact} bench={benchOf(s)} />;
+}
+
 function BenchList({ s }: { s: SessionPlan }) {
   const subs = useContext(SubCtx);
   const bench: BenchPick[] = s.bench ?? [];
@@ -1145,7 +1176,7 @@ function Sessions({ view, prefs, onPrefs }: { view: SquadsView; prefs: SquadPref
       <article className="sq-event sq-session">
         <header className="sq-event-head">
           <div>
-            <h3>{s.quick != null ? t("squads.play.quickTitle", { count: s.quick }) : t("squads.play.session", { place })}</h3>
+            <h3>{s.quick != null ? t("squads.play.quickTitle", { count: s.quick }) : t(s.rules_unread ? "squads.play.sessionUnread" : s.rush_format ? "squads.play.sessionRush" : "squads.play.session", { place })}</h3>
             <Why s={s} />
           </div>
           <SaveButton e={{ id: s.id, title: `${place} · ${s.title}`, squad: shown.squad, reqs: shown.reqs }} />
@@ -1154,7 +1185,8 @@ function Sessions({ view, prefs, onPrefs }: { view: SquadsView; prefs: SquadPref
             <small>{t("squads.play.objectivesShort")}</small>
           </div>
         </header>
-        {s.place.kind === "rush" && <p className="sq-muted">{t("squads.play.rush")}</p>}
+        {s.rush_format && <p className="sq-muted">{t("squads.play.rush")}</p>}
+        {s.rules && <p className="sq-rules">{t("squads.rules.chip", { range: `${s.rules.min_rating ?? 40}–${s.rules.max_rating ?? 99}` })}</p>}
         <AskCards s={s} prefs={prefs} onPrefs={onPrefs} />
         <div className="sq-split">
           <div className="sq-col">
@@ -1165,7 +1197,7 @@ function Sessions({ view, prefs, onPrefs }: { view: SquadsView; prefs: SquadPref
             <SessionList s={s} elsewhere={s.id === list[0].id ? elsewhere : undefined} />
           </div>
           <div className="sq-col">
-            {s.place.kind !== "rush" && <Pitch e={shown} bench={benchOf(s)} />}
+            <Lineup s={s} shown={shown} />
             {s.squad && gaps(s.reqs, asked(s))
               .filter((r) => !(s.id === list[0].id && quick.some((q) => q.reqs.some((x) => x.met && reqLabel(x) === reqLabel(r)))))
               .map((r, i) => (
@@ -1313,6 +1345,14 @@ export function MatchBriefView({ s, inMatch = false }: { s: SessionPlan; inMatch
         return t("brief.use", { what: x.text });
       case "bench":
         return t("brief.benchEach", { names: bench.map((b) => `${b.name} ${subs.minute(b.key)}:00`).join(", ") || x.text });
+      case "rush":
+        return t("brief.rush", { card: x.text });
+      case "rush_buy":
+        return x.count != null ? t("brief.rushBuy", { card: x.text, price: num(x.count) }) : t("brief.rushSearch", { card: x.text });
+      case "rules":
+        return t("brief.rules", { range: x.text });
+      case "unread":
+        return t("brief.unread", { event: x.text });
     }
   };
   const more = Math.max(0, b.anyone.length - ANYONE_SHOWN);
@@ -1413,7 +1453,7 @@ export function SquadQuick({ inMatch = false }: { inMatch?: boolean }) {
               {st.to != null && <> · {t("squads.plan.nextChange", { count: Math.max(0, st.to - s.played) })}</>}
             </p>
           )}
-          {shown && s.place.kind !== "rush" && <Pitch e={shown} compact bench={benchOf(s)} />}
+          {shown && <Lineup s={s} shown={shown} compact />}
           <details className="sq-brief-all">
             <summary>{t("brief.all", { count: s.items.length })}</summary>
             <SessionList s={s} compact />

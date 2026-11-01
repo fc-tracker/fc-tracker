@@ -457,6 +457,7 @@ fn squads_input(w: &Web) -> squads::Input {
         read_at: w.objectives.as_ref().map(|(at, _)| *at),
         now_ms: clock::ms(),
         evos: w.evo_hub.as_ref().map(squads::evos_from_hub).unwrap_or_default(),
+        event_rules: Default::default(),
     }
 }
 

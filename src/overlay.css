@@ -1436,6 +1436,9 @@ html[data-view="toast"] #root {
 .sq-bench-label { font: 700 12px/1.2 var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 .sq-card.bench { opacity: 0.92; border-top-color: var(--accent); }
 .sq-bench-why { font-size: 10px; line-height: 1.2; color: var(--muted); overflow-wrap: anywhere; }
+.sq-unread { margin: 0; padding: 14px 16px; border-left: 3px solid var(--result-quit, var(--accent-2)); background: var(--bg-2); font-weight: 600; line-height: 1.4; }
+.sq-rules { margin: 0; font: 700 12px/1.2 var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
+.sq-rush { padding: 10px 10px 12px; background: var(--bg-2); }
 /* a bench player's own sub minute: − 70:00 + */
 .sq-sub-minute { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-top: 2px; }
 .sq-sub-minute b { font: 700 13px/1 var(--font-display); color: var(--accent); }

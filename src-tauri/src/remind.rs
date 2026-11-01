@@ -69,6 +69,10 @@ static LIVE: Mutex<Option<Live>> = Mutex::new(None);
 
 /// The needs of a planned session: evo players and bench cards with their sub minute.
 pub fn needs_of(s: &crate::squads::ComboPlan, squad: &crate::squads::SquadPrefs, prefs: &Prefs) -> Vec<Need> {
+    // Rush: one player the whole match, no subs to remind of
+    if s.rush_format {
+        return Vec::new();
+    }
     let minute = |key: u64| squad.sub_at.get(&key).copied().unwrap_or(prefs.sub_at);
     let evos = s.evos.iter().filter(|e| e.start || !e.in_xi).map(|e| Need { player: e.player.clone(), evo: e.name.clone(), level: e.level, levels: e.levels, start: e.start && e.in_xi, bench: false, at: minute(e.key) });
     // the bench for objectives that count for a sub (user 2026-11-01)

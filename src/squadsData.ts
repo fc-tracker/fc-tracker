@@ -234,10 +234,38 @@ export interface SessionPlan {
   bench?: BenchPick[];
   /** The match brief: before the match in broad strokes, in the match who does what. */
   brief?: MatchBrief;
+  /** Rush or a Rush live event: one player, no XI – `rush` is who to bring. */
+  rush_format?: boolean;
+  rush?: RushPick | null;
+  /** The live event's entry rules the squad keeps to. */
+  rules?: EntryRules | null;
+  /** A live event whose entry rules aren't read yet: no squad suggested. */
+  rules_unread?: boolean;
+}
+
+export interface EntryRules {
+  min_rating: number | null;
+  max_rating: number | null;
+}
+
+/** The one player to bring to Rush. */
+export interface RushPick {
+  key: number;
+  name: string;
+  pos: string;
+  rating: number;
+  nation: number;
+  nation_name: string | null;
+  owned: boolean;
+  price: number | null;
+  /** Not owned, no recent price: search the market for him. */
+  generic: boolean;
+  /** His evolution a match here moves on. */
+  evo: string | null;
 }
 
 export interface MatchBrief {
-  before: { kind: "squad" | "ready" | "buy" | "use" | "bench"; text: string; count: number | null }[];
+  before: { kind: "squad" | "ready" | "buy" | "use" | "bench" | "rush" | "rush_buy" | "rules" | "unread"; text: string; count: number | null }[];
   players: { name: string; pos: string; bench: boolean; tasks: BriefTask[] }[];
   anyone: BriefTask[];
 }

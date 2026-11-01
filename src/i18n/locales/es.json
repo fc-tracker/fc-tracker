@@ -919,7 +919,7 @@
   "squads.plan.nextChange": "cambio tras {{count}} más",
   "squads.plan.note": "Los partidos salen de tus propios resultados (victorias, goles): revisa tu progreso en el juego; la próxima sincronización pone los datos de EA.",
   "squads.play.bonus": "+{{count}} objetivos de largo plazo cuentan también (gratis)",
-  "squads.play.rush": "Rush se juega con su propia plantilla de cinco: elige las cartas que piden estos objetivos.",
+  "squads.play.rush": "Rush: controlas a un solo jugador todo el partido. Las equipaciones y los TIFO no cuentan ahí, y solo lo que hace él – sus goles, sus asistencias – avanza tus objetivos; las victorias cuentan para el equipo.",
   "squads.why.clears": "Completa {{count}} objetivos en {{events}} eventos",
   "squads.why.bonus": "+{{count}} gratis",
   "squads.why.buys": "{{count}} por comprar ({{coins}})",
@@ -1121,5 +1121,17 @@
   "squads.why.clears_one": "Completa 1 objetivo en {{events}} eventos",
   "squads.play.counted_one": "1 objetivo avanza · {{events}} eventos",
   "value.tabTokens": "+{{step}} tokens · {{total}} en total",
-  "value.gradeNeedsTotal": "La nota {{grade}} necesita {{score}} puntos y da {{tokens}} tokens ({{total}} en total)."
+  "value.gradeNeedsTotal": "La nota {{grade}} necesita {{score}} puntos y da {{tokens}} tokens ({{total}} en total).",
+  "squads.play.sessionRush": "Juega {{place}} con este jugador",
+  "squads.rush.title": "Tu jugador de Rush",
+  "squads.rush.none": "Ninguna carta de tu club encaja en este Rush – nada que sugerir aún.",
+  "squads.rush.search": "Busca en el mercado",
+  "squads.rules.chip": "Requisitos de entrada: {{range}} MED",
+  "squads.rules.unread": "Abre {{event}} en el juego: sus requisitos de entrada aún no se han leído, así que no se sugiere plantilla.",
+  "brief.rush": "Lleva a {{card}} a Rush",
+  "brief.rushBuy": "Compra a {{card}} ({{price}}) y llévalo a Rush",
+  "brief.rushSearch": "Compra a {{card}} – busca en el mercado – y llévalo a Rush",
+  "brief.rules": "Solo cartas de media {{range}}",
+  "brief.unread": "Abre {{event}} en el juego – sus requisitos de entrada aún no se han leído",
+  "squads.play.sessionUnread": "{{place}} – requisitos de entrada aún sin leer"
 }

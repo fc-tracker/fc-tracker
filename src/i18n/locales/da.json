@@ -919,7 +919,7 @@
   "squads.plan.nextChange": "skift efter {{count}} mere",
   "squads.plan.note": "Antal kampe er beregnet ud fra dine egne resultater (sejre, mål). Tjek din progress i spillet – næste sync sætter EA's tal ind.",
   "squads.play.bonus": "+{{count}} langvarige objectives tæller også (gratis)",
-  "squads.play.rush": "Rush spilles med sit eget 5-mandshold: vælg de kort, disse objectives nævner.",
+  "squads.play.rush": "Rush: du styrer én spiller hele kampen. Trøjer og TIFO'er tæller ikke der, og kun det, han selv gør – hans mål, hans assists – rykker dine objectives; sejre tæller for holdet.",
   "squads.why.clears": "Klarer {{count}} objectives i {{events}} events",
   "squads.why.bonus": "+{{count}} gratis",
   "squads.why.buys": "{{count}} at købe ({{coins}})",
@@ -1121,5 +1121,17 @@
   "squads.why.clears_one": "Klarer 1 objective i {{events}} events",
   "squads.play.counted_one": "1 objective rykker · {{events}} events",
   "value.tabTokens": "+{{step}} tokens · {{total}} i alt",
-  "value.gradeNeedsTotal": "Grade {{grade}} kræver en score på {{score}} og giver {{tokens}} tokens ({{total}} i alt)."
+  "value.gradeNeedsTotal": "Grade {{grade}} kræver en score på {{score}} og giver {{tokens}} tokens ({{total}} i alt).",
+  "squads.play.sessionRush": "Spil {{place}} med denne spiller",
+  "squads.rush.title": "Din Rush-spiller",
+  "squads.rush.none": "Intet kort i din klub passer til denne Rush – intet at foreslå endnu.",
+  "squads.rush.search": "Søg på markedet",
+  "squads.rules.chip": "Adgangskrav: {{range}} OVR",
+  "squads.rules.unread": "Åbn {{event}} i spillet: eventets krav er ikke læst endnu, så der foreslås intet hold.",
+  "brief.rush": "Tag {{card}} med i Rush",
+  "brief.rushBuy": "Køb {{card}} ({{price}}) og tag ham med i Rush",
+  "brief.rushSearch": "Køb {{card}} – søg på markedet – og tag ham med i Rush",
+  "brief.rules": "Kun kort med rating {{range}}",
+  "brief.unread": "Åbn {{event}} i spillet – eventets krav er ikke læst endnu",
+  "squads.play.sessionUnread": "{{place}} – eventets krav er ikke læst endnu"
 }

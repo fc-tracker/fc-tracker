@@ -919,7 +919,7 @@
   "squads.plan.nextChange": "Wechsel nach {{count}} weiteren",
   "squads.plan.note": "Die Spielanzahl stammt aus deinen eigenen Ergebnissen (Siege, Tore): prüf deinen Fortschritt im Spiel – der nächste Sync setzt EAs Zahlen ein.",
   "squads.play.bonus": "+{{count}} Langzeit-Aufgaben zählen auch (gratis)",
-  "squads.play.rush": "Rush wird mit eigenem Fünferteam gespielt: wähl die Karten, die diese Aufgaben nennen.",
+  "squads.play.rush": "Rush: Du steuerst das ganze Spiel über einen Spieler. Trikots und TIFOs zählen dort nicht, und nur was er selbst tut – seine Tore, seine Vorlagen – bringt deine Aufgaben voran; Siege zählen fürs Team.",
   "squads.why.clears": "Schafft {{count}} Aufgaben in {{events}} Events",
   "squads.why.bonus": "+{{count}} gratis",
   "squads.why.buys": "{{count}} zu kaufen ({{coins}})",
@@ -1121,5 +1121,17 @@
   "squads.why.clears_one": "Schafft 1 Aufgabe in {{events}} Events",
   "squads.play.counted_one": "1 Aufgabe geht voran · {{events}} Events",
   "value.tabTokens": "+{{step}} Tokens · {{total}} insgesamt",
-  "value.gradeNeedsTotal": "Note {{grade}} braucht {{score}} Punkte und gibt {{tokens}} Tokens ({{total}} insgesamt)."
+  "value.gradeNeedsTotal": "Note {{grade}} braucht {{score}} Punkte und gibt {{tokens}} Tokens ({{total}} insgesamt).",
+  "squads.play.sessionRush": "Spiel {{place}} mit diesem Spieler",
+  "squads.rush.title": "Dein Rush-Spieler",
+  "squads.rush.none": "Keine Karte in deinem Verein passt zu diesem Rush – noch kein Vorschlag.",
+  "squads.rush.search": "Auf dem Transfermarkt suchen",
+  "squads.rules.chip": "Teilnahmeregeln: {{range}} GES",
+  "squads.rules.unread": "Öffne {{event}} im Spiel: Die Teilnahmeregeln sind noch nicht gelesen, daher wird kein Team vorgeschlagen.",
+  "brief.rush": "Nimm {{card}} mit in Rush",
+  "brief.rushBuy": "Kauf {{card}} ({{price}}) und nimm ihn mit in Rush",
+  "brief.rushSearch": "Kauf {{card}} – auf dem Transfermarkt suchen – und nimm ihn mit in Rush",
+  "brief.rules": "Nur Karten mit Wertung {{range}}",
+  "brief.unread": "Öffne {{event}} im Spiel – die Teilnahmeregeln sind noch nicht gelesen",
+  "squads.play.sessionUnread": "{{place}} – Teilnahmeregeln noch nicht gelesen"
 }

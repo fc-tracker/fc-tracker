@@ -1102,6 +1102,7 @@ fn squads_input(store: &store::Store) -> squads::Input {
         read_at: web.objectives.as_ref().map(|o| o.at),
         now_ms: now,
         evos: web.latest.iter().find(|(k, _)| k.ends_with("/academy/hub/v2")).map(|(_, v)| squads::evos_from_hub(&v.body)).unwrap_or_default(),
+        event_rules: Default::default(),
     }
 }
 
@@ -1798,6 +1799,10 @@ mod real_plan {
             for e in &c.evos {
                 println!("    EVO {} {} lvl {}/{} {}/{} start {} in_xi {} left {} days {:?}", e.player, e.name, e.level, e.levels, e.progress, e.target, e.start, e.in_xi, e.matches_left, e.days_left);
             }
+            if let Some(p) = &c.rush {
+                println!("    RUSH {} {} {} owned {} price {:?} evo {:?} rules {:?} unread {}", p.name, p.pos, p.rating, p.owned, p.price, p.evo, c.rules, c.rules_unread);
+            }
+            println!("    BRIEF before {:?} players {:?} team {:?}", c.brief.before.iter().map(|x| format!("{}:{}", x.kind, x.text)).collect::<Vec<_>>(), c.brief.players.iter().map(|p| (p.name.clone(), p.tasks.len())).collect::<Vec<_>>(), c.brief.anyone.iter().map(|t| t.text.clone()).collect::<Vec<_>>());
             for st in &c.stages {
                 println!("    STAGE {}-{:?} {} chem {} swaps [{}] finishing {:?}", st.from, st.to, st.squad.formation, st.squad.chem, st.swaps.iter().map(|w| format!("{}: {} -> {}{}", w.pos, w.out_name, w.in_name, if w.in_owned { "" } else { " (buy)" })).collect::<Vec<_>>().join("; "), st.finishing);
             }
