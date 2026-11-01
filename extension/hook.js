@@ -57,10 +57,9 @@
       for (const id of [p.resourceId, p.assetId]) {
         try {
           const s = id != null ? window.repositories?.Item?.getStaticDataByDefId?.(id) : null;
-          // the name the card shows ("Suhonen"), not the full one ("Anssi Suhonen")
-          // (the player data holds "Anssi Suhonen" as his name: first + last → the last name alone)
-          const full = [s?.firstName, s?.lastName].filter(Boolean).join(" ");
-          const name = [s?.name === full && s?.lastName ? s.lastName : s?.name, s?.lastName, full].find((n) => typeof n === "string" && /[a-z]/i.test(n));
+          // the name the card shows, by the Web App's own rule: the common name ("Vicky López"),
+          // else the last name ("Hazard", "Suhonen") – never the full name
+          const name = [s?.commonName, s?.knownAs, s?.lastName, s?.name].find((n) => typeof n === "string" && /[a-z]/i.test(n));
           if (typeof name === "string" && /[a-z]/i.test(name)) {
             p.name = name;
             break;
@@ -263,6 +262,7 @@
       name: s.name,
       firstName: s.firstName,
       lastName: s.lastName,
+      knownAs: s.knownAs,
       // games, goals, cards … (a manager: games, wins, draws, losses, clean sheets)
       lifetimeStats: Array.isArray(e._lifetimeStats) ? e._lifetimeStats : Array.isArray(e.lifetimeStats) ? e.lifetimeStats : undefined,
     };

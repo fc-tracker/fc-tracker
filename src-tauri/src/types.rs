@@ -212,7 +212,7 @@ pub struct Item {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub play: Option<PlayData>,
     pub last_seen: u64,
-    /// EA's first + last name (the Web App's static data) – the name of last resort when EA writes
+    /// The name EA's player data gives the card (common name, else last name) – the name of last resort when EA writes
     /// "---" for the card and no card of the same player has one.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub full_name: Option<String>,

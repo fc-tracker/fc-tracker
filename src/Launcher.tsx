@@ -91,7 +91,7 @@ export default function Launcher() {
         setAfterPlay(p.after_play);
         setMissingSide(p.missing_side);
         setChampsOn(p.champions === true);
-        setReminders(p.reminders ?? { on: true, at: [0, 45, 70] });
+        setReminders(p.reminders ?? { on: true, at: [0, 45], sub_at: 70 });
       })
       .catch(() => {});
   }, []);
@@ -590,6 +590,20 @@ export default function Launcher() {
                         <small>{m === 0 ? t("settings.reminderLoad") : m === 45 ? t("settings.reminderHalf") : `${m}:00`}</small>
                       </label>
                     ))}
+                  {reminders?.on && (
+                    <label className="ln-minute sub" title={t("settings.reminderSub")}>
+                      <input
+                        className="ln-input minute"
+                        type="number"
+                        min={1}
+                        max={120}
+                        value={reminders.sub_at ?? 70}
+                        aria-label={t("settings.reminderSub")}
+                        onChange={(e) => saveReminders({ ...reminders, sub_at: Math.max(1, Math.min(120, Math.round(Number(e.target.value) || 70))) })}
+                      />
+                      <small>{t("settings.reminderSubShort")}</small>
+                    </label>
+                  )}
                   <button
                     className={`ln-btn small ${reminders?.on ? "" : "ghost"}`}
                     aria-pressed={reminders?.on === true}

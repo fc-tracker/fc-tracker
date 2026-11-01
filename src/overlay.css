@@ -113,6 +113,10 @@ html[data-view="toast"] #root {
   clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
 }
 .cat-tabs::-webkit-scrollbar { display: none; }
+/* more tabs than fit: a fade where they go on */
+.cat-tabs[data-more-right="true"] { mask-image: linear-gradient(90deg, #000 calc(100% - 64px), transparent); }
+.cat-tabs[data-more-left="true"] { mask-image: linear-gradient(90deg, transparent, #000 64px); }
+.cat-tabs[data-more-left="true"][data-more-right="true"] { mask-image: linear-gradient(90deg, transparent, #000 64px, #000 calc(100% - 64px), transparent); }
 .cat-tab {
   all: unset; cursor: pointer; white-space: nowrap;
   font-family: var(--font-display); font-size: 18px; font-weight: 600; letter-spacing: 0.02em;
@@ -891,6 +895,8 @@ html[data-view="toast"] #root {
 .toast.read.unclear { box-shadow: inset 3px 0 0 var(--grade-b); }
 .toast-mark.read { background: var(--accent-2); box-shadow: 0 0 10px var(--accent-2); }
 .ml-loading { display: flex; align-items: center; gap: 10px; }
+.ml-loading.inline { display: inline-flex; gap: 6px; }
+.ml-loading.inline::before { width: 7px; height: 7px; }
 .ml-loading::before { content: ""; width: 10px; height: 10px; flex: none; transform: rotate(45deg); background: var(--accent); animation: pulse 0.9s var(--ease) infinite; }
 
 /* empty / loading overlay: the message fills the body rows, the footer stays at the bottom */
@@ -973,6 +979,10 @@ html[data-view="toast"] #root {
 .ov-frame > * { min-width: 0; }
 .ov-body { min-width: 0; }
 .sec-tabs { margin-left: 0; margin-right: auto; }
+/* a narrow window (a phone): the section tabs wrap – "Objectives" was cut off out of reach */
+.sec-tabs { flex-wrap: wrap; max-width: 100%; row-gap: 4px; }
+/* a touch screen has no keys: the key hints go */
+@media (pointer: coarse) { .ov-footer.input-keyboard { display: none; } }
 .bv-row-head .set-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bv-row-step { flex: none; }
 
@@ -1426,6 +1436,11 @@ html[data-view="toast"] #root {
 .sq-bench-label { font: 700 12px/1.2 var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 .sq-card.bench { opacity: 0.92; border-top-color: var(--accent); }
 .sq-bench-why { font-size: 10px; line-height: 1.2; color: var(--muted); overflow-wrap: anywhere; }
+/* a bench player's own sub minute: − 70:00 + */
+.sq-sub-minute { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-top: 2px; }
+.sq-sub-minute b { font: 700 13px/1 var(--font-display); color: var(--accent); }
+.sq-sub-minute button { width: 20px; height: 20px; padding: 0; font: 700 14px/1 var(--font-body); color: var(--text); background: var(--bg-2); border: 1px solid var(--line); cursor: pointer; }
+.sq-sub-minute button:hover { border-color: var(--accent); }
 .sq-card-top { display: flex; justify-content: space-between; align-items: baseline; }
 .sq-card-top b { font: 700 20px/1 var(--font-display); }
 .sq-card-top span { font-size: 11px; font-weight: 800; color: var(--muted); }

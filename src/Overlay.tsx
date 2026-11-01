@@ -57,6 +57,30 @@ const MENU = ["first_owner", "purchased", "back"] as const;
 type MenuChoice = (typeof MENU)[number];
 
 /** Small menu attached to a card's top-right corner: mark first owner / purchased, or back. */
+/** A tab strip wider than its row (sets, leagues): a fade on the side with more tabs, and the
+ *  mouse wheel scrolls it sideways – "Leagues" was out of sight with nothing saying so. */
+function stripRef(el: HTMLElement | null) {
+  if (!el || el.dataset.strip) return;
+  el.dataset.strip = "1";
+  const update = () => {
+    el.dataset.moreLeft = String(el.scrollLeft > 2);
+    el.dataset.moreRight = String(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
+  };
+  el.addEventListener("scroll", update, { passive: true });
+  el.addEventListener(
+    "wheel",
+    (e) => {
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && el.scrollWidth > el.clientWidth) {
+        el.scrollLeft += e.deltaY;
+        e.preventDefault();
+      }
+    },
+    { passive: false },
+  );
+  new ResizeObserver(update).observe(el);
+  update();
+}
+
 function CardMenu({ card, index, toLeft, onChoose }: { card: GalleryCardView; index: number; toLeft: boolean; onChoose: (c: MenuChoice) => void }) {
   const current: MenuChoice | null = FO_YES.includes(card.first_owner) ? "first_owner" : FO_NO.includes(card.first_owner) ? "purchased" : null;
   return (
@@ -1057,7 +1081,7 @@ export default function Overlay() {
         {section === "value" ? (
           <>
             <div className="cat-bar">
-              <nav className="cat-tabs" aria-label={t("section.value")}>
+              <nav className="cat-tabs" ref={stripRef} aria-label={t("section.value")}>
                 {pad ? <PadButton id="l1" layout={pad} size={20} /> : <kbd className="key-hint">Q</kbd>}
                 {valueCats.map((k) => (
                   <button key={k} className={`cat-tab ${k === valueCat ? "active" : ""}`} onClick={() => { setValueCat(k); setValueKey(null); }}>
@@ -1145,7 +1169,7 @@ export default function Overlay() {
         ) : (
           <>
             <div className="cat-bar">
-            <nav className="cat-tabs" aria-label={t("overlay.gallery")}>
+            <nav className="cat-tabs" ref={stripRef} aria-label={t("overlay.gallery")}>
               {pad ? <PadButton id="l1" layout={pad} size={20} /> : <kbd className="key-hint">Q</kbd>}
               {visible.map((c) => (
                 <button

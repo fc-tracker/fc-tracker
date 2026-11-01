@@ -199,18 +199,20 @@ export default function Toast() {
       <div className="toast better" key={`match-reminder-${toast.at}`} role="status">
         <span className="toast-mark better" aria-hidden="true" />
         <div className="toast-body">
-          <p className="toast-title">{toast.at === 0 ? (toast.needs.every((n) => n.bench) ? t("remind.loadBench") : t("remind.loadTitle")) : t("remind.title", { minute: toast.at })}</p>
+          <p className="toast-title">
+            {toast.now ? t("remind.title", { minute: toast.at }) : toast.at === 0 ? (toast.needs.every((n) => n.bench) ? t("remind.loadBench") : t("remind.loadTitle")) : t("remind.moment", { minute: toast.at })}
+          </p>
           {toast.needs.slice(0, 3).map((n, i) => (
             <p className="toast-line" key={i}>
-              {n.bench
-                ? toast.at === 0
-                  ? t("remind.benchFor", { player: n.player, what: n.evo, minute: toast.subAt ?? 70 })
-                  : t("remind.subFor", { player: n.player, what: n.evo })
-                : n.start
+              {n.start
                 ? t("remind.starts", { player: n.player, evo: n.evo })
-                : toast.at === 0
-                  ? t("remind.bench", { player: n.player, evo: n.evo, minute: toast.subAt ?? 70 })
-                  : t("remind.subOn", { player: n.player, evo: n.evo, level: n.level, levels: n.levels })}
+                : toast.now
+                  ? n.bench
+                    ? t("remind.subFor", { player: n.player, what: n.evo })
+                    : t("remind.subOn", { player: n.player, evo: n.evo, level: n.level, levels: n.levels })
+                  : n.bench
+                    ? t("remind.benchFor", { player: n.player, what: n.evo, minute: n.at })
+                    : t("remind.bench", { player: n.player, evo: n.evo, minute: n.at })}
             </p>
           ))}
         </div>

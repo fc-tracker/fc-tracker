@@ -300,7 +300,7 @@ export type ToastPayload =
   | { kind: "squads-swap"; played: number; swaps: { pos: string; out: string; in: string; buy: boolean }[] }
   /** … or not yet (matches until the next change). */
   | { kind: "squads-match"; played: number; next: number | null }
-  | { kind: "match-reminder"; at: number; subAt: number | null; needs: { player: string; evo: string; level: number; levels: number; start: boolean; bench?: boolean }[] }
+  | { kind: "match-reminder"; at: number; now?: boolean; needs: { player: string; evo: string; level: number; levels: number; start: boolean; bench?: boolean; at: number }[] }
   /** An incomplete set page: cards in the club can fill its open slots (names/points when certain). */
   | { kind: "fill"; set_name: string; count: number; names: string[]; points: number | null }
   /** A game page is being read (every wait visible). */
@@ -358,6 +358,8 @@ export interface UiPrefs {
 export interface RemindPrefs {
   on: boolean;
   at: number[];
+  /** When bench players are subbed on (each can have his own minute on the bench). */
+  sub_at: number;
 }
 
 export interface GalleryTag {

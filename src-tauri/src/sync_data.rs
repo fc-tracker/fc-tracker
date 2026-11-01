@@ -187,10 +187,8 @@ pub(crate) fn parse_item(v: &Value, now: u64) -> Option<Item> {
         last_seen: now,
         full_name: {
             let s = |k: &str| v.get(k).and_then(Value::as_str).map(str::trim).filter(|n| real(n)).map(str::to_string);
-            match (s("firstName"), s("lastName")) {
-                (Some(f), Some(l)) => Some(format!("{f} {l}")),
-                (f, l) => l.or(f),
-            }
+            // the name a card shows (the Web App's rule): the common name, else the last name
+            s("knownAs").or_else(|| s("commonName")).or_else(|| s("lastName")).or_else(|| s("firstName"))
         },
     })
 }

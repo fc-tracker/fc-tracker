@@ -1,7 +1,8 @@
 //! Match reminders (SQUADS.md, user 2026-11-01): the match clock is read in every mode – one small
-//! look at the scoreboard per `match_ms` – and at set moments the user hears what the plan needs
-//! in this match: an evolution player to sub on ("Sub on Suhonen – Center Spectre"), one that has
-//! to start, a bench card for objectives that count for a sub. Defaults: loading into the match (0), half time (45), 70:00 – each changeable.
+//! look at the scoreboard per `match_ms` – and the user hears what the plan needs in this match:
+//! loading in, the bench and when each is subbed on; at the set moments (half time …) the subs still
+//! to come; at each player's minute "Sub on Suhonen now". The sub minute is a setting (70:00) and can
+//! be changed per player on the bench (75:00 for one who only has to come on).
 
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
@@ -13,21 +14,29 @@ use tauri::{AppHandle, Manager};
 pub struct Prefs {
     /// Read the match clock in every match (on by default).
     pub on: bool,
-    /// Match minutes to remind at; 0 = loading into the match, 45 = half time.
+    /// Moments to remind of the subs still to come; 0 = loading into the match, 45 = half time.
     pub at: Vec<u16>,
+    /// When a bench player is subbed on (each can have his own minute: `SquadPrefs::sub_at`).
+    pub sub_at: u16,
 }
 
 impl Default for Prefs {
     fn default() -> Self {
-        Prefs { on: true, at: vec![0, 45, 70] }
+        Prefs { on: true, at: vec![0, 45], sub_at: 70 }
     }
 }
 
 pub fn clamp(mut p: Prefs) -> Prefs {
+    p.sub_at = p.sub_at.clamp(1, 120);
     for m in &mut p.at {
         *m = (*m).min(120);
     }
-    p.at.truncate(3);
+    // the old third moment (70) is the sub minute now
+    let sub = p.sub_at;
+    p.at.retain(|&m| m != sub);
+    p.at.sort_unstable();
+    p.at.dedup();
+    p.at.truncate(2);
     p
 }
 
@@ -43,25 +52,38 @@ pub struct Need {
     pub start: bool,
     /// A bench card for objectives (not an evolution).
     pub bench: bool,
+    /// The minute he is subbed on.
+    pub at: u16,
 }
 
 #[derive(Default)]
 struct Live {
     needs: Vec<Need>,
-    /// Reminder minutes already shown in this match.
+    /// Moments already shown in this match.
     fired: Vec<u16>,
+    /// Players already told to come on.
+    subbed: Vec<String>,
 }
 
 static LIVE: Mutex<Option<Live>> = Mutex::new(None);
 
+/// The needs of a planned session: evo players and bench cards with their sub minute.
+pub fn needs_of(s: &crate::squads::ComboPlan, squad: &crate::squads::SquadPrefs, prefs: &Prefs) -> Vec<Need> {
+    let minute = |key: u64| squad.sub_at.get(&key).copied().unwrap_or(prefs.sub_at);
+    let evos = s.evos.iter().filter(|e| e.start || !e.in_xi).map(|e| Need { player: e.player.clone(), evo: e.name.clone(), level: e.level, levels: e.levels, start: e.start && e.in_xi, bench: false, at: minute(e.key) });
+    // the bench for objectives that count for a sub (user 2026-11-01)
+    let bench = s.bench.iter().map(|b| Need { player: b.name.clone(), evo: b.objectives.iter().take(2).cloned().collect::<Vec<_>>().join(", "), level: 0, levels: 0, start: false, bench: true, at: minute(b.key) });
+    evos.chain(bench).collect()
+}
+
 /// A match starts (loading in): what it needs comes from the plan – worked out in the background,
-/// then the 0-minute reminder.
+/// then the loading-in reminder.
 pub fn match_started(app: &AppHandle) {
     *LIVE.lock().unwrap() = Some(Live::default());
     let (prefs, input, squad_prefs) = {
         let state = app.state::<crate::AppState>();
         let ui = state.ui.lock().unwrap();
-        let prefs = ui.reminders.clone();
+        let prefs = clamp(ui.reminders.clone());
         if !prefs.on {
             return;
         }
@@ -71,23 +93,14 @@ pub fn match_started(app: &AppHandle) {
     let app = app.clone();
     std::thread::spawn(move || {
         let view = crate::squads::plan(&input, &squad_prefs);
-        let needs: Vec<Need> = view
-            .combos
-            .first()
-            .map(|s| {
-                let evos = s.evos.iter().filter(|e| e.start || !e.in_xi).map(|e| Need { player: e.player.clone(), evo: e.name.clone(), level: e.level, levels: e.levels, start: e.start && e.in_xi, bench: false });
-                // the bench for objectives that count for a sub (user 2026-11-01)
-                let bench = s.bench.iter().map(|b| Need { player: b.name.clone(), evo: b.objectives.iter().take(2).cloned().collect::<Vec<_>>().join(", "), level: 0, levels: 0, start: false, bench: true });
-                evos.chain(bench).collect()
-            })
-            .unwrap_or_default();
+        let needs = view.combos.first().map(|s| needs_of(s, &squad_prefs, &prefs)).unwrap_or_default();
         {
             let mut live = LIVE.lock().unwrap();
             let Some(l) = live.as_mut() else { return };
             l.needs = needs;
         }
         if prefs.at.contains(&0) {
-            fire(&app, 0, &prefs);
+            moment(&app, 0);
         }
     });
 }
@@ -96,28 +109,39 @@ pub fn match_ended() {
     *LIVE.lock().unwrap() = None;
 }
 
-/// The clock read `minute`: the reminders it passed.
+/// The clock read `minute`: the players whose minute came, else the latest moment passed.
 pub fn minute(app: &AppHandle, minute: u16) {
-    let prefs = app.state::<crate::AppState>().ui.lock().unwrap().reminders.clone();
+    let prefs = clamp(app.state::<crate::AppState>().ui.lock().unwrap().reminders.clone());
     if !prefs.on {
         return;
     }
-    // the latest moment passed (a late first reading never shows three reminders at once)
+    let now: Vec<Need> = {
+        let mut live = LIVE.lock().unwrap();
+        let Some(l) = live.as_mut() else { return };
+        let due: Vec<Need> = l.needs.iter().filter(|n| !n.start && n.at <= minute && !l.subbed.contains(&n.player)).cloned().collect();
+        l.subbed.extend(due.iter().map(|n| n.player.clone()));
+        due
+    };
+    if !now.is_empty() {
+        show(app, minute, true, now);
+        return;
+    }
+    // a late first reading never shows several moments at once: the latest one
     let due = {
         let live = LIVE.lock().unwrap();
         let Some(l) = live.as_ref() else { return };
         prefs.at.iter().copied().filter(|&m| m > 0 && m <= minute && !l.fired.contains(&m)).max()
     };
     if let Some(m) = due {
-        // everything up to it counts as shown
         if let Some(l) = LIVE.lock().unwrap().as_mut() {
             l.fired.extend(prefs.at.iter().copied().filter(|&x| x > 0 && x <= m));
         }
-        fire(app, m, &prefs);
+        moment(app, m);
     }
 }
 
-fn fire(app: &AppHandle, at: u16, prefs: &Prefs) {
+/// A set moment: loading in (everyone, with their minutes), later the subs still to come.
+fn moment(app: &AppHandle, at: u16) {
     let needs = {
         let mut live = LIVE.lock().unwrap();
         let Some(l) = live.as_mut() else { return };
@@ -127,16 +151,17 @@ fn fire(app: &AppHandle, at: u16, prefs: &Prefs) {
             }
             l.fired.push(0);
         }
-        // once he is on, only the subs are left to remind of
-        l.needs.iter().filter(|n| at == 0 || !n.start).cloned().collect::<Vec<_>>()
+        l.needs.iter().filter(|n| (at == 0 || !n.start) && !l.subbed.contains(&n.player)).cloned().collect::<Vec<_>>()
     };
+    show(app, at, false, needs);
+}
+
+fn show(app: &AppHandle, at: u16, now: bool, needs: Vec<Need>) {
     if needs.is_empty() {
         return;
     }
-    // the moment the subs are planned for: the next reminder after loading in
-    let sub_at = prefs.at.iter().copied().filter(|&m| m > 0).min();
-    let payload = serde_json::json!({ "kind": "match-reminder", "at": at, "subAt": sub_at, "needs": needs });
-    crate::tracking::log(&app.state::<crate::AppState>().data_dir, &format!("reminder at {at}': {} evo player(s)", needs.len()));
+    let payload = serde_json::json!({ "kind": "match-reminder", "at": at, "now": now, "needs": needs });
+    crate::tracking::log(&app.state::<crate::AppState>().data_dir, &format!("reminder at {at}'{}: {} player(s)", if now { " (sub on)" } else { "" }, needs.len()));
     let a2 = app.clone();
     let _ = app.run_on_main_thread(move || crate::show_notice(&a2, payload, 8));
 }
@@ -146,8 +171,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn reminders_default_to_loading_in_half_time_and_70() {
-        assert_eq!(Prefs::default(), Prefs { on: true, at: vec![0, 45, 70] });
-        assert_eq!(clamp(Prefs { on: true, at: vec![30, 55, 200, 80] }).at, vec![30, 55, 120]);
+    fn reminders_default_to_loading_in_and_half_time_and_subs_at_70() {
+        assert_eq!(Prefs::default(), Prefs { on: true, at: vec![0, 45], sub_at: 70 });
+        assert_eq!(clamp(Prefs { on: true, at: vec![30, 55, 200, 80], sub_at: 75 }).at, vec![30, 55]);
+        // a ui.json from before: [0, 45, 70] – the 70 is the sub minute now
+        assert_eq!(clamp(Prefs { on: true, at: vec![0, 45, 70], sub_at: 70 }).at, vec![0, 45]);
     }
 }

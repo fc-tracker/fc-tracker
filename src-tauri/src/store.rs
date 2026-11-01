@@ -1278,8 +1278,14 @@ mod tests {
         crate::sync_data::fill_names(&mut gallery, Some(&mut items));
         assert_eq!(gallery[&67298909].name.as_deref(), Some("Cruyff"));
         assert_eq!(items[&1].name.as_deref(), Some("Cruyff"));
-        // no card of the player known: EA's first and last name
-        assert_eq!(items[&2].name.as_deref(), Some("Dávid Hancko"));
+        // no card of the player known: the name his card shows – the last name, never the full one
+        assert_eq!(items[&2].name.as_deref(), Some("Hancko"));
+        // … or the common name when he has one ("Vicky López", not her first and last name)
+        let mut vicky = crate::sync_data::parse_item(&serde_json::json!({ "id": 3, "assetId": 260000, "itemType": "player", "name": "---", "firstName": "Victoria", "lastName": "López Félix", "knownAs": "Vicky López" }), 1).unwrap();
+        vicky.name = None;
+        items.insert(3, vicky);
+        crate::sync_data::fill_names(&mut gallery, Some(&mut items));
+        assert_eq!(items[&3].name.as_deref(), Some("Vicky López"));
     }
 
     #[test]

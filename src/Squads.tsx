@@ -4,7 +4,7 @@
 // objective a match there moves on, across events; what needs another place is listed apart.
 // Below, every event with its checklist (mark done by hand). The same view in the app overlay and
 // on FC-Tracker Web; the side panel shows the quick version (SquadQuick).
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, createContext, useContext } from "react";
 import { api, events, formatAge, IS_WEB } from "./api";
 import { num } from "./format";
 import { Flag } from "./flags";
@@ -125,7 +125,7 @@ export function useSquads(): [SquadsView | null, boolean, (p: SquadPrefs) => voi
     let timer = 0;
     const un = events.onGalleryUpdated(() => {
       window.clearTimeout(timer);
-      timer = window.setTimeout(load, 1500);
+      timer = window.setTimeout(load, 5000);
     });
     // a match counted, the hub of an event seen: the plan moves on
     const un2 = events.onSquadsChanged(() => load());
@@ -136,8 +136,15 @@ export function useSquads(): [SquadsView | null, boolean, (p: SquadPrefs) => voi
     };
   }, []);
   const setPrefs = (p: SquadPrefs) => {
-    setView((v) => (v ? { ...v, prefs: p } : v));
-    api.setSquadPrefs(p).then(load).catch(() => {});
+    // a sub minute changes no squad: saved, nothing worked out again
+    const strip = (x: SquadPrefs | undefined) => JSON.stringify({ ...x, sub_at: undefined });
+    const same = view != null && strip(view.prefs) === strip(p);
+    setView((v) => {
+      const next = v ? { ...v, prefs: p } : v;
+      if (next) cachedPlan = next;
+      return next;
+    });
+    api.setSquadPrefs(p).then(same ? undefined : load).catch(() => {});
   };
   // the game shows an event's hub: that's what the user plays now (they can pick another)
   const latest = useRef(view);
@@ -602,6 +609,7 @@ function ManagerLine({ sq }: { sq: SquadView }) {
 /** The XI on a pitch, attack at the top; a card opens its details. */
 /** A card on the bench: an evolution player or one for objectives a sub does. */
 interface BenchCard {
+  key: number;
   name: string;
   pos: string;
   rating: number;
@@ -613,13 +621,15 @@ interface BenchCard {
 
 /** The session's bench: evo players not in the XI first, then the bench cards. */
 export function benchOf(s: SessionPlan): BenchCard[] {
-  const evos = (s.evos ?? []).filter((x) => !x.in_xi).map((x) => ({ name: x.player, pos: x.pos ?? "", rating: x.rating ?? 0, nation: x.nation ?? 0, nation_name: x.nation_name ?? null, why: x.name }));
-  const picks = (s.bench ?? []).map((b) => ({ name: b.name, pos: b.pos, rating: b.rating, nation: b.nation, nation_name: b.nation_name, why: b.objectives.slice(0, 2).join(", ") }));
+  const evos = (s.evos ?? []).filter((x) => !x.in_xi).map((x) => ({ key: x.key, name: x.player, pos: x.pos ?? "", rating: x.rating ?? 0, nation: x.nation ?? 0, nation_name: x.nation_name ?? null, why: x.name }));
+  const picks = (s.bench ?? []).map((b) => ({ key: b.key, name: b.name, pos: b.pos, rating: b.rating, nation: b.nation, nation_name: b.nation_name, why: b.objectives.slice(0, 2).join(", ") }));
   return [...evos, ...picks];
 }
 
 export function Pitch({ e, compact = false, bench = [] }: { e: SquadSource; compact?: boolean; bench?: BenchCard[] }) {
-  const subAt = useSubAt();
+  const subs = useContext(SubCtx);
+  const minutes = bench.map((b) => subs.minute(b.key));
+  const same = minutes.every((m) => m === minutes[0]);
   const [open, setOpen] = useState<number | null>(null);
   const sq = e.squad;
   useEffect(() => setOpen(null), [e.id]);
@@ -671,8 +681,8 @@ export function Pitch({ e, compact = false, bench = [] }: { e: SquadSource; comp
         ))}
       </div>
       {bench.length > 0 && (
-        <div className="sq-bench-row" aria-label={t("squads.bench.title", { minute: subAt })}>
-          <span className="sq-bench-label">{t("squads.bench.title", { minute: subAt })}</span>
+        <div className="sq-bench-row" aria-label={t("squads.bench.label")}>
+          <span className="sq-bench-label">{same ? t("squads.bench.title", { minute: minutes[0] }) : t("squads.bench.label")}</span>
           <div className="sq-line">
             {bench.map((b, i) => (
               <div key={i} className="sq-card bench" title={b.why}>
@@ -683,6 +693,7 @@ export function Pitch({ e, compact = false, bench = [] }: { e: SquadSource; comp
                 </span>
                 <span className="sq-name">{b.name}</span>
                 {!compact && <small className="sq-bench-why">{b.why}</small>}
+                <SubMinute k={b.key} />
               </div>
             ))}
           </div>
@@ -933,6 +944,12 @@ function sessionEvents(s: SessionPlan): number {
   return new Set(s.items.filter((x) => x.counts && !x.bonus).map((x) => x.event)).size;
 }
 
+/** "done here: Play 1, Scoring Success +11" – each name once (events share names like "Play 1"). */
+function Finishing({ names }: { names: string[] }) {
+  const once = Array.from(new Set(names));
+  return <small>{t("squads.plan.finishes", { names: once.slice(0, 4).join(", ") + (once.length > 4 ? ` +${once.length - 4}` : "") })}</small>;
+}
+
 /** The match plan: squads in turn, the changes between them, where the user is now. */
 function MatchPlan({ s, stage, onStage, quick, onPick }: { s: SessionPlan; stage: number; onStage: (k: number) => void; quick: SessionPlan[]; onPick: (id: number) => void }) {
   if (s.stages.length === 0 && quick.length === 0) return null;
@@ -960,7 +977,7 @@ function MatchPlan({ s, stage, onStage, quick, onPick }: { s: SessionPlan; stage
               <button className="sq-plan-stage" aria-pressed={stage === k} onClick={() => onStage(k)}>
                 <b>{st.to == null ? t("squads.plan.from", { from: st.from }) : st.from === st.to ? t("squads.plan.one", { n: st.from }) : t("squads.plan.range", { from: st.from, to: st.to })}</b>
                 {now && <span className="sq-now">{t("squads.plan.now")}</span>}
-                {st.finishing.length > 0 && <small>{t("squads.plan.finishes", { names: st.finishing.slice(0, 4).join(", ") + (st.finishing.length > 4 ? ` +${st.finishing.length - 4}` : "") })}</small>}
+                {st.finishing.length > 0 && <Finishing names={st.finishing} />}
               </button>
             </li>
           );
@@ -977,19 +994,52 @@ function MatchPlan({ s, stage, onStage, quick, onPick }: { s: SessionPlan; stage
   );
 }
 
-/** The minute evolution players are subbed on: the first match reminder after loading in. */
+/** The minute bench players are subbed on: Settings → Match reminders (70:00 by default). */
 function useSubAt(): number {
   const [at, setAt] = useState(70);
   useEffect(() => {
     api
       .uiPrefs()
-      .then((p) => {
-        const m = (p.reminders?.at ?? []).filter((x) => x > 0);
-        if (m.length) setAt(Math.min(...m));
-      })
+      .then((p) => setAt(p.reminders?.sub_at ?? 70))
       .catch(() => {});
   }, []);
   return at;
+}
+
+/** Each bench player's sub minute: his own (set on the bench card), else the general one. */
+const SubCtx = createContext<{ minute: (key: number) => number; set: (key: number, minute: number | null) => void }>({ minute: () => 70, set: () => {} });
+const SUB_STEP = 5;
+
+function SubProvider({ prefs, onPrefs, children }: { prefs: SquadPrefs; onPrefs: (p: SquadPrefs) => void; children: React.ReactNode }) {
+  const general = useSubAt();
+  const own = prefs.sub_at ?? {};
+  const value = {
+    minute: (key: number) => own[String(key)] ?? general,
+    set: (key: number, minute: number | null) => {
+      const next = { ...own };
+      if (minute == null || minute === general) delete next[String(key)];
+      else next[String(key)] = minute;
+      onPrefs({ ...prefs, sub_at: next });
+    },
+  };
+  return <SubCtx.Provider value={value}>{children}</SubCtx.Provider>;
+}
+
+/** "70:00 − +" on a bench card: this player's sub minute, 5 minutes a step. */
+function SubMinute({ k }: { k: number }) {
+  const subs = useContext(SubCtx);
+  const m = subs.minute(k);
+  return (
+    <span className="sq-sub-minute">
+      <button onClick={() => subs.set(k, Math.max(1, m - SUB_STEP))} aria-label={t("squads.bench.earlier")} title={t("squads.bench.earlier")}>
+        −
+      </button>
+      <b>{m}:00</b>
+      <button onClick={() => subs.set(k, Math.min(120, m + SUB_STEP))} aria-label={t("squads.bench.later")} title={t("squads.bench.later")}>
+        +
+      </button>
+    </span>
+  );
 }
 
 /** "4 matches in 8 days – 1 every 2nd day". */
@@ -1001,7 +1051,7 @@ function pace(e: SessionEvo): string | null {
 
 /** Active evolutions a match here moves on too (user 2026-11-01): subbed on, or starting. */
 function EvoList({ s }: { s: SessionPlan }) {
-  const subAt = useSubAt();
+  const subs = useContext(SubCtx);
   if (!s.evos?.length) return null;
   return (
     <section className="sq-evos" aria-label={t("squads.evo.title")}>
@@ -1013,7 +1063,7 @@ function EvoList({ s }: { s: SessionPlan }) {
               <b>{e.player}</b> <span className="sq-muted">{t("squads.evo.level", { name: e.name, level: e.level, levels: e.levels })}</span>
             </span>
             <small>
-              {e.in_xi ? (e.start ? t("squads.evo.starts") : t("squads.evo.inXi")) : t("squads.evo.bench", { minute: subAt })} · {e.progress}/{e.target}
+              {e.in_xi ? (e.start ? t("squads.evo.starts") : t("squads.evo.inXi")) : t("squads.evo.bench", { minute: subs.minute(e.key) })} · {e.progress}/{e.target}
             </small>
             {pace(e) && <small className="sq-muted">{pace(e)}</small>}
           </li>
@@ -1026,19 +1076,21 @@ function EvoList({ s }: { s: SessionPlan }) {
 /** The bench (user 2026-11-01): club cards subbed on late for objectives a sub does – only where
  *  they open something the XI doesn't. */
 function BenchList({ s }: { s: SessionPlan }) {
-  const subAt = useSubAt();
+  const subs = useContext(SubCtx);
   const bench: BenchPick[] = s.bench ?? [];
   if (!bench.length) return null;
   return (
-    <section className="sq-evos sq-bench" aria-label={t("squads.bench.title")}>
-      <h4>{t("squads.bench.title", { minute: subAt })}</h4>
+    <section className="sq-evos sq-bench" aria-label={t("squads.bench.label")}>
+      <h4>{t("squads.bench.label")}</h4>
       <ul>
         {bench.map((b, i) => (
           <li key={i}>
             <span>
               <Flag nation={b.nation} name={b.nation_name} size={14} /> <b>{b.name}</b> <span className="sq-muted">{b.rating} {b.pos}</span>
             </span>
-            <small>{t("squads.bench.for", { names: b.objectives.slice(0, 3).join(", ") + (b.objectives.length > 3 ? ` +${b.objectives.length - 3}` : "") })}</small>
+            <small>
+              {t("squads.evo.bench", { minute: subs.minute(b.key) })} · {t("squads.bench.for", { names: b.objectives.slice(0, 3).join(", ") + (b.objectives.length > 3 ? ` +${b.objectives.length - 3}` : "") })}
+            </small>
           </li>
         ))}
       </ul>
@@ -1081,7 +1133,7 @@ function Sessions({ view, prefs, onPrefs }: { view: SquadsView; prefs: SquadPref
       {list.length > 1 && (
         <nav className="sq-sessions" aria-label={t("squads.play.sessions")}>
           {list.map((x) => (
-            <button key={x.id} className={`sq-event-tab ${x.id === s.id ? "active" : ""}`} aria-pressed={x.id === s.id} onClick={() => setPicked(x.id)}>
+            <button key={x.id} className={`sq-event-tab ${x.id === s.id ? "active" : ""}`} aria-pressed={x.id === s.id} title={x.quick != null ? undefined : placeLabel(x.place, x.place_name)} onClick={() => setPicked(x.id)}>
               <span className="sq-event-name">
                 {x.id}. {x.quick != null ? t("squads.play.quickTab", { count: x.quick }) : placeLabel(x.place, x.place_name)}
               </span>
@@ -1106,7 +1158,7 @@ function Sessions({ view, prefs, onPrefs }: { view: SquadsView; prefs: SquadPref
         <AskCards s={s} prefs={prefs} onPrefs={onPrefs} />
         <div className="sq-split">
           <div className="sq-col">
-            {s.id === list[0].id && <MatchBriefView s={s} />}
+            <MatchBriefView s={s} />
             <MatchPlan s={s} stage={stage} onStage={setStage} quick={s.id === list[0].id ? quick : []} onPick={setPicked} />
             <EvoList s={s} />
             <BenchList s={s} />
@@ -1182,12 +1234,13 @@ export default function Squads() {
   const prefs = view.prefs ?? defaultSquadPrefs;
   const formations = Array.from(new Set(view.combos.flatMap((c) => (c.squad ? [c.squad.formation] : [])).concat(FORMATIONS)));
   return (
+    <SubProvider prefs={prefs} onPrefs={setPrefs}>
     <section className="sq">
       <header className="sq-head">
         <div>
           <h2 className="sq-title">{t("squads.title")}</h2>
           <small className="sq-muted">
-            {busy ? <span className="ml-loading">{t("squads.building", { count: view.club_players })}</span> : view.read_at ? t("squads.read", { age: formatAge(view.read_at) }) : t("squads.notYet")} · {t("squads.ratingBeta")}
+            {busy ? <span className="ml-loading inline">{t("squads.building", { count: view.club_players })}</span> : view.read_at ? t("squads.read", { age: formatAge(view.read_at) }) : t("squads.notYet")} · {t("squads.ratingBeta")}
           </small>
         </div>
         <button className={`cat-tab ${settings ? "active" : ""}`} aria-expanded={settings} onClick={() => setSettings(!settings)}>
@@ -1207,6 +1260,7 @@ export default function Squads() {
       {view.events.length > 0 && <AllEvents view={view} prefs={prefs} onPrefs={setPrefs} filter={filter} />}
       <SavedSquads />
     </section>
+    </SubProvider>
   );
 }
 
@@ -1243,7 +1297,8 @@ const ANYONE_SHOWN = 4;
 /** The match brief (user 2026-11-01): before the match in broad strokes, in it something specific
  *  to go for, by player. In a match only the second half shows. */
 export function MatchBriefView({ s, inMatch = false }: { s: SessionPlan; inMatch?: boolean }) {
-  const subAt = useSubAt();
+  const subs = useContext(SubCtx);
+  const bench = benchOf(s);
   const b = s.brief;
   if (!b) return null;
   const step = (x: MatchBrief["before"][number]) => {
@@ -1257,7 +1312,7 @@ export function MatchBriefView({ s, inMatch = false }: { s: SessionPlan; inMatch
       case "use":
         return t("brief.use", { what: x.text });
       case "bench":
-        return t("brief.bench", { names: x.text, minute: subAt });
+        return t("brief.benchEach", { names: bench.map((b) => `${b.name} ${subs.minute(b.key)}:00`).join(", ") || x.text });
     }
   };
   const more = Math.max(0, b.anyone.length - ANYONE_SHOWN);
@@ -1315,7 +1370,7 @@ export function MatchBriefView({ s, inMatch = false }: { s: SessionPlan; inMatch
 }
 
 export function SquadQuick({ inMatch = false }: { inMatch?: boolean }) {
-  const [view, busy] = useSquads();
+  const [view, busy, setPrefs] = useSquads();
   const [k, setK] = useState(0);
   if (!view) return <PlanSkeleton compact />;
   const list = view.combos;
@@ -1324,6 +1379,7 @@ export function SquadQuick({ inMatch = false }: { inMatch?: boolean }) {
   const st = s?.stages.find((x) => x.from <= s.played + 1 && (x.to == null || s.played + 1 <= x.to)) ?? null;
   const shown = s && st ? { id: s.id, reqs: st.reqs, squad: st.squad } : s;
   return (
+    <SubProvider prefs={view.prefs ?? defaultSquadPrefs} onPrefs={setPrefs}>
     <div className="ml-frame sq-quick">
       <header className="ml-head">
         <span className="eyebrow">{t("brief.title")}</span>
@@ -1368,5 +1424,6 @@ export function SquadQuick({ inMatch = false }: { inMatch?: boolean }) {
         </>
       )}
     </div>
+    </SubProvider>
   );
 }

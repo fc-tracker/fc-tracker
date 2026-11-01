@@ -63,6 +63,9 @@ pub struct SquadPrefs {
     /// What FC-Tracker users established together (api.fc-tracker.com/v1/availability): name →
     /// still available. The user's own answer wins over it.
     pub facts: BTreeMap<String, bool>,
+    /// A bench player's own sub minute (club item id → minute; user 2026-11-01: "75:00 for one who
+    /// only has to come on"); the rest come on at Settings → Match reminders' minute.
+    pub sub_at: BTreeMap<u64, u16>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -77,7 +80,7 @@ pub struct DoneMark {
 
 impl Default for SquadPrefs {
     fn default() -> Self {
-        Self { chem_target: 33, chem_first: false, hide_loans: true, budget: None, must: Vec::new(), must_cards: Vec::new(), done_marks: Vec::new(), primary: None, place: None, goal: "progress".into(), max_buys: Some(3), formation: None, track: true, played: 0, played_at: 0, skip: Vec::new(), keep: Vec::new(), facts: BTreeMap::new() }
+        Self { chem_target: 33, chem_first: false, hide_loans: true, budget: None, must: Vec::new(), must_cards: Vec::new(), done_marks: Vec::new(), primary: None, place: None, goal: "progress".into(), max_buys: Some(3), formation: None, track: true, played: 0, played_at: 0, skip: Vec::new(), keep: Vec::new(), facts: BTreeMap::new(), sub_at: BTreeMap::new() }
     }
 }
 
@@ -1460,6 +1463,9 @@ pub struct SlotView {
     pub generic: bool,
     /// In an active evolution (its name).
     pub evo: Option<String>,
+    /// Face stats (PAC SHO PAS DRI DEF PHY) – who can do "a player with min. 85 PAC".
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub face: Option<[u32; 6]>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -1900,11 +1906,36 @@ fn short_task(text: &str) -> String {
     t[..cut].trim().to_string()
 }
 
+/// "… with a ST (Main Position)", "… with a player with min. 85 PAC": the slots that do it. A task
+/// that names neither fits nobody in particular (false).
+fn task_fits(l: &str, x: &SlotView) -> bool {
+    const STATS: [&str; 6] = ["pac", "sho", "pas", "dri", "def", "phy"];
+    let mut named = false;
+    let mut ok = true;
+    // "min. 85 PAC": a stat word right after its number (a "Defender" is no DEF)
+    let words: Vec<&str> = l.split(|c: char| !c.is_ascii_alphanumeric()).filter(|w| !w.is_empty()).collect();
+    for w in words.windows(2) {
+        if let (Ok(n), Some(k)) = (w[0].parse::<u32>(), STATS.iter().position(|s| *s == w[1])) {
+            if (40..=99).contains(&n) {
+                named = true;
+                ok &= x.face.is_some_and(|f| f[k] >= n);
+            }
+        }
+    }
+    for pos in ["st", "cf", "lw", "rw", "cam", "cm", "cdm", "lb", "rb", "cb", "lm", "rm"] {
+        if l.contains(&format!(" a {pos} ")) || l.contains(&format!(" an {pos} ")) {
+            named = true;
+            ok &= x.pos.eq_ignore_ascii_case(pos);
+        }
+    }
+    named && ok
+}
+
 /// A kit, stadium or ball an objective asks to use ("… using the Mexico Away kit").
 fn gear(text: &str) -> Option<String> {
     let l = text.to_lowercase();
     let end = [" kit", " stadium", " match ball", " ball", " tifo", " badge"].iter().filter_map(|k| l.find(k).map(|i| i + k.len())).min()?;
-    let start = ["using the ", "with the ", "wearing the ", "in the ", "using ", "with "].iter().filter_map(|k| l[..end].rfind(k).map(|i| i + k.len())).max().unwrap_or(0);
+    let start = ["using the ", "with the ", "wearing the ", "having the ", "in the ", "using ", "with ", "having "].iter().filter_map(|k| l[..end].rfind(k).map(|i| i + k.len())).max()?;
     let s = text[start..end].trim();
     (!s.is_empty()).then(|| s.to_string())
 }
@@ -1954,6 +1985,9 @@ pub fn match_brief(s: &ComboPlan) -> MatchBrief {
         }
         let task = BriefTask { text: short_task(&it.text), left: it.target - it.progress };
         let mut who: Vec<(String, String, bool)> = Vec::new();
+        if let (None, Some(q)) = (it.req, sq) {
+            who.extend(q.slots.iter().filter(|x| x.pos != "GK" && task_fits(&l, x)).map(|x| (x.name.clone(), x.pos.clone(), false)));
+        }
         if let (true, Some(k), Some(q)) = (it.scorer, it.req, sq) {
             let need = &s.reqs[k].need;
             if let Some(j) = sreqs.iter().position(|r| &r.need == need) {
@@ -2025,6 +2059,8 @@ pub fn match_brief(s: &ComboPlan) -> MatchBrief {
 #[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct SessionEvo {
     pub name: String,
+    /// Club item id of the player (his own sub minute is kept by it).
+    pub key: u64,
     pub player: String,
     /// The card, for the bench under the pitch.
     pub pos: String,
@@ -2075,6 +2111,8 @@ pub struct SessionItem {
 /// A club card on the bench for objectives that don't need it from the start (user 2026-11-01).
 #[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct BenchPick {
+    /// Club item id.
+    pub key: u64,
     pub name: String,
     pub pos: String,
     pub rating: u32,
@@ -2193,6 +2231,7 @@ fn squad_view(club: &[Player], f: &Formation, pick: &Pick, reqs: &[Req], prefs: 
             out_of_position: !in_pos,
             generic: !p.owned && price.is_none() && !prefs.must_cards.contains(&p.def_id),
             evo,
+            face: p.face,
         });
     }
     // what the club has for each (the box says "your club has 1 (Corona) – get 2 more")
@@ -2602,6 +2641,7 @@ impl<'a> Planner<'a> {
         plan.bench = bench_picks
             .iter()
             .map(|(p, ks)| BenchPick {
+                key: p.key,
                 name: p.name.clone(),
                 pos: p.positions.first().cloned().unwrap_or_default(),
                 rating: p.rating,
@@ -2627,6 +2667,7 @@ impl<'a> Planner<'a> {
                 let p = self.club.iter().find(|p| p.key == e.item)?;
                 let g = e.goals.iter().find(|g| objective_modes(&g.text).is_some())?;
                 Some(SessionEvo {
+                    key: p.key,
                     name: e.name.clone(),
                     player: p.name.clone(),
                     pos: p.positions.first().cloned().unwrap_or_default(),
@@ -3581,7 +3622,7 @@ mod tests {
         let slot = SlotView {
             pos: "ST".into(), name: "Owned ST".into(), def_id: 9_999, rating: 80, chem: 3, strength, loan: false, counts_for: vec![], accel: None, key_ps: 0, key_ps_plus: 0,
             full: false, nation: 1, nation_name: None, foot: 0, weak_foot: 3, skill_moves: 3, must: false, owned: true, price: None,
-            league: 0, league_name: None, out_of_position: false, generic: false, evo: None,
+            league: 0, league_name: None, out_of_position: false, generic: false, evo: None, face: None,
         };
         SquadView { formation: "4-3-3".into(), chem: 30, chem_target: 33, slots: vec![slot], strength, met: 0, changes: None, must_missing: vec![], buys: 0, cost: 0, manager: None }
     }
@@ -3926,12 +3967,15 @@ mod tests {
         assert_eq!(short_task("Score 1 header in the Ghoul Fest Live Event."), "Score 1 header");
         assert_eq!(short_task("Score 10 goals in any FUT game mode using a player from Germany."), "Score 10 goals");
         assert_eq!(gear("Play 1 match using the Mexico National team Away kit in any FUT game mode.").as_deref(), Some("Mexico National team Away kit"));
+        assert_eq!(gear("Play 1 match in any FUT game mode while having the Movember Animated TIFO equipped.").as_deref(), Some("Movember Animated TIFO"));
+        assert_eq!(gear("Score 3 goals in Squad Battles."), None);
         let mut input = scenario(json!({ "groups": [
             ev(1, "Ghoul Fest", &[
                 (11, "Score 3 goals using a player from Spain in Squad Battles.", 0, 3),
                 (12, "Score 1 header in Squad Battles.", 0, 1),
                 (13, "Win 2 matches in Squad Battles.", 0, 2),
-                (14, "Play 1 match using the Mexico National team Away kit in Squad Battles.", 0, 1) ]) ] }));
+                (14, "Play 1 match using the Mexico National team Away kit in Squad Battles.", 0, 1),
+                (15, "Score at least 1 goal in 13 separate matches with a ST (Main Position) in Squad Battles.", 0, 13) ]) ] }));
         input.club.push(pl(99, "Corona", 70, &["RW"], 99, 99, 83));
         let v = plan(&input, &SquadPrefs::default());
         let b = &v.combos[0].brief;
@@ -3943,6 +3987,9 @@ mod tests {
         assert_ne!(spain.pos, "GK");
         assert!(b.players.iter().any(|p| is_attacker(&p.pos) && p.tasks.iter().any(|t| t.text == "Score 1 header")));
         assert!(b.anyone.iter().any(|t| t.text == "Win 2 matches" && t.left == 2));
+        // "with a ST (Main Position)": the striker, not anyone
+        assert!(b.players.iter().any(|p| p.pos == "ST" && p.tasks.iter().any(|t| t.text.starts_with("Score at least 1 goal in 13"))));
+        assert!(!b.anyone.iter().any(|t| t.text.starts_with("Score at least 1 goal in 13")));
     }
 
     #[test]

@@ -33,6 +33,8 @@ export interface SquadPrefs {
   keep: string[];
   /** … and what users established together. */
   facts: Record<string, boolean>;
+  /** A bench player's own sub minute (club item id → minute). */
+  sub_at?: Record<string, number>;
 }
 
 /** Where a match counts (squads.rs `Mode`). */
@@ -247,6 +249,7 @@ export interface BriefTask {
 
 /** A club card on the bench: subbed on late, it counts for these objectives. */
 export interface BenchPick {
+  key: number;
   name: string;
   pos: string;
   rating: number;
@@ -258,6 +261,7 @@ export interface BenchPick {
 /** An active evolution in a session: subbed on, or starting when it needs him from the start. */
 export interface SessionEvo {
   name: string;
+  key: number;
   player: string;
   pos?: string;
   rating?: number;

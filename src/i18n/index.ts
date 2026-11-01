@@ -50,7 +50,10 @@ export function setLocale(locale: Locale) {
 
 export function t(key: MessageKey, vars?: Record<string, string | number>): string {
   const table = LOCALES[current] as Record<string, string>;
-  const template = table[key] ?? en[key] ?? key;
+  // one of something: the "_one" text when there is one ("≈ 1 match", not "≈ 1 matches")
+  const one = vars?.count === 1 ? `${key}_one` : null;
+  const all = en as Record<string, string>;
+  const template = (one && (table[one] ?? all[one])) || (table[key] ?? en[key] ?? key);
   return vars ? template.replace(/\{\{(\w+)\}\}/g, (_, k) => String(vars[k] ?? "")) : template;
 }
 
