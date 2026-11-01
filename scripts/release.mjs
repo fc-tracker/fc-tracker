@@ -97,6 +97,18 @@ if (fromGithub) {
   execFileSync(tar, ["-a", "-c", "-f", path.join(out, extFile), ...fs.readdirSync(extDir)], { cwd: extDir });
 }
 
+// The extension, unpacked into one folder that never moves (%USERPROFILE%\FC-Tracker-extension):
+// Chrome loads it from there once ("Load unpacked") and a release only needs "Update" in
+// chrome://extensions – a folder inside downloads/ is removed by the next release (2026-11-01).
+{
+  const dest = path.join(os.homedir(), "FC-Tracker-extension");
+  fs.rmSync(dest, { recursive: true, force: true });
+  fs.mkdirSync(dest, { recursive: true });
+  const tar = path.join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe");
+  execFileSync(tar, ["-x", "-f", path.join(out, extFile), "-C", dest]);
+  console.log(`extension ${ext.version} unpacked in ${dest} – chrome://extensions → Update`);
+}
+
 const info = (file) => {
   const data = fs.readFileSync(path.join(out, file));
   return { file, size: data.length, sha256: crypto.createHash("sha256").update(data).digest("hex") };

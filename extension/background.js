@@ -44,9 +44,11 @@ async function messages() {
 }
 
 // ---------- FC-Tracker Web (fc-tracker.com/web) ----------
-// The browser version has no app to receive a sync. Once the user opened it with this extension
-// installed ("webLinked"), every club sync is also kept here – the last complete one only, on
-// this PC – and handed to that page when it asks (chrome.runtime.sendMessage from the site;
+// The browser version has no app to receive a sync. Every club sync is also kept here – the last
+// complete one only, on this PC – always, not only once the page said hello ("webLinked"): a
+// fresh install that synced before opening the page needed a second sync (2026-11-01).
+// "webLinked" only decides what a sync without the app answers. The page gets the sync when it
+// asks (chrome.runtime.sendMessage from the site;
 // externally_connectable allows only fc-tracker.com). Nothing is sent anywhere else.
 const WEB_ORIGINS = ["https://www.fc-tracker.com", "https://fc-tracker.com"];
 
@@ -331,12 +333,12 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
             return reply({ ok: false, error: "app_unreachable" });
           }
         case "syncStart":
-          if (await webLinked()) await webStart(sender.tab?.id);
+          await webStart(sender.tab?.id);
           return reply({ batch: await startBatch() });
         case "capture": {
           const at = Date.now();
           const web = await webLinked();
-          if (web) await webKeep(msg.url, msg.body, at);
+          await webKeep(msg.url, msg.body, at);
           try {
             if (await hasSaved()) await flush(); // keep the order: older saved data first
             const res = await call("/capture", { method: "POST", body: { url: msg.url, body: msg.body, at } });
@@ -350,7 +352,7 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
         case "done": {
           const at = Date.now();
           const web = await webLinked();
-          if (web) await webDone(at);
+          await webDone(at);
           try {
             if (await hasSaved()) await flush();
             const res = await call("/sync-done", { method: "POST", body: { at } });
@@ -372,7 +374,7 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
           return reply({ ok: true, queued: true });
         }
         case "syncFailed":
-          if (await webLinked()) await webAbandon();
+          await webAbandon();
           return reply({ ok: true });
         case "abortSync":
           // The game entered Ultimate Team: close the Web App so the game keeps the session.
