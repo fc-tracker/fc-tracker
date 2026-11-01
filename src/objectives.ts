@@ -32,10 +32,38 @@ export async function afterSync(): Promise<void> {
   await pullObjectives();
 }
 
+const FACTS = "https://api.fc-tracker.com/v1/availability";
+const VOTER = "fct.voter";
+
+/** "Is it still available?" – what users established together; the planner uses it. */
+export async function pullFacts(): Promise<void> {
+  const r = await fetch(FACTS).catch(() => null);
+  if (!r?.ok) return;
+  const j = await r.json().catch(() => null);
+  if (j?.facts && typeof j.facts === "object") await api.setSquadFacts(j.facts).catch(() => {});
+}
+
+/** The user's answer counts as one vote (a random id of this device, only its hash is kept). */
+export async function voteAvailability(name: string, available: boolean): Promise<void> {
+  let voter = "";
+  try {
+    voter = localStorage.getItem(VOTER) ?? "";
+    if (voter.length < 16) {
+      voter = crypto.randomUUID();
+      localStorage.setItem(VOTER, voter);
+    }
+  } catch {
+    voter = crypto.randomUUID();
+  }
+  await fetch(FACTS, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, available, voter }) }).catch(() => {});
+}
+
 let started = false;
 export function startObjectives(): void {
   if (started) return;
   started = true;
   setTimeout(() => void pullObjectives(), 5_000);
   setInterval(() => void pullObjectives(), PULL_EVERY);
+  setTimeout(() => void pullFacts(), 6_000);
+  setInterval(() => void pullFacts(), PULL_EVERY);
 }

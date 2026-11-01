@@ -180,6 +180,13 @@ export const webApi = {
     await call("set_squad_prefs", { prefs });
     await persist();
   },
+  setSquadFacts: async (facts: Record<string, boolean>): Promise<void> => {
+    await restored;
+    if (await call<boolean>("set_squad_facts", { facts })) {
+      await persist();
+      changed();
+    }
+  },
   /** Forget everything this browser learned (the "Start over" button). */
   reset: async () => {
     await call("reset");

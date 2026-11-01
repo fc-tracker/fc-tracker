@@ -572,6 +572,7 @@ const appApi = {
   /** Objective squads (beta): the open events with squad objectives and the best XI for each. */
   squadsPlan: () => (browserDev ? import("./devMock").then((m) => m.mockSquads()) : invoke<SquadsView>("squads_plan")),
   setSquadPrefs: (prefs: SquadPrefs) => (browserDev ? import("./devMock").then((m) => m.setMockSquadPrefs(prefs)) : invoke<UiPrefs>("set_squad_prefs", { prefs })),
+  setSquadFacts: (facts: Record<string, boolean>) => (browserDev ? Promise.resolve() : invoke<void>("set_squad_facts", { facts })),
   /** "Has to include": every card that exists, not owned (the club list has the owned ones). */
   squadsSearch: (q: string) => (browserDev ? import("./devMock").then((m) => m.mockSquadsSearch(q)) : invoke<ClubEntry[]>("squads_search", { q })),
 };
@@ -626,6 +627,7 @@ function withWeb(a: typeof appApi): typeof appApi {
       }),
     squadsPlan: () => wb((b) => b.webApi.squadsPlan()),
     setSquadPrefs: (prefs: SquadPrefs) => wb((b) => b.webApi.setSquadPrefs(prefs)).then(() => ({ mode: "full", missing_side: "right", after_play: "off" }) as UiPrefs),
+    setSquadFacts: (facts: Record<string, boolean>) => wb((b) => b.webApi.setSquadFacts(facts)),
     squadsSearch: (q: string) => wb((b) => b.webApi.squadsSearch(q)),
     // the account: the refresh token stays in this browser; the Gallery and Web App parts are
     // the same format as the app's

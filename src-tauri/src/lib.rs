@@ -1012,11 +1012,28 @@ fn set_squad_prefs(app: AppHandle, prefs: squads::SquadPrefs) -> ui::UiPrefs {
     let out = {
         let state = app.state::<AppState>();
         let mut p = state.ui.lock().unwrap();
-        p.squads = squads::SquadPrefs { chem_target: prefs.chem_target.min(33), ..prefs };
+        // what the app keeps itself (counted matches, the shared facts) stays as it is
+        let (played, played_at, facts) = (p.squads.played, p.squads.played_at, p.squads.facts.clone());
+        p.squads = squads::SquadPrefs { chem_target: prefs.chem_target.min(33), played, played_at, facts, ..prefs };
         p.clone()
     };
     save_ui(&app);
     out
+}
+
+/// The shared "is it still available?" facts (src/objectives.ts pulls them).
+#[tauri::command]
+fn set_squad_facts(app: AppHandle, facts: std::collections::BTreeMap<String, bool>) {
+    {
+        let state = app.state::<AppState>();
+        let mut p = state.ui.lock().unwrap();
+        if p.squads.facts == facts {
+            return;
+        }
+        p.squads.facts = facts;
+    }
+    save_ui(&app);
+    let _ = app.emit("squads-changed", ());
 }
 
 /// What the squad engine needs from the snapshot and the Web App data.
@@ -1688,6 +1705,7 @@ pub fn run() {
             squads_plan,
             squads_search,
             set_squad_prefs,
+            set_squad_facts,
             set_champions_tracking,
             clear_champions,
             sync_suggested,
@@ -1728,6 +1746,7 @@ mod real_plan {
         let ui: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(dir.join("ui.json")).unwrap()).unwrap();
         let mut prefs: crate::squads::SquadPrefs = serde_json::from_value(ui["squads"].clone()).unwrap_or_default();
         prefs.primary = std::env::var("FCT_PRIMARY").ok().and_then(|p| p.parse().ok());
+        prefs.facts.insert("future stars academy".into(), false);
         let t = std::time::Instant::now();
         let view = crate::squads::plan(&crate::squads_input(&store), &prefs);
         if let Ok(out) = std::env::var("FCT_SQUADS_OUT") {

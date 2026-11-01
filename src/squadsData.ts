@@ -28,6 +28,11 @@ export interface SquadPrefs {
   track: boolean;
   played: number;
   played_at: number;
+  /** "Is it still available?" – the user's answers (lower-case names) … */
+  skip: string[];
+  keep: string[];
+  /** … and what users established together. */
+  facts: Record<string, boolean>;
 }
 
 /** Where a match counts (squads.rs `Mode`). */
@@ -84,7 +89,7 @@ export interface Swap {
 }
 
 export interface GetOption {
-  kind: "owned" | "reward" | "sbc" | "cheapest" | "value" | "upgrade";
+  kind: "owned" | "reward" | "sbc" | "cheapest" | "value" | "upgrade" | "search";
   name: string;
   def_id: number;
   rating: number;
@@ -213,6 +218,8 @@ export interface SessionPlan {
   stages: Stage[];
   /** Matches the app counted since the last read. */
   played: number;
+  /** A squad for a few matches only: how many. */
+  quick: number | null;
 }
 
 export interface SessionItem {
@@ -231,6 +238,8 @@ export interface SessionItem {
   bonus: boolean;
   /** About how many matches it still takes (the user's own results). */
   matches: number | null;
+  /** No card we know meets it: ask whether it's still available (lower case). */
+  ask: string | null;
 }
 
 export interface Apart {
@@ -277,7 +286,7 @@ export interface ClubEntry {
   price: number | null;
 }
 
-export const defaultSquadPrefs: SquadPrefs = { chem_target: 33, chem_first: false, hide_loans: true, budget: null, must: [], must_cards: [], done_marks: [], primary: null, place: null, goal: "progress", max_buys: 3, formation: null, track: true, played: 0, played_at: 0 };
+export const defaultSquadPrefs: SquadPrefs = { chem_target: 33, chem_first: false, hide_loans: true, budget: null, must: [], must_cards: [], done_marks: [], primary: null, place: null, goal: "progress", max_buys: 3, formation: null, track: true, played: 0, played_at: 0, skip: [], keep: [], facts: {} };
 
 export const emptySquads: SquadsView = { events: [], combos: [], apart: [], places: [], primary: null, needs_sync: true, names_missing: true, club_players: 0, coins: null, read_at: null, prefs: defaultSquadPrefs, club: [] };
 

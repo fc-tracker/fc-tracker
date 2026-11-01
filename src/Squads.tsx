@@ -11,6 +11,7 @@ import { Flag } from "./flags";
 import { t, type MessageKey } from "./i18n";
 import { defaultSquadPrefs, pitchRows, type ClubEntry, type EventPlan, type GetOption, type Mode, type ObjectiveView, type ReqView, type SessionItem, type SessionPlan, type SlotView, type SquadPrefs, type SquadView, type SquadsView, sameMode } from "./squadsData";
 import { removeSquad, saveSquad, useSavedSquads } from "./savedSquads";
+import { voteAvailability } from "./objectives";
 
 /** The XI as built now, kept to build later (in the game, from the dashboard, on another device). */
 function SaveButton({ e }: { e: Pick<EventPlan, "id" | "title" | "squad" | "reqs"> }) {
@@ -186,6 +187,7 @@ const OPTION_LABEL: Record<GetOption["kind"], MessageKey> = {
   cheapest: "squads.opt.cheapest",
   value: "squads.opt.value",
   upgrade: "squads.opt.upgrade",
+  search: "squads.slot.search",
 };
 
 const ACCEL: Record<string, MessageKey> = { explosive: "squads.accel.explosive", controlled: "squads.accel.controlled", lengthy: "squads.accel.lengthy" };
@@ -363,6 +365,22 @@ function Settings({ prefs, onChange, formations }: { prefs: SquadPrefs; onChange
   );
 }
 
+/** The unmet requirements, each once (several objectives often ask for the same). */
+function gaps(reqs: ReqView[], skip: Set<number> = new Set()): ReqView[] {
+  const seen = new Set<string>();
+  return reqs.filter((r, i) => {
+    const k = reqLabel(r);
+    if (r.met || skip.has(i) || seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+/** Requirements the user is asked about ("still available?") get no options box. */
+const asked = (s: SessionPlan) => new Set(s.items.filter((x) => x.ask && x.req != null).map((x) => x.req as number));
+
+const OPTION_SEARCH = "search";
+
 function Options({ r }: { r: ReqView }) {
   if (r.met) return null;
   return (
@@ -374,20 +392,52 @@ function Options({ r }: { r: ReqView }) {
         <ul className="sq-options">
           {r.options.map((o) => (
             <li key={`${o.kind}-${o.def_id}`} className={`sq-option ${o.kind}`}>
-              <span className="sq-kind">{t(OPTION_LABEL[o.kind])}</span>
+              <span className="sq-kind">{o.kind === OPTION_SEARCH ? t("squads.slot.search") : t(OPTION_LABEL[o.kind])}</span>
               <b>
                 <Flag nation={o.nation} name={o.nation_name} size={16} /> {o.name}
               </b>
               <span className="sq-pos">
                 {o.rating} · {o.pos}
               </span>
-              <span className="sq-price">{o.price != null ? num(o.price) : o.source ?? ""}</span>
+              <span className="sq-price">{o.price != null ? num(o.price) : o.source ?? (o.kind === OPTION_SEARCH ? t("squads.noPrice") : "")}</span>
             </li>
           ))}
         </ul>
       )}
       {r.unpriced > 0 && <p className="sq-muted">{t("squads.unpriced", { count: r.unpriced })}</p>}
     </div>
+  );
+}
+
+/** "Is it still available?" – asked once per requirement no card we know meets; the answer is the
+ *  user's (and one vote towards a fact every user gets). */
+function AskCards({ s, prefs, onPrefs }: { s: SessionPlan; prefs: SquadPrefs; onPrefs: (p: SquadPrefs) => void }) {
+  const names = Array.from(new Set(s.items.map((x) => x.ask).filter((x): x is string => !!x)));
+  if (names.length === 0) return null;
+  const answer = (name: string, yes: boolean) => {
+    const keep = (prefs.keep ?? []).filter((k) => k !== name);
+    const skip = (prefs.skip ?? []).filter((k) => k !== name);
+    onPrefs({ ...prefs, keep: yes ? [...keep, name] : keep, skip: yes ? skip : [...skip, name] });
+    void voteAvailability(name, yes);
+  };
+  const title = (n: string) => n.replace(/\b\w/g, (c) => c.toUpperCase());
+  return (
+    <>
+      {names.map((n) => (
+        <div className="sq-ask" key={n} role="group" aria-label={t("squads.ask.title", { name: title(n) })}>
+          <div>
+            <b>{t("squads.ask.title", { name: title(n) })}</b>
+            <small>{t("squads.ask.body", { count: s.items.filter((x) => x.ask === n).length })}</small>
+          </div>
+          <button className="cat-tab" onClick={() => answer(n, true)}>
+            {t("squads.ask.yes")}
+          </button>
+          <button className="cat-tab" onClick={() => answer(n, false)}>
+            {t("squads.ask.no")}
+          </button>
+        </div>
+      ))}
+    </>
   );
 }
 
@@ -607,7 +657,7 @@ function Event({ e, prefs, onPrefs }: { e: EventPlan; prefs: SquadPrefs; onPrefs
         {e.squad && (
           <div className="sq-col">
             <Pitch e={e} />
-            {e.reqs.filter((r) => !r.met).map((r, i) => (
+            {gaps(e.reqs).map((r, i) => (
               <Options key={i} r={r} />
             ))}
           </div>
@@ -737,7 +787,7 @@ function PlayPick({ view, prefs, onPrefs, filter }: { view: SquadsView; prefs: S
 }
 
 /** A session's objectives by event: ✓ counts with this squad, ✕ needs a card, ? not readable. */
-export function SessionList({ s, compact = false }: { s: SessionPlan; compact?: boolean }) {
+export function SessionList({ s, compact = false, elsewhere }: { s: SessionPlan; compact?: boolean; elsewhere?: Map<string, SessionPlan> }) {
   const groups: { title: string; items: SessionItem[] }[] = [];
   for (const it of s.items.filter((x) => !x.bonus)) {
     const g = groups.find((x) => x.title === it.event_title);
@@ -751,16 +801,21 @@ export function SessionList({ s, compact = false }: { s: SessionPlan; compact?: 
   const bonus = s.items.filter((x) => x.bonus && x.counts);
   const row = (o: SessionItem) => {
     const r = o.req != null ? s.reqs[o.req] : null;
-    const state = o.counts ? "met" : o.unknown ? "unknown" : "miss";
+    const other = !o.counts ? elsewhere?.get(`${o.event}-${o.objective}`) : undefined;
+    const state = o.counts ? "met" : other ? "plain" : o.unknown || o.ask ? "unknown" : "miss";
     return (
       <li key={`${o.event}-${o.objective}`} className={`sq-obj ${state}`}>
         <span className="sq-mark" aria-hidden="true">
-          {state === "met" ? "✓" : state === "miss" ? "✕" : "?"}
+          {state === "met" ? "✓" : state === "miss" ? "✕" : state === "plain" ? "→" : "?"}
         </span>
         <div>
           {compact ? <b>{o.text}</b> : <b>{o.name || o.text}</b>}
           {!compact && o.name && <p>{o.text}</p>}
-          {r ? (
+          {other ? (
+            <small className="sq-req">{t("squads.play.elsewhere", { id: other.id, count: other.quick ?? 1 })}</small>
+          ) : o.ask ? (
+            <small className="sq-req warn">{t("squads.ask.waiting")}</small>
+          ) : r ? (
             <small className="sq-req">
               {reqLabel(r)} · {t("squads.have", { have: Math.min(r.have, r.count), count: r.count })}
               {r.players.length > 0 && <> – {r.players.slice(0, 3).join(", ")}</>}
@@ -804,8 +859,8 @@ function sessionEvents(s: SessionPlan): number {
 }
 
 /** The match plan: squads in turn, the changes between them, where the user is now. */
-function MatchPlan({ s, stage, onStage }: { s: SessionPlan; stage: number; onStage: (k: number) => void }) {
-  if (s.stages.length === 0) return null;
+function MatchPlan({ s, stage, onStage, quick, onPick }: { s: SessionPlan; stage: number; onStage: (k: number) => void; quick: SessionPlan[]; onPick: (id: number) => void }) {
+  if (s.stages.length === 0 && quick.length === 0) return null;
   const next = s.played + 1;
   return (
     <section className="sq-plan" aria-label={t("squads.plan.title")}>
@@ -836,6 +891,12 @@ function MatchPlan({ s, stage, onStage }: { s: SessionPlan; stage: number; onSta
           );
         })}
       </ol>
+      {quick.map((q) => (
+        <button key={q.id} className="sq-plan-stage sq-plan-quick" onClick={() => onPick(q.id)}>
+          <b>{t("squads.plan.quick", { count: q.quick ?? 1, id: q.id })}</b>
+          <small>{q.items.filter((x) => x.counts).map((x) => x.name || x.text).join(", ")}</small>
+        </button>
+      ))}
       <p className="sq-muted">{t("squads.plan.note")}</p>
     </section>
   );
@@ -854,7 +915,7 @@ function Why({ s }: { s: SessionPlan }) {
 }
 
 /** The sessions as tabs, the picked one (or the first) open: where, the plan, the XI, what counts. */
-function Sessions({ view }: { view: SquadsView }) {
+function Sessions({ view, prefs, onPrefs }: { view: SquadsView; prefs: SquadPrefs; onPrefs: (p: SquadPrefs) => void }) {
   const [picked, setPicked] = useState<number | null>(null);
   const [stage, setStage] = useState(0);
   useEffect(() => setPicked(null), [view.primary, view.prefs.place?.kind]);
@@ -865,6 +926,10 @@ function Sessions({ view }: { view: SquadsView }) {
   useEffect(() => setStage(nowStage), [s?.id, nowStage, s?.stages.length]);
   if (!s) return view.needs_sync ? null : <p className="sq-muted">{t("squads.play.none")}</p>;
   const place = placeLabel(s.place, s.place_name);
+  const quick = list.filter((x) => x.quick != null);
+  // objectives a short squad clears
+  const elsewhere = new Map<string, SessionPlan>();
+  for (const q of quick) for (const x of q.items) if (x.counts) elsewhere.set(`${x.event}-${x.objective}`, q);
   const st = s.stages[stage];
   const shown = st ? { id: s.id * 100 + stage, reqs: st.reqs, squad: st.squad } : s;
   return (
@@ -874,7 +939,7 @@ function Sessions({ view }: { view: SquadsView }) {
           {list.map((x) => (
             <button key={x.id} className={`sq-event-tab ${x.id === s.id ? "active" : ""}`} aria-pressed={x.id === s.id} onClick={() => setPicked(x.id)}>
               <span className="sq-event-name">
-                {x.id}. {placeLabel(x.place, x.place_name)}
+                {x.id}. {x.quick != null ? t("squads.play.quickTab", { count: x.quick }) : placeLabel(x.place, x.place_name)}
               </span>
               <small className={x.counted > 0 ? "ok" : ""}>{t("squads.play.objectives", { count: x.counted })}</small>
             </button>
@@ -884,7 +949,7 @@ function Sessions({ view }: { view: SquadsView }) {
       <article className="sq-event sq-session">
         <header className="sq-event-head">
           <div>
-            <h3>{t("squads.play.session", { place })}</h3>
+            <h3>{s.quick != null ? t("squads.play.quickTitle", { count: s.quick }) : t("squads.play.session", { place })}</h3>
             <Why s={s} />
           </div>
           <SaveButton e={{ id: s.id, title: `${place} · ${s.title}`, squad: shown.squad, reqs: shown.reqs }} />
@@ -894,16 +959,19 @@ function Sessions({ view }: { view: SquadsView }) {
           </div>
         </header>
         {s.place.kind === "rush" && <p className="sq-muted">{t("squads.play.rush")}</p>}
+        <AskCards s={s} prefs={prefs} onPrefs={onPrefs} />
         <div className="sq-split">
           <div className="sq-col">
-            <MatchPlan s={s} stage={stage} onStage={setStage} />
-            <SessionList s={s} />
+            <MatchPlan s={s} stage={stage} onStage={setStage} quick={s.id === list[0].id ? quick : []} onPick={setPicked} />
+            <SessionList s={s} elsewhere={s.id === list[0].id ? elsewhere : undefined} />
           </div>
           <div className="sq-col">
             {s.place.kind !== "rush" && <Pitch e={shown} />}
-            {s.reqs.filter((r) => !r.met).map((r, i) => (
-              <Options key={i} r={r} />
-            ))}
+            {gaps(s.reqs, asked(s))
+              .filter((r) => !(s.id === list[0].id && quick.some((q) => q.reqs.some((x) => x.met && reqLabel(x) === reqLabel(r)))))
+              .map((r, i) => (
+                <Options key={i} r={r} />
+              ))}
           </div>
         </div>
       </article>
@@ -988,7 +1056,7 @@ export default function Squads() {
           <FilterChips value={filter} onPick={setFilter} view={view} />
         </div>
       )}
-      <Sessions view={view} />
+      <Sessions view={view} prefs={prefs} onPrefs={setPrefs} />
       {view.events.length > 0 && <AllEvents view={view} prefs={prefs} onPrefs={setPrefs} filter={filter} />}
       <SavedSquads />
     </section>
@@ -1043,7 +1111,7 @@ export function SquadQuick() {
           )}
           <SessionList s={s} compact />
           {shown && s.place.kind !== "rush" && <Pitch e={shown} compact />}
-          {s.reqs.filter((r) => !r.met).map((r, i) => (
+          {gaps(s.reqs, asked(s)).map((r, i) => (
             <Options key={i} r={r} />
           ))}
         </>

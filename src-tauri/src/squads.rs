@@ -56,6 +56,13 @@ pub struct SquadPrefs {
     /// Matches the app counted since `played_at` (the objectives' read time they follow).
     pub played: u32,
     pub played_at: u64,
+    /// Requirements no card we know meets (a closed evolution, an unreadable program): the user said
+    /// they're gone (left out of the plan) or still there (kept, not asked again). Lower-case names.
+    pub skip: Vec<String>,
+    pub keep: Vec<String>,
+    /// What FC-Tracker users established together (api.fc-tracker.com/v1/availability): name →
+    /// still available. The user's own answer wins over it.
+    pub facts: BTreeMap<String, bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -70,7 +77,7 @@ pub struct DoneMark {
 
 impl Default for SquadPrefs {
     fn default() -> Self {
-        Self { chem_target: 33, chem_first: false, hide_loans: true, budget: None, must: Vec::new(), must_cards: Vec::new(), done_marks: Vec::new(), primary: None, place: None, goal: "progress".into(), max_buys: Some(3), formation: None, track: true, played: 0, played_at: 0 }
+        Self { chem_target: 33, chem_first: false, hide_loans: true, budget: None, must: Vec::new(), must_cards: Vec::new(), done_marks: Vec::new(), primary: None, place: None, goal: "progress".into(), max_buys: Some(3), formation: None, track: true, played: 0, played_at: 0, skip: Vec::new(), keep: Vec::new(), facts: BTreeMap::new() }
     }
 }
 
@@ -533,13 +540,15 @@ fn named_need(phrase: &str, count: u32, names: &Names) -> Parsed {
     Parsed::Unknown(phrase.to_string())
 }
 
-/// A program by its name ("Ultimate Scream" / "Future Stars Academy"), exact or its first words.
+/// A program by its name ("Ultimate Scream"): the exact name, or a longer name the phrase begins
+/// ("Ultimate Scream" for "Ultimate Scream Heroes" is not taken). Never a shorter one: "Future Stars
+/// Academy" (an evolution, user 2026-11-01) is not the "Future Stars" program.
 fn find_rarity(phrase: &str, names: &Names) -> Option<u64> {
     let p = norm(phrase);
     if p.len() < 4 {
         return None;
     }
-    names.rarities.iter().find(|(_, n)| norm(n) == p).or_else(|| names.rarities.iter().find(|(_, n)| norm(n).len() >= 6 && (p.starts_with(&norm(n)) || norm(n).starts_with(&p)))).map(|(&id, _)| id)
+    names.rarities.iter().find(|(_, n)| norm(n) == p).map(|(&id, _)| id)
 }
 
 /// "3 premier league players in your starting 11 …" (what follows "min.").
@@ -1427,7 +1436,7 @@ pub struct SlotView {
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct GetOption {
-    /// "owned" | "reward" | "sbc" | "cheapest" | "value" | "upgrade"
+    /// "owned" | "reward" | "sbc" | "cheapest" | "value" | "upgrade" | "search" (no price: find it on the market)
     pub kind: String,
     pub name: String,
     pub def_id: u64,
@@ -1688,6 +1697,8 @@ pub struct ComboPlan {
     pub stages: Vec<Stage>,
     /// Matches played since the objectives were last read (the app counts them).
     pub played: u32,
+    /// A squad for a few matches only ("Play 1 match with 3 Mexicans"): how many.
+    pub quick: Option<u32>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -1711,6 +1722,8 @@ pub struct SessionItem {
     pub bonus: bool,
     /// About how many more matches it takes, from the user's own results (win rate …).
     pub matches: Option<f64>,
+    /// No card we know meets it: ask the user whether it's still available (lower case).
+    pub ask: Option<String>,
 }
 
 /// One step of the match plan.
@@ -1875,7 +1888,7 @@ fn squad_view(club: &[Player], f: &Formation, pick: &Pick, reqs: &[Req], prefs: 
 
 /// The most sessions shown, the most places fully searched for one, the most plan stages.
 const MAX_SESSIONS: usize = 5;
-const MAX_TRIES: usize = 2;
+const MAX_TRIES: usize = 3;
 const MAX_STAGES: usize = 4;
 /// How much a long-running (bonus) objective weighs next to a live one: a tie-break only.
 const BONUS_WEIGHT: f64 = 0.02;
@@ -1890,6 +1903,8 @@ struct Item {
     bonus: bool,
     /// Matches it takes from the last read (None: not known).
     matches: Option<f64>,
+    /// The requirement to ask about ("is it still available?"), lower case.
+    ask: Option<String>,
 }
 
 /// One event's data for the plan.
@@ -1967,7 +1982,12 @@ struct Solved {
     players: std::rc::Rc<Vec<Player>>,
 }
 
-impl Planner<'_> {
+impl<'a> Planner<'a> {
+    /// The same data, ready for other settings.
+    fn clone_ref(&self) -> Planner<'a> {
+        Planner { input: self.input, prefs: self.prefs, club: self.club, formations: self.formations, links: self.links, evs: self.evs, items: self.items, solved: Default::default() }
+    }
+
     /// The place as the game names it: a live event by its event's title.
     fn place_name(&self, place: &Mode) -> String {
         match place {
@@ -2128,6 +2148,7 @@ impl Planner<'_> {
                     counts,
                     bonus: it.bonus,
                     matches: it.matches.map(|m| round1((m - self.played() as f64).max(0.0))),
+                    ask: it.ask.clone(),
                 }
             })
             .collect();
@@ -2140,7 +2161,7 @@ impl Planner<'_> {
         events_in.sort_by_key(|&e| (primary != Some(self.evs[e].g.id), self.evs[e].g.ends_at.unwrap_or(u64::MAX)));
         let title = events_in.iter().map(|&e| self.evs[e].g.title.as_str()).collect::<Vec<_>>().join(" · ");
         let ends_at = events_in.iter().filter_map(|&e| self.evs[e].g.ends_at).min();
-        let plan = ComboPlan { id: 0, place: place.clone(), place_name: self.place_name(place), title, ends_at, reqs: req_views, items, squad, counted, bonus, primary, stages: Vec::new(), played: self.played() };
+        let plan = ComboPlan { id: 0, place: place.clone(), place_name: self.place_name(place), title, ends_at, reqs: req_views, items, squad, counted, bonus, primary, stages: Vec::new(), played: self.played(), quick: None };
         (plan, solved)
     }
 
@@ -2173,13 +2194,14 @@ impl Planner<'_> {
     /// one could still win.
     fn best(&self, places: &[Mode], avail: &[usize], primary: Option<u64>) -> Option<(ComboPlan, Option<Solved>)> {
         let live = |p: &Mode| avail.iter().filter(|&&i| !self.items[i].bonus && plays_in(&self.items[i].modes, p)).count();
-        let mut ranked: Vec<(usize, &Mode)> = places.iter().map(|p| (live(p), p)).filter(|(n, _)| *n > 0).collect();
+        // Rush (its own squad) ranks at half, as its sessions do below
+        let mut ranked: Vec<(usize, &Mode)> = places.iter().map(|p| (if *p == Mode::Rush { live(p) / 2 } else { live(p) }, p)).filter(|(n, _)| *n > 0).collect();
         ranked.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.cmp(b.1)));
         let mut best: Option<(ComboPlan, Option<Solved>)> = None;
         let mut seen: Vec<Vec<usize>> = Vec::new();
         let mut tries = 0;
         for (upper, place) in ranked {
-            if best.as_ref().is_some_and(|b| b.0.counted >= upper) || tries >= MAX_TRIES {
+            if best.as_ref().is_some_and(|b| if b.0.place == Mode::Rush { b.0.counted / 2 } else { b.0.counted } >= upper) || tries >= MAX_TRIES {
                 break;
             }
             // places where the same objectives count give the same session
@@ -2372,6 +2394,8 @@ pub fn plan(input: &Input, prefs: &SquadPrefs) -> SquadsView {
         evs.push(Ev { g, marked, reqs, per_obj, live });
     }
     evs.sort_by_key(|e| e.g.ends_at.unwrap_or(u64::MAX));
+    // a card in the club or among every card that exists meets it
+    let obtainable = |need: &Need| matches!(need, Need::Chemistry(_)) || club.iter().any(|p| need.met_by(p, &links)) || input.catalog.iter().any(|p| need.met_by(p, &links));
     let items: Vec<Item> = evs
         .iter()
         .enumerate()
@@ -2379,9 +2403,27 @@ pub fn plan(input: &Input, prefs: &SquadPrefs) -> SquadsView {
             ev.g.objectives.iter().enumerate().filter(|(_, o)| !o.done).filter_map(move |(k, o)| {
                 let modes = objective_modes(&o.text)?;
                 let (r, u) = &ev.per_obj[k];
+                // unreadable (an evolution, a program we can't name) or no card that exists meets it: the
+                // user is asked whether it's still there (user 2026-11-01) – "no" leaves it out
+                let doubt: Option<String> = match (r, u) {
+                    (_, Some(u)) => Some(u.trim().to_lowercase()),
+                    (Some(k), None) if !obtainable(&ev.reqs[*k].need) => Some(need_name(&ev.reqs[*k].need, &input.names).to_lowercase()),
+                    _ => None,
+                };
+                // gone: the user said so, or users established it (and the user didn't say otherwise)
+                if doubt.as_ref().is_some_and(|d| prefs.skip.contains(d) || (prefs.facts.get(d) == Some(&false) && !prefs.keep.contains(d))) {
+                    return None;
+                }
+                // asked only for live objectives, and only about cards (a "starting squad of First Owned
+                // players" is no card that can close)
+                let ask = doubt.clone().filter(|d| ev.live && !d.contains("first owned") && !d.contains("starting squad") && !prefs.keep.contains(d) && !prefs.facts.contains_key(d));
+                // an unreadable part with nothing to ask: not planned (the event's checklist shows it)
+                if u.is_some() && ask.is_none() && !doubt.as_ref().is_some_and(|d| prefs.keep.contains(d)) {
+                    return None;
+                }
                 let left = o.target.saturating_sub(o.progress) as f64;
                 let matches = Some(left / per_match(&o.text, &input.rates).max(0.01));
-                Some(Item { ev: e, obj: k, modes, req: r.map(|r| ev.reqs[r].clone()), unknown: u.clone(), bonus: !ev.live, matches })
+                Some(Item { ev: e, obj: k, modes, req: r.map(|r| ev.reqs[r].clone()), unknown: u.clone(), bonus: !ev.live, matches, ask })
             })
         })
         .collect();
@@ -2444,6 +2486,28 @@ pub fn plan(input: &Input, prefs: &SquadPrefs) -> SquadsView {
         }
         avail.retain(|&i| !done_in(&s.0, i));
         sessions.push(s);
+    }
+    // a short squad for what the first one can't clear in a few matches (user 2026-11-01: "3
+    // Mexicans for 1 match is a clear option – Play 1: Team X"): chemistry doesn't matter for it
+    if let Some(first) = sessions.first().map(|x| x.0.clone()) {
+        let cleared = |i: usize| sessions.iter().any(|(s, _)| done_in(s, i));
+        let short: Vec<usize> = (0..items.len())
+            .filter(|&i| {
+                let it = &items[i];
+                !it.bonus && it.req.is_some() && it.ask.is_none() && it.unknown.is_none() && it.matches.is_some_and(|m| m <= 3.0) && !cleared(i) && plays_in(&it.modes, &first.place)
+            })
+            .collect();
+        if !short.is_empty() {
+            let quick_prefs = SquadPrefs { chem_target: 0, chem_first: false, max_buys: prefs.max_buys.map(|m| m.max(if m == 0 { 0 } else { 3 })), ..prefs.clone() };
+            let qp = Planner { prefs: &quick_prefs, solved: Default::default(), ..pl.clone_ref() };
+            let (mut q, solved) = qp.session(&first.place, &short, None);
+            if q.counted > 0 {
+                let n = q.items.iter().filter(|x| x.counts).filter_map(|x| x.matches).fold(1.0f64, f64::max).ceil() as u32;
+                q.quick = Some(n.max(1));
+                q.items.retain(|x| x.counts);
+                sessions.insert(1.min(sessions.len()), (q, solved));
+            }
+        }
     }
     // the match plan of the first session (the one the user plays now)
     if let Some((s, Some(solved))) = sessions.first_mut() {
@@ -2650,6 +2714,9 @@ fn options_for(r: &Req, sq: &SquadView, input: &Input, owned: &BTreeSet<u64>, li
     let mut out: Vec<GetOption> = Vec::new();
     let mut seen: BTreeSet<(String, u64)> = BTreeSet::new();
     let mut priced: Vec<Buy> = Vec::new();
+    // every card with a price that ticks it (when none is as strong as the card it replaces)
+    let mut any_priced: Vec<Buy> = Vec::new();
+    let mut no_price: Vec<(&Player, String)> = Vec::new();
     let mut unpriced = 0;
     for p in &input.catalog {
         if owned.contains(&p.def_id) || !r.need.met_by(p, links) {
@@ -2668,13 +2735,31 @@ fn options_for(r: &Req, sq: &SquadView, input: &Input, owned: &BTreeSet<u64>, li
                 let score = buy_score(p, &pos);
                 if score >= replaced - 4.0 {
                     priced.push(Buy { price: c, score, p, strength: strength(p, &pos), pos });
+                } else {
+                    any_priced.push(Buy { price: c, score, p, strength: strength(p, &pos), pos });
                 }
             }
             Some(_) => {}
-            None => unpriced += 1,
+            None => {
+                unpriced += 1;
+                no_price.push((p, pos));
+            }
         }
     }
     out.truncate(2);
+    // for an objective a cheaper card still ticks the box (Ovalle for "3 Mexicans")
+    if priced.is_empty() {
+        priced = any_priced;
+    }
+    // no price at all: name cards to search for on the market, the most common kind first
+    if priced.is_empty() && out.is_empty() {
+        no_price.sort_by_key(|(p, _)| (p.rating < 65, p.rating, p.def_id));
+        for (p, pos) in no_price.into_iter().filter(|(p, _)| !p.is_icon() && !p.is_hero()).take(2) {
+            unpriced -= 1;
+            out.push(GetOption { kind: "search".into(), name: p.name.clone(), def_id: p.def_id, rating: p.rating, pos: pos.clone(), price: None, source: None, strength: round1(strength(p, &pos)), nation: p.nation, nation_name: input.names.nations.get(&p.nation).cloned() });
+        }
+        return (out, unpriced);
+    }
     // 1. only the best quality tier that ticks the requirement
     if let Some(top) = priced.iter().map(|b| tier(b.p.rating)).max() {
         priced.retain(|b| tier(b.p.rating) == top);
@@ -3214,7 +3299,7 @@ mod tests {
     #[test]
     fn scenario_the_users_formation_and_buy_limit_hold() {
         let mut input = scenario(json!({ "groups": [ev(1, "Mexico", &[(11, "Play 1 match with 3 Mexican players in your starting XI in any FUT game mode.", 0, 1)])] }));
-        input.catalog = (0..3).map(|k| Player { owned: false, ..pl(500 + k, &format!("Mex {k}"), 76, &["ST", "CM", "CB"], 10, 77, 83) }).collect();
+        input.catalog = (0..3).map(|k| Player { owned: false, ..pl(500 + k, &letters(500 + k), 76, &["ST", "CM", "CB"], 10, 77, 83) }).collect();
         for k in 0..3 {
             priced(&mut input, 500 + k, 700);
         }
@@ -3223,6 +3308,43 @@ mod tests {
         assert_eq!(sq.formation, "4-4-2");
         assert!(sq.buys <= 2);
         assert!(!v.combos[0].items[0].counts, "3 needed, 2 allowed: not met, not claimed");
+    }
+
+    #[test]
+    fn scenario_a_requirement_no_card_meets_is_asked_about_then_left_out() {
+        let mut input = scenario(json!({ "groups": [ev(1, "Academy", &[(11, "Play 10 matches while having min. 1 Future Stars Academy player in your starting XI in any FUT game mode.", 0, 10), (12, "Play 2 matches in any FUT game mode.", 0, 2)])] }));
+        input.names.rarities.insert(66, "Future Stars".into());
+        // "Future Stars Academy" is not the "Future Stars" program: not read, asked about
+        let v = plan(&input, &SquadPrefs::default());
+        let it = v.combos[0].items.iter().find(|x| x.objective == 11).expect("shown with the question");
+        assert_eq!(it.ask.as_deref(), Some("future stars academy"));
+        // the user (or the users together) say it's gone: left out, the rest planned again
+        for p in [SquadPrefs { skip: vec!["future stars academy".into()], ..SquadPrefs::default() }, SquadPrefs { facts: [("future stars academy".to_string(), false)].into(), ..SquadPrefs::default() }] {
+            let v = plan(&input, &p);
+            assert!(v.combos[0].items.iter().all(|x| x.objective != 11));
+            assert!(v.combos[0].items.iter().any(|x| x.objective == 12 && x.counts));
+        }
+        // still there: kept, not asked again
+        let v = plan(&input, &SquadPrefs { keep: vec!["future stars academy".into()], ..SquadPrefs::default() });
+        assert!(v.combos[0].items.iter().any(|x| x.objective == 11 && x.ask.is_none()));
+    }
+
+    #[test]
+    fn scenario_a_one_match_objective_gets_its_own_squad() {
+        let mut input = scenario(json!({ "groups": [
+            ev(1, "Weekly", &[(11, "Win 10 matches in any FUT game mode.", 0, 10)]),
+            ev(2, "Liga MX", &[(21, "Play 1 match with 3 Mexican players in your starting XI in any FUT game mode.", 0, 1)]) ] }));
+        input.catalog = (0..4).map(|k| Player { owned: false, ..pl(600 + k, &letters(600 + k), 70, &["CM", "CB", "ST"], 10 + k, 77 + k, 83) }).collect();
+        for k in 0..4 {
+            priced(&mut input, 600 + k, 600);
+        }
+        // high chemistry: the main squad won't take three lone Mexicans …
+        let v = plan(&input, &SquadPrefs { chem_first: true, ..SquadPrefs::default() });
+        let q = v.combos.iter().find(|c| c.quick.is_some()).expect("a one-match squad");
+        assert_eq!(q.quick, Some(1));
+        // … the one-match squad does, with the cards to buy named
+        assert!(q.items.iter().any(|x| x.objective == 21 && x.counts));
+        assert_eq!(q.squad.as_ref().unwrap().slots.iter().filter(|x| x.nation == 83).count(), 3);
     }
 
     #[test]
@@ -3302,13 +3424,13 @@ mod tests {
 
     #[test]
     fn no_recent_price_no_buy() {
-        // no price, and a price older than 3 days: counted as "price unknown", never suggested
+        // no price, and a price older than 3 days: never a price we don't know – cards to search for
         let mut input = market(vec![st(1, 80, 13, [85, 80, 70, 80, 35, 75]), st(2, 81, 13, [86, 81, 70, 80, 35, 75])], &[(2, 900)]);
         input.prices.get_mut(&2).unwrap().at = 0;
         let req = Req { need: Need::League(13), count: 1 };
         let (opts, unpriced) = options_for(&req, &squad_with_free_st(74.0), &input, &BTreeSet::new(), &BTreeMap::new(), None);
-        assert!(opts.is_empty(), "{opts:?}");
-        assert_eq!(unpriced, 2);
+        assert!(opts.len() == 2 && opts.iter().all(|o| o.kind == "search" && o.price.is_none()), "{opts:?}");
+        assert_eq!(unpriced, 0);
         // no stats at all (no face, no attributes): the OVR stands in, as before
         let input = market(vec![Player { face: None, ..st(3, 80, 13, [0; 6]) }], &[(3, 900)]);
         let (opts, _) = options_for(&req, &squad_with_free_st(74.0), &input, &BTreeSet::new(), &BTreeMap::new(), None);

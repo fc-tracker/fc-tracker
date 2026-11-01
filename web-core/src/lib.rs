@@ -764,8 +764,15 @@ fn dispatch(req: Value) -> Result<Value, String> {
             }
             "set_squad_prefs" => {
                 let p: squads::SquadPrefs = serde_json::from_value(arg("prefs")).map_err(|e| e.to_string())?;
-                w.squad_prefs = squads::SquadPrefs { chem_target: p.chem_target.min(33), ..p };
+                let facts = w.squad_prefs.facts.clone();
+                w.squad_prefs = squads::SquadPrefs { chem_target: p.chem_target.min(33), facts, ..p };
                 Ok(json!(true))
+            }
+            "set_squad_facts" => {
+                let facts: BTreeMap<String, bool> = serde_json::from_value(arg("facts")).unwrap_or_default();
+                let changed = w.squad_prefs.facts != facts;
+                w.squad_prefs.facts = facts;
+                Ok(json!(changed))
             }
             "ingest_sync" => Ok(ingest_sync(&mut w, serde_json::from_value(arg("sync")).map_err(|e| e.to_string())?)),
             "gallery_sets_revision" => Ok(json!(gallery_sets::revision())),

@@ -1359,6 +1359,11 @@ html[data-view="toast"] #root {
 .sq-oop { font-size: 10px; font-weight: 800; color: var(--result-loss); text-transform: uppercase; }
 .sq-progress small { display: block; font: 700 11px/1.2 var(--font-body); color: var(--muted); }
 .sq-all { display: grid; gap: 10px; }
+.sq-ask { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 10px 12px; background: var(--bg-2); border-left: 3px solid var(--accent-2); }
+.sq-ask > div { flex: 1 1 280px; display: grid; gap: 2px; }
+.sq-ask b { font-size: 13px; }
+.sq-ask small { color: var(--muted); font-size: 12px; }
+.sq-plan-quick { margin-top: 2px; box-shadow: inset 2px 0 0 var(--accent-2); }
 .sq-all-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
 @container ovframe (max-width: 620px) {
   .sq-choice-label { min-width: 0; flex-basis: 100%; }
