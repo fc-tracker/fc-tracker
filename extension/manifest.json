@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "FC-Tracker",
-  "version": "0.13.2",
+  "version": "0.13.3",
   "description": "__MSG_extDescription__",
   "default_locale": "en",
   "icons": {
@@ -46,6 +46,16 @@
       "js": [
         "i18n.js",
         "relay.js"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://www.fc-tracker.com/web*",
+        "https://fc-tracker.com/web*"
+      ],
+      "js": [
+        "announce.js"
       ],
       "run_at": "document_start"
     }

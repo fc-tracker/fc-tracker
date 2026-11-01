@@ -409,6 +409,19 @@ const EXTENSION_ID = (() => {
   }
 })();
 
+/** The extension (0.13.3+) writes its own id on the page – a copy loaded from the .zip then works
+ *  without ?ext=. Remembered for later visits. */
+function extensionId(): string {
+  const own = document.documentElement.dataset.fctExt;
+  if (own && /^[a-p]{32}$/.test(own)) {
+    try {
+      localStorage.setItem("fct.web.ext", own);
+    } catch {}
+    return own;
+  }
+  return EXTENSION_ID;
+}
+
 export interface ClubSync {
   /** null: no answer (extension missing, older than 0.11, or another browser) */
   version: string | null;
@@ -433,7 +446,7 @@ function ext(msg: object): Promise<Reply> {
   if (!rt?.sendMessage) return Promise.resolve(null);
   return new Promise((resolve) => {
     try {
-      rt.sendMessage!(EXTENSION_ID, msg, (r) => {
+      rt.sendMessage!(extensionId(), msg, (r) => {
         void rt.lastError;
         resolve(r ?? null);
       });
