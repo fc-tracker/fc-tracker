@@ -58,7 +58,9 @@
         try {
           const s = id != null ? window.repositories?.Item?.getStaticDataByDefId?.(id) : null;
           // the name the card shows ("Suhonen"), not the full one ("Anssi Suhonen")
-          const name = [s?.name, s?.lastName, [s?.firstName, s?.lastName].filter(Boolean).join(" ")].find((n) => typeof n === "string" && /[a-z]/i.test(n));
+          // (the player data holds "Anssi Suhonen" as his name: first + last → the last name alone)
+          const full = [s?.firstName, s?.lastName].filter(Boolean).join(" ");
+          const name = [s?.name === full && s?.lastName ? s.lastName : s?.name, s?.lastName, full].find((n) => typeof n === "string" && /[a-z]/i.test(n));
           if (typeof name === "string" && /[a-z]/i.test(name)) {
             p.name = name;
             break;

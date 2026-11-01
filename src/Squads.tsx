@@ -82,19 +82,44 @@ const writeEvent = (id: number) => {
 };
 
 /** The plan, rebuilt after every sync and every settings change. */
+/** The plan, kept between visits of the tab (user 2026-11-01: "it must not load every time"):
+ *  worked out again only when something it depends on changed – a sync, a counted match, a setting
+ *  – or after a while (the clock moves end times on). */
+let cachedPlan: SquadsView | null = null;
+let cachedAt = 0;
+let planStale = true;
+const PLAN_FRESH_MS = 10 * 60_000;
+let watching = false;
+function watchPlanInputs() {
+  if (watching) return;
+  watching = true;
+  const stale = () => {
+    planStale = true;
+  };
+  void events.onGalleryUpdated(stale);
+  void events.onSquadsChanged(stale);
+  void events.onSyncDone(stale);
+}
+
 export function useSquads(): [SquadsView | null, boolean, (p: SquadPrefs) => void] {
-  const [view, setView] = useState<SquadsView | null>(null);
-  const [busy, setBusy] = useState(true);
+  const [view, setView] = useState<SquadsView | null>(cachedPlan);
+  const [busy, setBusy] = useState(cachedPlan == null);
   const load = () => {
     setBusy(true);
     api
       .squadsPlan()
-      .then((v) => setView(v))
+      .then((v) => {
+        cachedPlan = v;
+        cachedAt = Date.now();
+        planStale = false;
+        setView(v);
+      })
       .catch(() => {})
       .finally(() => setBusy(false));
   };
   useEffect(() => {
-    load();
+    watchPlanInputs();
+    if (!cachedPlan || planStale || Date.now() - cachedAt > PLAN_FRESH_MS) load();
     // a sync brings new objectives and club cards – one rebuild when its pages settle, not one per
     // page (the view kept jumping while a sync ran)
     let timer = 0;
@@ -1153,7 +1178,7 @@ export default function Squads() {
   const [view, busy, setPrefs] = useSquads();
   const [settings, setSettings] = useState(false);
   const [filter, setFilter] = useFilter();
-  if (!view) return <p className="ml-loading">{t("squads.loading")}</p>;
+  if (!view) return <PlanSkeleton />;
   const prefs = view.prefs ?? defaultSquadPrefs;
   const formations = Array.from(new Set(view.combos.flatMap((c) => (c.squad ? [c.squad.formation] : [])).concat(FORMATIONS)));
   return (
@@ -1190,6 +1215,28 @@ const FORMATIONS = ["4-3-3", "4-3-3 (2)", "4-4-2", "4-4-2 (2)", "4-2-3-1", "4-2-
 
 /** The side panel's quick overview: what to play now (the first session – the user's pick or
  *  Auto), the stage of the plan, what counts and the XI – one narrow column. */
+/** The first time the plan is worked out: its shape, with what is happening named. */
+function PlanSkeleton({ compact = false }: { compact?: boolean }) {
+  return (
+    <div className={`sq-skeleton ${compact ? "compact" : ""}`} aria-busy="true">
+      <p className="ml-loading">{t("squads.loading")}</p>
+      <div className="sq-skel-tabs">
+        {[0, 1, 2].map((i) => (
+          <span key={i} />
+        ))}
+      </div>
+      <div className="sq-skel-split">
+        <div className="sq-skel-col">
+          {[0, 1, 2, 3].map((i) => (
+            <span key={i} />
+          ))}
+        </div>
+        <div className="sq-skel-pitch" />
+      </div>
+    </div>
+  );
+}
+
 /** "For anyone" in the brief: the first few (what asks most of one match first). */
 const ANYONE_SHOWN = 4;
 
@@ -1270,7 +1317,7 @@ export function MatchBriefView({ s, inMatch = false }: { s: SessionPlan; inMatch
 export function SquadQuick({ inMatch = false }: { inMatch?: boolean }) {
   const [view, busy] = useSquads();
   const [k, setK] = useState(0);
-  if (!view) return <p className="ml-empty ml-loading">{t("squads.loading")}</p>;
+  if (!view) return <PlanSkeleton compact />;
   const list = view.combos;
   const s = list[Math.min(k, list.length - 1)] ?? null;
   const step = (d: number) => setK((Math.min(k, list.length - 1) + d + list.length) % list.length);

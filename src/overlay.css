@@ -1521,6 +1521,20 @@ button.sq-card.must { box-shadow: inset 0 0 0 1px var(--accent); }
 .sq-head > .cat-tab { align-self: center; }
 /* the side panel's quick overview */
 .sq-quick { display: grid; gap: 10px; align-content: start; overflow-y: auto; }
+/* the plan's first load: its shape while it is worked out */
+.sq-skeleton { display: grid; gap: 12px; align-content: start; }
+.sq-skel-tabs { display: flex; gap: 8px; }
+.sq-skel-tabs span { width: 160px; height: 44px; }
+.sq-skel-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 12px; }
+.sq-skel-col { display: grid; gap: 8px; align-content: start; }
+.sq-skel-col span { height: 64px; }
+.sq-skel-pitch { min-height: 360px; }
+.sq-skeleton.compact .sq-skel-split { grid-template-columns: 1fr; }
+.sq-skeleton.compact .sq-skel-tabs span { width: 30%; height: 28px; }
+.sq-skeleton.compact .sq-skel-pitch { min-height: 220px; }
+.sq-skel-tabs span, .sq-skel-col span, .sq-skel-pitch { background: linear-gradient(90deg, var(--bg-2) 25%, var(--surface-hi) 50%, var(--bg-2) 75%); background-size: 200% 100%; animation: sq-skel 1.4s ease-in-out infinite; clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); }
+@keyframes sq-skel { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .sq-skel-tabs span, .sq-skel-col span, .sq-skel-pitch { animation: none; } }
 /* the match brief: before the match (numbered), in the match by player */
 .sq-brief { display: grid; gap: 6px; padding: 10px 12px; background: var(--bg-2); border-left: 3px solid var(--accent); min-width: 0; }
 .sq-brief h4 { margin: 4px 0 0; font: 700 13px/1.2 var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
