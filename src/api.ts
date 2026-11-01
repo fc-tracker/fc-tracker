@@ -300,6 +300,7 @@ export type ToastPayload =
   | { kind: "squads-swap"; played: number; swaps: { pos: string; out: string; in: string; buy: boolean }[] }
   /** … or not yet (matches until the next change). */
   | { kind: "squads-match"; played: number; next: number | null }
+  | { kind: "match-reminder"; at: number; subAt: number | null; needs: { player: string; evo: string; level: number; levels: number; start: boolean; bench?: boolean }[] }
   /** An incomplete set page: cards in the club can fill its open slots (names/points when certain). */
   | { kind: "fill"; set_name: string; count: number; names: string[]; points: number | null }
   /** A game page is being read (every wait visible). */
@@ -349,6 +350,14 @@ export interface UiPrefs {
   champions?: boolean;
   /** Settings → Squads. */
   squads?: SquadPrefs;
+  /** Settings → Match reminders. */
+  reminders?: RemindPrefs;
+}
+
+/** Match reminders: the match clock read in every match; minutes to remind at (0 = loading in). */
+export interface RemindPrefs {
+  on: boolean;
+  at: number[];
 }
 
 export interface GalleryTag {
@@ -568,6 +577,8 @@ const appApi = {
     browserDev ? import("./devMock").then((m) => (import.meta.env.MODE === "demo" ? m.demoChampions() : new URLSearchParams(location.search).has("champs-empty") ? m.mockChampionsEmpty : m.mockChampions)) : invoke<ChampsData>("champions_data"),
   setChampionsTracking: (on: boolean) =>
     browserDev ? Promise.resolve<UiPrefs>({ mode: "panel", missing_side: "left", after_play: "remind", champions: on }) : invoke<UiPrefs>("set_champions_tracking", { on }),
+  setMatchReminders: (prefs: RemindPrefs) =>
+    browserDev ? Promise.resolve<UiPrefs>({ mode: "panel", missing_side: "left", after_play: "remind", reminders: prefs }) : invoke<UiPrefs>("set_match_reminders", { prefs }),
   clearChampions: () => (browserDev ? import("./devMock").then((m) => m.mockChampionsEmpty) : invoke<ChampsData>("clear_champions")),
   /** Objective squads (beta): the open events with squad objectives and the best XI for each. */
   squadsPlan: () => (browserDev ? import("./devMock").then((m) => m.mockSquads()) : invoke<SquadsView>("squads_plan")),

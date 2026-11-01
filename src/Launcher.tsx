@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { api, events, formatAge, olderThan, syncAllowed, type BridgeInfo, type GameSession, type SetupStatus, type SyncSummary, type AfterPlay } from "./api";
+import { api, events, formatAge, olderThan, syncAllowed, type BridgeInfo, type GameSession, type SetupStatus, type SyncSummary, type AfterPlay, type RemindPrefs } from "./api";
 import { LOCALE_NAMES, t, tError, useLocale, type Locale, type MessageKey } from "./i18n";
 import Help from "./Help";
 import { SupportButton } from "./Support";
@@ -55,6 +55,11 @@ export default function Launcher() {
   const [autostart, setAutostart] = useState<boolean | null>(null);
   const [usageOn, setUsageOn] = useState(usageEnabled);
   const [champsOn, setChampsOn] = useState<boolean | null>(null);
+  const [reminders, setReminders] = useState<RemindPrefs | null>(null);
+  const saveReminders = (p: RemindPrefs) => {
+    setReminders(p);
+    api.setMatchReminders(p).then((u) => u.reminders && setReminders(u.reminders)).catch(() => {});
+  };
   const [champsNews, setChampsNews] = useState<ChampsNews | "on">(champsNewsState);
   const [champsCleared, setChampsCleared] = useState(false);
   const [boardOn, setBoardOn] = useState(() => boardName());
@@ -86,6 +91,7 @@ export default function Launcher() {
         setAfterPlay(p.after_play);
         setMissingSide(p.missing_side);
         setChampsOn(p.champions === true);
+        setReminders(p.reminders ?? { on: true, at: [0, 45, 70] });
       })
       .catch(() => {});
   }, []);
@@ -558,6 +564,40 @@ export default function Launcher() {
                       </button>
                     </>
                   )}
+                </div>
+              </div>
+              <div className="ln-row">
+                <div>
+                  <b>{t("settings.reminders")}</b>
+                  <p>{t("settings.remindersText")}</p>
+                </div>
+                <div className="ln-seg">
+                  {reminders?.on &&
+                    reminders.at.map((m, i) => (
+                      <label key={i} className="ln-minute" title={t("settings.reminderAt")}>
+                        <input
+                          className="ln-input minute"
+                          type="number"
+                          min={0}
+                          max={120}
+                          value={m}
+                          aria-label={t("settings.reminderAt")}
+                          onChange={(e) => {
+                            const v = Math.max(0, Math.min(120, Math.round(Number(e.target.value) || 0)));
+                            saveReminders({ ...reminders, at: reminders.at.map((x, k) => (k === i ? v : x)) });
+                          }}
+                        />
+                        <small>{m === 0 ? t("settings.reminderLoad") : m === 45 ? t("settings.reminderHalf") : `${m}:00`}</small>
+                      </label>
+                    ))}
+                  <button
+                    className={`ln-btn small ${reminders?.on ? "" : "ghost"}`}
+                    aria-pressed={reminders?.on === true}
+                    disabled={reminders === null}
+                    onClick={() => reminders && saveReminders({ ...reminders, on: !reminders.on })}
+                  >
+                    {reminders?.on ? t("settings.on") : t("settings.off")}
+                  </button>
                 </div>
               </div>
               <div className="ln-row">

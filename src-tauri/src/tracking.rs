@@ -278,6 +278,7 @@ pub fn spawn(app: AppHandle) {
             let mut analysed_sig: Vec<u8> = Vec::new();
             let mut retries = 0;
             let mut last_probe = std::time::Instant::now();
+            let mut last_clock = std::time::Instant::now();
             let mut leave_votes = 0u8;
             // The last analysed page was a swap screen with the game's preview: moving the
             // highlight only changes the left panel, so watch that region more closely.
@@ -393,7 +394,8 @@ pub fn spawn(app: AppHandle) {
                     // tracker stops looking – only the cheap probe below runs.
                     let other_match = !crate::champions::expects_match() && crate::champions::LIVE.lock().unwrap().as_ref().is_some_and(|l| l.kicked_off());
                     if state.ui.lock().unwrap().champions && !other_match {
-                        let every = Duration::from_millis(crate::speed::effective(&state.ui.lock().unwrap().tracking).match_ms as u64);
+                        // the goal banner stays ~4 s: Champions looks at least every 3 s
+                        let every = Duration::from_millis(crate::speed::effective(&state.ui.lock().unwrap().tracking).match_ms.min(crate::speed::MATCH_CHAMPIONS_MAX_MS) as u64);
                         let interval = crate::champions::LIVE.lock().unwrap().get_or_insert_with(Default::default).interval(every);
                         if last_probe.elapsed() >= interval {
                             last_probe = std::time::Instant::now();
@@ -401,6 +403,11 @@ pub fn spawn(app: AppHandle) {
                                 Ok((w, h, px)) => {
                                     let (seen, half) = crate::champions::LIVE.lock().unwrap().get_or_insert_with(Default::default).look(w, h, px, crate::store::now_ms());
                                     for s in seen {
+                                        if let crate::champions::Seen::Board(b) = &s {
+                                            if let Some(m) = b.minute {
+                                                crate::remind::minute(&app, m);
+                                            }
+                                        }
                                         champions_feed(&app, s);
                                     }
                                     if let Some(frame) = half {
@@ -418,6 +425,21 @@ pub fn spawn(app: AppHandle) {
                         std::thread::sleep(interval.min(TICK) / 2);
                         continue;
                     }
+                    // Match reminders (every mode, user 2026-11-01): the scoreboard clock only, once per
+                    // `match_ms`; the whole picture still only every few seconds (back in a menu?)
+                    let clock_on = state.ui.lock().unwrap().reminders.on;
+                    if clock_on {
+                        let every = Duration::from_millis(crate::speed::effective(&state.ui.lock().unwrap().tracking).match_ms as u64);
+                        if last_clock.elapsed() >= every {
+                            last_clock = std::time::Instant::now();
+                            if let Ok((w, h, px)) = scan::capture_pixels_game() {
+                                let bare = crate::scan::Frame { width: w, height: h, bgra: px, words: Vec::new() };
+                                if let Some(m) = crate::champions::board_from_frame(&bare).and_then(|b| b.minute) {
+                                    crate::remind::minute(&app, m);
+                                }
+                            }
+                        }
+                    }
                     if last_probe.elapsed() >= MATCH_PROBE {
                         last_probe = std::time::Instant::now();
                         if let Ok((w2, h2, small)) = scan::capture_pixels_game().map(|(w, h, px)| scan::downscale2(w, h, &px)) {
@@ -426,7 +448,8 @@ pub fn spawn(app: AppHandle) {
                             }
                         }
                     }
-                    std::thread::sleep(TICK);
+                    let nap = if clock_on { Duration::from_millis(crate::speed::effective(&state.ui.lock().unwrap().tracking).match_ms as u64).min(TICK) } else { TICK };
+                    std::thread::sleep(nap);
                     continue;
                 }
                 n_ticks += 1;
@@ -824,7 +847,9 @@ pub fn set_session(app: &AppHandle, next: GameSession) {
         let mut started = MATCH_STARTED.lock().unwrap();
         if next == GameSession::InMatch {
             *started = Some(std::time::Instant::now());
+            crate::remind::match_started(app);
         } else if previous == GameSession::InMatch {
+            crate::remind::match_ended();
             let played = started.take().is_some_and(|t| t.elapsed() >= Duration::from_secs(240));
             if played && next != GameSession::Closed {
                 crate::objective_match_played(app);

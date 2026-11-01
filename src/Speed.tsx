@@ -87,7 +87,7 @@ export default function Speed() {
           </>
         )}
         <Row title={t("speed.inMatch")} text={t("speed.inMatchText")}>
-          <Num value={e.match_ms} min={500} max={3000} step={100} unit="ms" onChange={(v) => edit({ match_ms: v })} />
+          <Num value={e.match_ms} min={250} max={10000} step={250} unit="ms" onChange={(v) => edit({ match_ms: v })} />
         </Row>
       </div>
       <p className="ln-hint">

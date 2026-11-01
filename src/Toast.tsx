@@ -193,6 +193,31 @@ export default function Toast() {
     );
   }
 
+  // Match reminders: an evolution player to sub on (or one that has to start)
+  if (toast.kind === "match-reminder") {
+    return (
+      <div className="toast better" key={`match-reminder-${toast.at}`} role="status">
+        <span className="toast-mark better" aria-hidden="true" />
+        <div className="toast-body">
+          <p className="toast-title">{toast.at === 0 ? (toast.needs.every((n) => n.bench) ? t("remind.loadBench") : t("remind.loadTitle")) : t("remind.title", { minute: toast.at })}</p>
+          {toast.needs.slice(0, 3).map((n, i) => (
+            <p className="toast-line" key={i}>
+              {n.bench
+                ? toast.at === 0
+                  ? t("remind.benchFor", { player: n.player, what: n.evo, minute: toast.subAt ?? 70 })
+                  : t("remind.subFor", { player: n.player, what: n.evo })
+                : n.start
+                ? t("remind.starts", { player: n.player, evo: n.evo })
+                : toast.at === 0
+                  ? t("remind.bench", { player: n.player, evo: n.evo, minute: toast.subAt ?? 70 })
+                  : t("remind.subOn", { player: n.player, evo: n.evo, level: n.level, levels: n.levels })}
+            </p>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   if (toast.kind === "recording") {
     return (
       <div className="toast better" key="recording" role="status">

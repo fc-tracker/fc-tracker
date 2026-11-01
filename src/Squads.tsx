@@ -9,7 +9,7 @@ import { api, events, formatAge, IS_WEB } from "./api";
 import { num } from "./format";
 import { Flag } from "./flags";
 import { t, type MessageKey } from "./i18n";
-import { defaultSquadPrefs, pitchRows, type ClubEntry, type EventPlan, type GetOption, type Mode, type ObjectiveView, type ReqView, type SessionItem, type SessionPlan, type SlotView, type SquadPrefs, type SquadView, type SquadsView, sameMode } from "./squadsData";
+import { defaultSquadPrefs, pitchRows, type ClubEntry, type EventPlan, type GetOption, type Mode, type ObjectiveView, type ReqView, type SessionItem, type BenchPick, type SessionEvo, type SessionPlan, type SlotView, type SquadPrefs, type SquadView, type SquadsView, sameMode } from "./squadsData";
 import { removeSquad, saveSquad, useSavedSquads } from "./savedSquads";
 import { voteAvailability } from "./objectives";
 
@@ -619,6 +619,7 @@ export function Pitch({ e, compact = false }: { e: SquadSource; compact?: boolea
                 </span>
                 {s.loan && <span className="sq-loan">{t("squads.loan")}</span>}
                 {s.out_of_position && <span className="sq-oop">{t("squads.slot.oop")}</span>}
+                {s.evo && <span className="sq-evo-tag" title={s.evo}>{t("squads.evo.tag")}</span>}
                 {!s.owned && <span className="sq-toget">{slotKind(s)}</span>}
               </button>
             ))}
@@ -825,6 +826,8 @@ export function SessionList({ s, compact = false, elsewhere }: { s: SessionPlan;
             <small className="sq-req">{t("squads.play.elsewhere", { id: other.id, count: other.quick ?? 1 })}</small>
           ) : o.ask ? (
             <small className="sq-req warn">{t("squads.ask.waiting")}</small>
+          ) : o.bench ? (
+            <small className="sq-req">{t("squads.slot.bench")}</small>
           ) : r ? (
             <small className="sq-req">
               {reqLabel(r)} · {t("squads.have", { have: Math.min(r.have, r.count), count: r.count })}
@@ -912,6 +915,75 @@ function MatchPlan({ s, stage, onStage, quick, onPick }: { s: SessionPlan; stage
   );
 }
 
+/** The minute evolution players are subbed on: the first match reminder after loading in. */
+function useSubAt(): number {
+  const [at, setAt] = useState(70);
+  useEffect(() => {
+    api
+      .uiPrefs()
+      .then((p) => {
+        const m = (p.reminders?.at ?? []).filter((x) => x > 0);
+        if (m.length) setAt(Math.min(...m));
+      })
+      .catch(() => {});
+  }, []);
+  return at;
+}
+
+/** "4 matches in 8 days – 1 every 2nd day". */
+function pace(e: SessionEvo): string | null {
+  if (e.days_left == null || e.matches_left <= 0) return null;
+  const every = Math.floor(e.days_left / e.matches_left);
+  return every >= 2 ? t("squads.evo.paceEvery", { count: e.matches_left, days: e.days_left, every }) : t("squads.evo.pace", { count: e.matches_left, days: e.days_left });
+}
+
+/** Active evolutions a match here moves on too (user 2026-11-01): subbed on, or starting. */
+function EvoList({ s }: { s: SessionPlan }) {
+  const subAt = useSubAt();
+  if (!s.evos?.length) return null;
+  return (
+    <section className="sq-evos" aria-label={t("squads.evo.title")}>
+      <h4>{t("squads.evo.title")}</h4>
+      <ul>
+        {s.evos.map((e, i) => (
+          <li key={i}>
+            <span>
+              <b>{e.player}</b> <span className="sq-muted">{t("squads.evo.level", { name: e.name, level: e.level, levels: e.levels })}</span>
+            </span>
+            <small>
+              {e.in_xi ? (e.start ? t("squads.evo.starts") : t("squads.evo.inXi")) : t("squads.evo.bench", { minute: subAt })} · {e.progress}/{e.target}
+            </small>
+            {pace(e) && <small className="sq-muted">{pace(e)}</small>}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** The bench (user 2026-11-01): club cards subbed on late for objectives a sub does – only where
+ *  they open something the XI doesn't. */
+function BenchList({ s }: { s: SessionPlan }) {
+  const subAt = useSubAt();
+  const bench: BenchPick[] = s.bench ?? [];
+  if (!bench.length) return null;
+  return (
+    <section className="sq-evos sq-bench" aria-label={t("squads.bench.title")}>
+      <h4>{t("squads.bench.title", { minute: subAt })}</h4>
+      <ul>
+        {bench.map((b, i) => (
+          <li key={i}>
+            <span>
+              <Flag nation={b.nation} name={b.nation_name} size={14} /> <b>{b.name}</b> <span className="sq-muted">{b.rating} {b.pos}</span>
+            </span>
+            <small>{t("squads.bench.for", { names: b.objectives.slice(0, 3).join(", ") + (b.objectives.length > 3 ? ` +${b.objectives.length - 3}` : "") })}</small>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 /** Why this squad, in one line: what it clears, what it costs, what it gave up. */
 function Why({ s }: { s: SessionPlan }) {
   const sq = s.squad;
@@ -973,6 +1045,8 @@ function Sessions({ view, prefs, onPrefs }: { view: SquadsView; prefs: SquadPref
         <div className="sq-split">
           <div className="sq-col">
             <MatchPlan s={s} stage={stage} onStage={setStage} quick={s.id === list[0].id ? quick : []} onPick={setPicked} />
+            <EvoList s={s} />
+            <BenchList s={s} />
             <SessionList s={s} elsewhere={s.id === list[0].id ? elsewhere : undefined} />
           </div>
           <div className="sq-col">

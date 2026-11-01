@@ -165,6 +165,8 @@ export interface SlotView {
   out_of_position: boolean;
   /** To buy without a recent price: a profile to search for. */
   generic: boolean;
+  /** In an active evolution (its name). */
+  evo?: string | null;
 }
 
 export interface SquadView {
@@ -224,6 +226,35 @@ export interface SessionPlan {
   played: number;
   /** A squad for a few matches only: how many. */
   quick: number | null;
+  /** Active evolutions a match here moves on too. */
+  evos?: SessionEvo[];
+  /** Club cards on the bench for objectives a sub does. */
+  bench?: BenchPick[];
+}
+
+/** A club card on the bench: subbed on late, it counts for these objectives. */
+export interface BenchPick {
+  name: string;
+  pos: string;
+  rating: number;
+  nation: number;
+  nation_name: string | null;
+  objectives: string[];
+}
+
+/** An active evolution in a session: subbed on, or starting when it needs him from the start. */
+export interface SessionEvo {
+  name: string;
+  player: string;
+  level: number;
+  levels: number;
+  goal: string;
+  progress: number;
+  target: number;
+  start: boolean;
+  in_xi: boolean;
+  matches_left: number;
+  days_left: number | null;
 }
 
 export interface SessionItem {
@@ -244,6 +275,8 @@ export interface SessionItem {
   matches: number | null;
   /** No card we know meets it: ask whether it's still available (lower case). */
   ask: string | null;
+  /** Met by a card on the bench (subbed on late). */
+  bench?: boolean;
 }
 
 export interface Apart {

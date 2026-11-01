@@ -13,6 +13,7 @@ mod lineup;
 mod merge;
 mod model;
 mod names;
+mod remind;
 mod scan;
 mod session;
 mod speed;
@@ -920,6 +921,19 @@ fn set_champions_tracking(app: AppHandle, on: bool) -> ui::UiPrefs {
     prefs
 }
 
+/// Settings → Match reminders.
+#[tauri::command]
+fn set_match_reminders(app: AppHandle, prefs: remind::Prefs) -> ui::UiPrefs {
+    let out = {
+        let state = app.state::<AppState>();
+        let mut p = state.ui.lock().unwrap();
+        p.reminders = remind::clamp(prefs);
+        p.clone()
+    };
+    save_ui(&app);
+    out
+}
+
 /// Objective squads (SQUADS.md): the open events with squad objectives, the best XI from the
 /// club for each and realistic cards for what it misses. Computed in the background.
 #[tauri::command]
@@ -1074,7 +1088,14 @@ fn squads_input(store: &store::Store) -> squads::Input {
         },
         names,
         names_known,
-        club: snap.items.values().filter_map(|i| squads::club_player(i, &snap.gallery, &attrs)).collect(),
+        club: {
+            let mut club: Vec<squads::Player> = snap.items.values().filter_map(|i| squads::club_player(i, &snap.gallery, &attrs)).collect();
+            if let Some((_, hub)) = web.latest.iter().find(|(k, _)| k.ends_with("/academy/hub/v2")) {
+                let extra = squads::evo_players(&hub.body, &club, &snap.gallery, &attrs);
+                club.extend(extra);
+            }
+            club
+        },
         catalog: snap.gallery.values().filter_map(|c| squads::catalog_player(c, &attrs)).collect(),
         prices: snap.prices.clone(),
         rewards,
@@ -1087,6 +1108,7 @@ fn squads_input(store: &store::Store) -> squads::Input {
         coins: snap.coins.map(|[c, _]| c),
         read_at: web.objectives.as_ref().map(|o| o.at),
         now_ms: now,
+        evos: web.latest.iter().find(|(k, _)| k.ends_with("/academy/hub/v2")).map(|(_, v)| squads::evos_from_hub(&v.body)).unwrap_or_default(),
     }
 }
 
@@ -1707,6 +1729,7 @@ pub fn run() {
             set_squad_prefs,
             set_squad_facts,
             set_champions_tracking,
+            set_match_reminders,
             clear_champions,
             sync_suggested,
             dismiss_sync_suggestion,
@@ -1748,7 +1771,17 @@ mod real_plan {
         prefs.primary = std::env::var("FCT_PRIMARY").ok().and_then(|p| p.parse().ok());
         prefs.facts.insert("future stars academy".into(), false);
         let t = std::time::Instant::now();
-        let view = crate::squads::plan(&crate::squads_input(&store), &prefs);
+        let mut input = crate::squads_input(&store);
+        // the Evolutions hub from a capture file when the kept data has none yet (FCT_EVO_HUB)
+        if let Ok(p) = std::env::var("FCT_EVO_HUB") {
+            let v: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(p).unwrap()).unwrap();
+            let hub = v.get("body").unwrap_or(&v);
+            input.evos = crate::squads::evos_from_hub(hub);
+            let attrs = store.web.attributes.as_ref().map(|a| crate::squads::Attributes::from_value(&a.body)).unwrap_or_default();
+            let extra = crate::squads::evo_players(hub, &input.club, &store.snapshot.gallery, &attrs);
+            input.club.extend(extra);
+        }
+        let view = crate::squads::plan(&input, &prefs);
         if let Ok(out) = std::env::var("FCT_SQUADS_OUT") {
             std::fs::write(out, serde_json::to_string_pretty(&view).unwrap()).unwrap();
         }
@@ -1764,6 +1797,12 @@ mod real_plan {
                 println!("    {} chem {} changes {:?} buys {} cost {} manager {:?}: {}", sq.formation, sq.chem, sq.changes, sq.buys, sq.cost, sq.manager.as_ref().map(|m| (m.nation_name.clone(), m.league_name.clone(), m.gain, m.current)), sq.slots.iter().map(|s| format!("{} {} {}{}{}{}", s.pos, s.name, s.rating, if s.owned { "" } else { " BUY" }, if s.generic { " GENERIC" } else { "" }, if s.out_of_position { " OOP" } else { "" })).collect::<Vec<_>>().join(", "));
             }
             println!("    counted {} bonus {} played {}", c.counted, c.bonus, c.played);
+            for b in &c.bench {
+                println!("    BENCH {} {} {} for {:?}", b.name, b.pos, b.rating, b.objectives);
+            }
+            for e in &c.evos {
+                println!("    EVO {} {} lvl {}/{} {}/{} start {} in_xi {} left {} days {:?}", e.player, e.name, e.level, e.levels, e.progress, e.target, e.start, e.in_xi, e.matches_left, e.days_left);
+            }
             for st in &c.stages {
                 println!("    STAGE {}-{:?} {} chem {} swaps [{}] finishing {:?}", st.from, st.to, st.squad.formation, st.squad.chem, st.swaps.iter().map(|w| format!("{}: {} -> {}{}", w.pos, w.out_name, w.in_name, if w.in_owned { "" } else { " (buy)" })).collect::<Vec<_>>().join("; "), st.finishing);
             }

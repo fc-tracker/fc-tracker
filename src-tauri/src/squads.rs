@@ -1458,6 +1458,8 @@ pub struct SlotView {
     /// A card to buy without a recent EA price: shown as a profile to search for (nation, league,
     /// position), the card itself only as an example.
     pub generic: bool,
+    /// In an active evolution (its name).
+    pub evo: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -1526,6 +1528,8 @@ pub struct Input {
     pub coins: Option<u64>,
     pub read_at: Option<u64>,
     pub now_ms: u64,
+    /// The active evolutions (`/academy/hub/v2`).
+    pub evos: Vec<Evo>,
 }
 
 fn need_name(need: &Need, names: &Names) -> String {
@@ -1693,6 +1697,117 @@ pub fn plays_in(modes: &[Mode], place: &Mode) -> bool {
     })
 }
 
+// ---------- evolutions ----------
+
+/// An active evolution (`/academy/hub/v2`): its player and what its level in progress asks.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct Evo {
+    pub slot: u64,
+    pub name: String,
+    /// Club item id of the player in it.
+    pub item: u64,
+    pub level: u32,
+    pub levels: u32,
+    /// The open objectives of the level in progress.
+    pub goals: Vec<EvoGoal>,
+    /// s
+    pub ends_at: Option<u64>,
+    /// Where its matches count (from the open objectives' texts); empty = no match moves it on
+    /// (Training Camp).
+    pub modes: Vec<Mode>,
+    /// An objective needs him on the pitch from the start (starting XI, a goal, an assist …).
+    pub start: bool,
+    /// Matches its open levels still take (match objectives only).
+    pub matches_left: u32,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct EvoGoal {
+    pub text: String,
+    pub progress: u32,
+    pub target: u32,
+}
+
+/// "Play 2 matches … using your active EVO player in game" counts for a sub; a goal, an assist or
+/// "in your starting 11" needs him from the kickoff.
+fn needs_start(text: &str) -> bool {
+    let l = text.to_lowercase();
+    ["starting", "from the start", "score", "goal", "assist", "clean sheet"].iter().any(|k| l.contains(k))
+}
+
+/// The players in active evolutions as club players: an evo takes its player off the club pile,
+/// so EA's club list leaves him out (Suhonen in Center Spectre, 2026-11-01) – the hub has his item.
+pub fn evo_players(v: &Value, club: &[Player], catalog: &BTreeMap<u64, crate::types::GalleryCard>, attrs: &Attributes) -> Vec<Player> {
+    let evos = evos_from_hub(v);
+    v.get("slots")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter(|s| s.get("id").and_then(Value::as_u64).is_some_and(|id| evos.iter().any(|e| e.slot == id)))
+        .filter_map(|s| s.get("player"))
+        .filter(|p| p.get("id").and_then(Value::as_u64).is_some_and(|id| !club.iter().any(|c| c.key == id)))
+        .filter_map(|p| crate::sync_data::parse_item(p, 0))
+        // no name in the item: the card's (the same order as every club card)
+        .filter_map(|item| club_player(&item, catalog, attrs))
+        .collect()
+}
+
+/// The active evolutions in EA's Evolutions hub.
+pub fn evos_from_hub(v: &Value) -> Vec<Evo> {
+    let ids = |k: &str| v.get(k).and_then(Value::as_array).map(|a| a.iter().filter_map(Value::as_u64).collect::<Vec<_>>()).unwrap_or_default();
+    let mut active = ids("activeSlotIds");
+    active.extend(ids("activeTimedSlotIds"));
+    let goal = |o: &Value| {
+        let target = o.get("multiplier").and_then(Value::as_u64).unwrap_or(1) as u32;
+        // Training Camp counts against a timestamp: never a progress past the target
+        let progress = o.get("currentProgress").and_then(Value::as_u64).unwrap_or(0).min(target as u64) as u32;
+        EvoGoal { text: o.get("name").and_then(Value::as_str).unwrap_or("").trim().to_string(), progress, target }
+    };
+    let open_obj = |o: &&Value| o.get("state").and_then(Value::as_str) != Some("COMPLETED");
+    let open_level = |l: &&&Value| l.get("levelState").and_then(Value::as_str) != Some("COMPLETED");
+    let mut out: Vec<Evo> = Vec::new();
+    for s in v.get("slots").and_then(Value::as_array).into_iter().flatten() {
+        let Some(slot) = s.get("id").and_then(Value::as_u64) else { continue };
+        if !(active.contains(&slot) || s.get("status").and_then(Value::as_str) == Some("ACTIVE")) || out.iter().any(|e| e.slot == slot) {
+            continue;
+        }
+        let Some(item) = s.get("realPlayerId").and_then(Value::as_u64).filter(|&i| i > 0) else { continue };
+        let levels: Vec<&Value> = s.get("levels").and_then(Value::as_array).into_iter().flatten().filter(|l| l.get("level").and_then(Value::as_u64).unwrap_or(0) >= 1).collect();
+        let Some(cur) = levels.iter().find(open_level) else { continue };
+        let goals: Vec<EvoGoal> = cur.get("objectives").and_then(Value::as_array).into_iter().flatten().filter(open_obj).map(goal).filter(|g| !g.text.is_empty()).collect();
+        let mut modes: Vec<Mode> = Vec::new();
+        for g in &goals {
+            for m in objective_modes(&g.text).unwrap_or_default() {
+                if !modes.contains(&m) {
+                    modes.push(m);
+                }
+            }
+        }
+        let matches_left = levels
+            .iter()
+            .filter(open_level)
+            .flat_map(|l| l.get("objectives").and_then(Value::as_array).into_iter().flatten())
+            .filter(open_obj)
+            .map(goal)
+            .filter(|g| objective_modes(&g.text).is_some())
+            .map(|g| g.target - g.progress)
+            .sum();
+        out.push(Evo {
+            slot,
+            name: s.get("slotName").and_then(Value::as_str).unwrap_or("").to_string(),
+            item,
+            level: cur.get("level").and_then(Value::as_u64).unwrap_or(1) as u32,
+            levels: levels.len() as u32,
+            start: goals.iter().any(|g| objective_modes(&g.text).is_some() && needs_start(&g.text)),
+            goals,
+            ends_at: s.get("endTime").and_then(Value::as_u64).filter(|&t| t > 0),
+            modes,
+            matches_left,
+        });
+    }
+    out
+}
+
 // ---------- play sessions ----------
 
 /// One way to play right now: a place (mode or live event), the XI for it and every open
@@ -1725,6 +1840,30 @@ pub struct ComboPlan {
     pub played: u32,
     /// A squad for a few matches only ("Play 1 match with 3 Mexicans"): how many.
     pub quick: Option<u32>,
+    /// Active evolutions a match here moves on too (user 2026-11-01).
+    pub evos: Vec<SessionEvo>,
+    /// Club cards on the bench for objectives that count for a sub.
+    pub bench: Vec<BenchPick>,
+}
+
+/// An active evolution in a session: on the bench to be subbed on, or starting when it needs him
+/// from the start.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct SessionEvo {
+    pub name: String,
+    pub player: String,
+    pub level: u32,
+    pub levels: u32,
+    pub goal: String,
+    pub progress: u32,
+    pub target: u32,
+    /// An objective needs him from the start (starting XI, a goal, an assist …).
+    pub start: bool,
+    /// He is in this session's XI.
+    pub in_xi: bool,
+    /// Matches its open levels still take, and the days left to play them.
+    pub matches_left: u32,
+    pub days_left: Option<u32>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -1750,6 +1889,20 @@ pub struct SessionItem {
     pub matches: Option<f64>,
     /// No card we know meets it: ask the user whether it's still available (lower case).
     pub ask: Option<String>,
+    /// Met by a card on the bench (subbed on late).
+    pub bench: bool,
+}
+
+/// A club card on the bench for objectives that don't need it from the start (user 2026-11-01).
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct BenchPick {
+    pub name: String,
+    pub pos: String,
+    pub rating: u32,
+    pub nation: u64,
+    pub nation_name: Option<String>,
+    /// The objectives it counts for once subbed on.
+    pub objectives: Vec<String>,
 }
 
 /// One step of the match plan.
@@ -1832,6 +1985,7 @@ fn squad_view(club: &[Player], f: &Formation, pick: &Pick, reqs: &[Req], prefs: 
         let key_ps_plus = p.playstyles.iter().filter(|(n, plus)| *plus && key.iter().any(|(k, _)| k == n)).count() as u32;
         let price = (!p.owned).then(|| fresh_price(input, p.def_id)).flatten();
         cost += price.unwrap_or(0);
+        let evo = p.owned.then(|| input.evos.iter().find(|e| e.item == p.key).map(|e| e.name.clone())).flatten();
         slots.push(SlotView {
             pos: pos.clone(),
             name: p.name.clone(),
@@ -1852,11 +2006,12 @@ fn squad_view(club: &[Player], f: &Formation, pick: &Pick, reqs: &[Req], prefs: 
             foot: p.foot,
             weak_foot: p.weak_foot,
             skill_moves: p.skill_moves,
-            must: prefs.must.contains(&p.key) || (!p.owned && prefs.must_cards.contains(&p.def_id)),
+            must: (prefs.must.contains(&p.key) && evo.is_none()) || (!p.owned && prefs.must_cards.contains(&p.def_id)),
             owned: p.owned,
             price,
             out_of_position: !in_pos,
             generic: !p.owned && price.is_none() && !prefs.must_cards.contains(&p.def_id),
+            evo,
         });
     }
     // what the club has for each (the box says "your club has 1 (Corona) – get 2 more")
@@ -1937,6 +2092,26 @@ struct Item {
     matches: Option<f64>,
     /// The requirement to ask about ("is it still available?"), lower case.
     ask: Option<String>,
+    /// Met from the bench too: no "starting 11" in its text, and the club has the cards (user
+    /// 2026-11-01) – it never makes the plan buy, the XI takes it only when that's free.
+    bench: bool,
+}
+
+/// Subs a match allows (FC: five).
+const MAX_SUBS: usize = 5;
+/// What a requirement the bench can meet weighs in the XI's search: about a tie – the XI takes the
+/// card only when it costs nothing, the bench meets it otherwise (never a buy: `candidates` skips it).
+const BENCH_WEIGHT: f64 = 0.01;
+
+/// A goal or an assist: likelier from the start than from a sub.
+fn scores(text: &str) -> bool {
+    let l = text.to_lowercase();
+    ["score", "goal", "assist"].iter().any(|k| l.contains(k))
+}
+
+/// "… in your starting 11" needs the cards from kickoff; any other squad part counts for a sub.
+fn bench_counts(text: &str) -> bool {
+    !text.to_lowercase().contains("starting")
 }
 
 /// One event's data for the plan.
@@ -2120,11 +2295,47 @@ impl<'a> Planner<'a> {
         let it = &self.items[i];
         if it.bonus {
             BONUS_WEIGHT
+        } else if it.bench && !scores(&self.evs[it.ev].g.objectives[it.obj].text) {
+            // "play / win a match with …": a sub does it, the XI stays as it is; who has to score
+            // or assist plays from the start when the club has him (the bench only instead of a buy)
+            BENCH_WEIGHT
         } else if primary == Some(self.evs[it.ev].g.id) {
             20.0
         } else {
             1.0
         }
+    }
+
+    /// The bench (user 2026-11-01): requirements without "starting 11" the XI doesn't meet get club
+    /// cards on the bench – subbed on late, the match reminders say when. Marks them met in `rv`;
+    /// returns each bench card with the requirements (indices) it counts for.
+    fn bench_for(&self, reqs: &[Req], benchable: &[bool], rv: &mut [ReqView], xi: &BTreeSet<u64>, room: usize) -> Vec<(Player, Vec<usize>)> {
+        let mut picks: Vec<(Player, Vec<usize>)> = Vec::new();
+        for k in 0..reqs.len() {
+            if !benchable[k] || rv[k].met {
+                continue;
+            }
+            let need = &reqs[k].need;
+            let short = reqs[k].count.saturating_sub(rv[k].have) as usize;
+            let from_picks: Vec<usize> = (0..picks.len()).filter(|&j| need.met_by(&picks[j].0, self.links)).take(short).collect();
+            let more = short - from_picks.len();
+            let open_here = |p: &Player| (0..reqs.len()).filter(|&j| benchable[j] && !rv[j].met && reqs[j].need.met_by(p, self.links)).count();
+            let mut cands: Vec<&Player> = self.club.iter().filter(|p| p.owned && !xi.contains(&p.key) && !picks.iter().any(|(q, _)| q.key == p.key) && need.met_by(p, self.links)).collect();
+            // a card that meets more of the open ones first, then the strongest
+            cands.sort_by_key(|p| (std::cmp::Reverse(open_here(p)), std::cmp::Reverse(p.rating)));
+            if cands.len() < more || picks.len() + more > room {
+                continue;
+            }
+            for j in from_picks {
+                picks[j].1.push(k);
+            }
+            for p in cands.into_iter().take(more) {
+                picks.push((p.clone(), vec![k]));
+            }
+            rv[k].met = true;
+            rv[k].have = reqs[k].count;
+        }
+        picks
     }
 
     /// A session at `place` over the open objectives in `avail`.
@@ -2133,16 +2344,18 @@ impl<'a> Planner<'a> {
         let mut reqs: Vec<Req> = Vec::new();
         let mut weights: Vec<f64> = Vec::new();
         let mut req_of: Vec<Option<usize>> = Vec::new();
+        let mut benchable: Vec<bool> = Vec::new();
         for &i in &here {
             req_of.push(self.items[i].req.as_ref().map(|r| {
                 reqs.push(r.clone());
                 weights.push(self.weight(i, primary));
+                benchable.push(self.items[i].bench);
                 reqs.len() - 1
             }));
         }
         // Rush is played with its own five-a-side squad: no XI, a requirement counts when the club has the cards
         let solved = if here.is_empty() || *place == Mode::Rush { None } else { self.solve(&reqs, &weights, None) };
-        let (squad, req_views) = match &solved {
+        let (squad, mut req_views) = match &solved {
             Some(s) => {
                 let (sq, rv) = squad_view(&s.players, &self.formations[s.fi], &s.pick, &reqs, self.prefs, self.input, self.links);
                 (Some(sq), rv)
@@ -2158,6 +2371,15 @@ impl<'a> Planner<'a> {
                     .collect(),
             ),
         };
+        // evolution players on the bench take subs first; the rest of the bench meets what the XI doesn't
+        let evos = self.session_evos(place, solved.as_ref());
+        let mut bench_picks: Vec<(Player, Vec<usize>)> = Vec::new();
+        if let Some(s) = &solved {
+            let xi: BTreeSet<u64> = s.pick.slots.iter().flatten().filter(|&&i| s.players[i].owned).map(|&i| s.players[i].key).collect();
+            let room = MAX_SUBS.saturating_sub(evos.iter().filter(|e| !e.in_xi).count());
+            bench_picks = self.bench_for(&reqs, &benchable, &mut req_views, &xi, room);
+        }
+        let on_bench = |k: usize| bench_picks.iter().any(|(_, ks)| ks.contains(&k));
         let items: Vec<SessionItem> = here
             .iter()
             .zip(&req_of)
@@ -2181,6 +2403,7 @@ impl<'a> Planner<'a> {
                     bonus: it.bonus,
                     matches: it.matches.map(|m| round1((m - self.played() as f64).max(0.0))),
                     ask: it.ask.clone(),
+                    bench: r.is_some_and(|k| on_bench(k)),
                 }
             })
             .collect();
@@ -2193,8 +2416,49 @@ impl<'a> Planner<'a> {
         events_in.sort_by_key(|&e| (primary != Some(self.evs[e].g.id), self.evs[e].g.ends_at.unwrap_or(u64::MAX)));
         let title = events_in.iter().map(|&e| self.evs[e].g.title.as_str()).collect::<Vec<_>>().join(" · ");
         let ends_at = events_in.iter().filter_map(|&e| self.evs[e].g.ends_at).min();
-        let plan = ComboPlan { id: 0, place: place.clone(), place_name: self.place_name(place), title, ends_at, reqs: req_views, items, squad, counted, bonus, primary, stages: Vec::new(), played: self.played(), quick: None };
+        let plan = ComboPlan { id: 0, place: place.clone(), place_name: self.place_name(place), title, ends_at, reqs: req_views, items, squad, counted, bonus, primary, stages: Vec::new(), played: self.played(), quick: None, evos, bench: Vec::new() };
+        let mut plan = plan;
+        plan.bench = bench_picks
+            .iter()
+            .map(|(p, ks)| BenchPick {
+                name: p.name.clone(),
+                pos: p.positions.first().cloned().unwrap_or_default(),
+                rating: p.rating,
+                nation: p.nation,
+                nation_name: self.input.names.nations.get(&p.nation).cloned(),
+                objectives: plan.items.iter().filter(|x| x.req.is_some_and(|k| ks.contains(&k))).map(|x| if x.name.is_empty() { x.text.clone() } else { x.name.clone() }).collect(),
+            })
+            .collect();
         (plan, solved)
+    }
+
+    /// The active evolutions a match at `place` moves on (their player in the club).
+    fn session_evos(&self, place: &Mode, solved: Option<&Solved>) -> Vec<SessionEvo> {
+        let now_s = self.input.now_ms / 1000;
+        let xi: BTreeSet<u64> = solved.map(|s| s.pick.slots.iter().flatten().filter(|&&i| s.players[i].owned).map(|&i| s.players[i].key).collect()).unwrap_or_default();
+        self.input
+            .evos
+            .iter()
+            // a session that plays anywhere ("Win 10 matches in any mode") can be played where the evo counts
+            .filter(|e| !e.modes.is_empty() && (*place == Mode::Any || plays_in(&e.modes, place)))
+            .filter_map(|e| {
+                let p = self.club.iter().find(|p| p.key == e.item)?;
+                let g = e.goals.iter().find(|g| objective_modes(&g.text).is_some())?;
+                Some(SessionEvo {
+                    name: e.name.clone(),
+                    player: p.name.clone(),
+                    level: e.level,
+                    levels: e.levels,
+                    goal: g.text.clone(),
+                    progress: g.progress,
+                    target: g.target,
+                    start: e.start,
+                    in_xi: xi.contains(&e.item),
+                    matches_left: e.matches_left,
+                    days_left: e.ends_at.filter(|&t| t > now_s).map(|t| ((t - now_s) / 86_400) as u32),
+                })
+            })
+            .collect()
     }
 
     fn played(&self) -> u32 {
@@ -2276,9 +2540,15 @@ impl<'a> Planner<'a> {
             }
             (r, w)
         };
+        let bench_of = |set: &[usize]| -> Vec<bool> { set.iter().filter(|&&i| self.items[i].req.is_some()).map(|&i| self.items[i].bench).collect() };
         while out.len() < MAX_STAGES {
             let (reqs, _) = reqs_of(&open);
-            let (sq, rv) = squad_view(&cur.players, &self.formations[cur.fi], &cur.pick, &reqs, self.prefs, self.input, self.links);
+            let (sq, mut rv) = squad_view(&cur.players, &self.formations[cur.fi], &cur.pick, &reqs, self.prefs, self.input, self.links);
+            {
+                let xi: BTreeSet<u64> = cur.pick.slots.iter().flatten().filter(|&&i| cur.players[i].owned).map(|&i| cur.players[i].key).collect();
+                let room = MAX_SUBS.saturating_sub(s.evos.iter().filter(|e| !e.in_xi).count());
+                self.bench_for(&reqs, &bench_of(&open), &mut rv, &xi, room);
+            }
             let met: Vec<bool> = rv.iter().map(|r| r.met).collect();
             // the open items this squad moves on, and when the first one with a squad part is done
             let counting: Vec<usize> = {
@@ -2401,6 +2671,13 @@ pub fn plan(input: &Input, prefs: &SquadPrefs) -> SquadsView {
             prefs.must.push(def);
         }
     }
+    // an active evolution that needs its player from the start: he starts (user 2026-11-01 – rare,
+    // and the squad usually still fits)
+    for e in input.evos.iter().filter(|e| e.start && !e.modes.is_empty()) {
+        if club.iter().any(|p| p.key == e.item) && !prefs.must.contains(&e.item) {
+            prefs.must.push(e.item);
+        }
+    }
     let prefs = &prefs;
     let owned_defs: BTreeSet<u64> = input.club.iter().map(|p| p.def_id).collect();
     let budget = prefs.budget.or(input.coins);
@@ -2435,6 +2712,8 @@ pub fn plan(input: &Input, prefs: &SquadPrefs) -> SquadsView {
     let club_known = club.len() >= 11;
     // a card in the club or among every card that exists meets it
     let obtainable = |need: &Need| matches!(need, Need::Chemistry(_)) || club.iter().any(|p| need.met_by(p, &links)) || input.catalog.iter().any(|p| need.met_by(p, &links));
+    // the club has the cards to meet it from the bench
+    let club_has = |q: &Req| club.iter().filter(|p| p.owned && q.need.met_by(p, &links)).count() >= q.count as usize;
     let items: Vec<Item> = evs
         .iter()
         .enumerate()
@@ -2462,7 +2741,13 @@ pub fn plan(input: &Input, prefs: &SquadPrefs) -> SquadsView {
                 }
                 let left = o.target.saturating_sub(o.progress) as f64;
                 let matches = Some(left / per_match(&o.text, &input.rates).max(0.01));
-                Some(Item { ev: e, obj: k, modes, req: r.map(|r| ev.reqs[r].clone()), unknown: u.clone(), bonus: !ev.live, matches, ask })
+                let req = r.map(|r| ev.reqs[r].clone());
+                let bench = req.as_ref().is_some_and(|q| {
+                    // only where it opens a live objective the XI does not meet (user 2026-11-01: a bench
+                    // only when it makes sense for other challenges) – never for a long-running one
+                    ev.live && bench_counts(&o.text) && !matches!(q.need, Need::Chemistry(_)) && q.count as usize <= MAX_SUBS && club_has(q)
+                });
+                Some(Item { ev: e, obj: k, modes, req, unknown: u.clone(), bonus: !ev.live, matches, ask, bench })
             })
         })
         .collect();
@@ -3095,7 +3380,7 @@ mod tests {
         let slot = SlotView {
             pos: "ST".into(), name: "Owned ST".into(), def_id: 9_999, rating: 80, chem: 3, strength, loan: false, counts_for: vec![], accel: None, key_ps: 0, key_ps_plus: 0,
             full: false, nation: 1, nation_name: None, foot: 0, weak_foot: 3, skill_moves: 3, must: false, owned: true, price: None,
-            league: 0, league_name: None, out_of_position: false, generic: false,
+            league: 0, league_name: None, out_of_position: false, generic: false, evo: None,
         };
         SquadView { formation: "4-3-3".into(), chem: 30, chem_target: 33, slots: vec![slot], strength, met: 0, changes: None, must_missing: vec![], buys: 0, cost: 0, manager: None }
     }
@@ -3394,6 +3679,94 @@ mod tests {
         assert_eq!(q.squad.as_ref().unwrap().slots.iter().filter(|x| x.nation == 83).count(), 3);
     }
 
+    /// EA's Evolutions hub as the sync reads it (texts as EA writes them, 2026-11-01).
+    fn evo_hub() -> serde_json::Value {
+        let lvl = |level: u64, state: &str, objs: &[(&str, u64, u64, &str)]| json!({ "level": level, "levelState": state, "objectives": objs.iter().map(|(t, p, m, s)| json!({ "name": t, "currentProgress": p, "multiplier": m, "state": s })).collect::<Vec<_>>() });
+        let sb = "Play 1 match in Squad Battles on min Semi-Pro difficulty (or Rush/Rivals/Champions/Live Events) using your active EVO player in game.";
+        json!({ "activeSlotIds": [2815, 2900, 2839], "activeTimedSlotIds": [2839], "slots": [
+            { "id": 2815, "slotName": "Center Spectre", "realPlayerId": 14, "endTime": 1_800_000_000u64 + 8 * 86_400, "status": "ACTIVE", "levels": [
+                { "level": 0, "levelState": "COMPLETED" },
+                lvl(1, "IN_PROGRESS", &[(sb, 0, 1, "IN_PROGRESS")]),
+                lvl(2, "NOT_STARTED", &[(sb, 0, 1, "IN_PROGRESS")]),
+                lvl(3, "NOT_STARTED", &[("Play 2 matches in Squad Battles on min. Semi-Pro difficulty (or Rush/Rivals/Champions/Live Events) using your active EVO Player in game.", 0, 2, "IN_PROGRESS")]) ] },
+            { "id": 2900, "slotName": "Goal Ghost", "realPlayerId": 13, "endTime": 0, "status": "ACTIVE", "levels": [
+                lvl(1, "IN_PROGRESS", &[("Score 2 goals in any mode using your active EVO player.", 1, 2, "IN_PROGRESS")]) ] },
+            { "id": 2839, "slotName": "Rise From the Grave", "realPlayerId": 12, "endTime": 0, "status": "ACTIVE", "levels": [
+                lvl(1, "COMPLETED", &[("Send your Player to Training Camp.", 17280, 17280, "COMPLETED")]),
+                lvl(2, "IN_PROGRESS", &[("Send your Player to Training Camp.", 1_793_541_366, 17280, "IN_PROGRESS")]) ] },
+            { "id": 2813, "slotName": "Poor Sophia", "realPlayerId": 16, "status": "INACTIVE", "levels": [
+                lvl(1, "IN_PROGRESS", &[("Play 2 matches in any mode using your active EVO player in game.", 0, 2, "IN_PROGRESS")]) ] } ] })
+    }
+
+    #[test]
+    fn scenario_a_card_that_counts_for_a_sub_waits_on_the_bench() {
+        let mut input = scenario(json!({ "groups": [
+            ev(1, "Weekly", &[(11, "Win 3 matches in Squad Battles.", 0, 3)]),
+            ev(2, "Liga MX", &[(21, "Play 2 matches with min. 1 Mexican player in Squad Battles.", 0, 2), (22, "Win 1 match with min. 1 Mexican player in your starting 11 in Squad Battles.", 0, 1)]) ] }));
+        input.club.push(pl(99, "Corona", 70, &["RW"], 99, 99, 83));
+        let v = plan(&input, &SquadPrefs::default());
+        let s = &v.combos[0];
+        let xi = s.squad.as_ref().unwrap();
+        // the starting-11 one takes him into the XI …
+        if xi.slots.iter().any(|x| x.name == "Corona") {
+            assert!(s.bench.is_empty(), "in the XI already: no bench needed");
+            return;
+        }
+        // … or he waits on the bench for the one a sub does, and that one counts
+        assert_eq!(s.bench.len(), 1);
+        assert_eq!(s.bench[0].name, "Corona");
+        let play = s.items.iter().find(|x| x.objective == 21).unwrap();
+        assert!(play.counts && play.bench);
+        assert!(!s.items.iter().find(|x| x.objective == 22).unwrap().bench, "starting 11 never counts from the bench");
+    }
+
+    #[test]
+    fn scenario_the_bench_is_only_for_what_the_xi_leaves_open() {
+        let mut input = scenario(json!({ "groups": [ev(1, "Liga MX", &[(21, "Play 2 matches with min. 1 Mexican player in Squad Battles.", 0, 2)])] }));
+        input.club.push(pl(99, "Corona", 70, &["RW"], 99, 99, 83));
+        // without objectives a sub could do, nobody waits on the bench
+        let none = scenario(json!({ "groups": [ev(1, "Weekly", &[(11, "Win 3 matches in Squad Battles.", 0, 3)])] }));
+        assert!(plan(&none, &SquadPrefs::default()).combos[0].bench.is_empty());
+        let v = plan(&input, &SquadPrefs::default());
+        let s = &v.combos[0];
+        assert!(s.items[0].counts);
+        // never a buy for a sub's objective
+        assert_eq!(s.squad.as_ref().unwrap().buys, 0);
+    }
+
+    #[test]
+    fn evolutions_are_read_from_eas_hub() {
+        let evos = evos_from_hub(&evo_hub());
+        assert_eq!(evos.len(), 3, "the inactive one is left out");
+        let cs = &evos[0];
+        assert_eq!((cs.name.as_str(), cs.item, cs.level, cs.levels, cs.matches_left), ("Center Spectre", 14, 1, 3, 4));
+        assert!(!cs.start, "a match in game – a sub counts");
+        assert!(cs.modes.contains(&Mode::SquadBattles) && cs.modes.contains(&Mode::Rush) && cs.modes.contains(&Mode::LiveEvents));
+        assert_eq!(cs.ends_at, Some(1_800_000_000 + 8 * 86_400));
+        assert!(evos[1].start, "a goal needs him from the start");
+        // Training Camp: no match moves it on, the timestamp is no progress
+        assert!(evos[2].modes.is_empty());
+        assert_eq!(evos[2].goals[0].progress, 17280);
+    }
+
+    #[test]
+    fn scenario_evo_players_play_along_and_one_that_must_score_starts() {
+        let mut input = scenario(json!({ "groups": [ev(1, "Weekly", &[(11, "Win 10 matches in Squad Battles.", 0, 10)])] }));
+        input.evos = evos_from_hub(&evo_hub());
+        let v = plan(&input, &SquadPrefs::default());
+        let s = &v.combos[0];
+        assert_eq!(s.place, Mode::SquadBattles);
+        let names: Vec<&str> = s.evos.iter().map(|e| e.name.as_str()).collect();
+        assert_eq!(names, ["Center Spectre", "Goal Ghost"], "Training Camp is no match");
+        let ghost = &s.evos[1];
+        assert!(ghost.start && ghost.in_xi, "he has to score: he starts");
+        let slot = s.squad.as_ref().unwrap().slots.iter().find(|x| x.evo.as_deref() == Some("Goal Ghost")).unwrap();
+        assert!(!slot.must, "shown as the evo, not as the user's own pick");
+        assert_eq!(s.evos[0].days_left, Some(8));
+        // the user's own settings come back untouched
+        assert!(v.prefs.must.is_empty());
+    }
+
     #[test]
     fn scenario_wins_are_planned_from_the_users_win_rate() {
         let r = Rates { win: 0.5, goals: 2.0, assists: 1.5 };
@@ -3537,6 +3910,7 @@ impl Input {
             coins: None,
             read_at: None,
             now_ms: 0,
+            evos: vec![],
         }
     }
 }
@@ -3633,6 +4007,7 @@ mod real_data {
             rates: Rates::default(),
             coins: snap["coins"][0].as_u64(),
             read_at: None,
+            evos: vec![],
             now_ms: snap["prices"].as_object().unwrap().values().filter_map(|p| p["at"].as_u64()).max().unwrap_or(0),
         };
         println!("club players with positions: {}", input.club.iter().filter(|p| !p.positions.is_empty()).count());

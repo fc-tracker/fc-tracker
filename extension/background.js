@@ -95,7 +95,7 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
 // Objective squads read in the Web App (objectives, names, formations, player attributes) are kept.
 // EA's whole objectives list goes through (/scmp/objective/categories/all): the page plans from
 // every event with its progress, not only the ones the sync opened
-const WEB_SKIP = /\/(sbs|scmp(?!\/objective\/categories\/all)|champs2|rivals|sqbt|leaderboards|academy|squad|store|eventtoken|club\/stats)\b|\/fc\/(user|season)\b|^fct:\/\/webapp\/(?!objectives|names|formations|attributes)/;
+const WEB_SKIP = /\/(sbs|scmp(?!\/objective\/categories\/all)|champs2|rivals|sqbt|leaderboards|academy(?!\/hub)|squad|store|eventtoken|club\/stats)\b|\/fc\/(user|season)\b|^fct:\/\/webapp\/(?!objectives|names|formations|attributes)/;
 
 function webKeep(url, body, at) {
   if (WEB_SKIP.test(url)) return Promise.resolve();

@@ -108,6 +108,8 @@ struct Web {
     /// The active squad's manager (league, nation) and the club's record (wins, draws, losses).
     active_manager: Option<(u64, u64)>,
     record: Option<(u64, u64, u64)>,
+    /// EA's Evolutions hub (read in the sync): the active evos and their players.
+    evo_hub: Option<Value>,
     squad_prefs: squads::SquadPrefs,
 }
 
@@ -322,6 +324,9 @@ fn ingest_sync(w: &mut Web, sync: SyncData) -> Value {
             _ => {}
         }
         let key = sync_data::endpoint_key(&e.url);
+        if key.ends_with("/academy/hub/v2") {
+            w.evo_hub = Some(e.body.clone());
+        }
         if key.ends_with("/usermassinfo") {
             w.active = squads::active_squad(&e.body);
             w.active_formation = squads::active_formation(&e.body);
@@ -431,7 +436,14 @@ fn squads_input(w: &Web) -> squads::Input {
         groups: w.objectives.as_ref().map(|(_, v)| squads::groups_from_value(v)).unwrap_or_default(),
         names,
         names_known: w.names.is_some(),
-        club: w.club.values().filter_map(|i| squads::club_player(i, &w.gallery, &attrs)).collect(),
+        club: {
+            let mut club: Vec<squads::Player> = w.club.values().filter_map(|i| squads::club_player(i, &w.gallery, &attrs)).collect();
+            if let Some(hub) = &w.evo_hub {
+                let extra = squads::evo_players(hub, &club, &w.gallery, &attrs);
+                club.extend(extra);
+            }
+            club
+        },
         catalog: w.gallery.values().filter_map(|c| squads::catalog_player(c, &attrs)).collect(),
         prices: w.prices.clone(),
         rewards: BTreeMap::new(),
@@ -444,6 +456,7 @@ fn squads_input(w: &Web) -> squads::Input {
         coins: w.coins.map(|[c, _]| c),
         read_at: w.objectives.as_ref().map(|(at, _)| *at),
         now_ms: clock::ms(),
+        evos: w.evo_hub.as_ref().map(squads::evos_from_hub).unwrap_or_default(),
     }
 }
 

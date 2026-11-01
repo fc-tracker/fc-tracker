@@ -483,6 +483,9 @@ html[data-view="launcher"] .ln-input { width: 150px; padding: 9px 10px; font: 70
 
 /* Settings → Account (src/Account.tsx) */
 html[data-view="launcher"] .ln-input.wide { width: 240px; }
+html[data-view="launcher"] .ln-minute { display: grid; justify-items: center; gap: 2px; }
+html[data-view="launcher"] .ln-minute small { font-size: 10px; color: var(--muted); white-space: nowrap; }
+html[data-view="launcher"] .ln-input.minute { width: 58px; text-align: center; }
 html[data-view="launcher"] .ln-input.code { width: 110px; letter-spacing: 0.2em; text-align: center; font-family: var(--font-display); font-size: 18px; }
 html[data-view="launcher"] .ln-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 html[data-view="launcher"] .ln-note { color: var(--muted); }

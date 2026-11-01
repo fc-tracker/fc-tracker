@@ -35,6 +35,9 @@ pub struct UiPrefs {
     /// Settings → Squads: the chemistry target, its place in the order, loans, the budget.
     #[serde(default)]
     pub squads: crate::squads::SquadPrefs,
+    /// Settings → Match reminders: the match clock read in every match, and when to remind.
+    #[serde(default)]
+    pub reminders: crate::remind::Prefs,
 }
 
 fn remind() -> String {
@@ -47,7 +50,7 @@ fn default_side() -> String {
 
 impl Default for UiPrefs {
     fn default() -> Self {
-        Self { mode: "panel".into(), panel: None, missing_side: default_side(), after_play: remind(), game_exe: None, tracking: Default::default(), champions: false, squads: Default::default() }
+        Self { mode: "panel".into(), panel: None, missing_side: default_side(), after_play: remind(), game_exe: None, tracking: Default::default(), champions: false, squads: Default::default(), reminders: Default::default() }
     }
 }
 

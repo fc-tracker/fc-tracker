@@ -1,7 +1,7 @@
 //! Tracking speed: how often the game is looked at, and how soon each kind of screen is read.
 //! Presets from the PC's specs (CPU threads, RAM, battery), or every value by hand. Persisted in
-//! `ui.json` (`UiPrefs::tracking`). In a match only the Champions tracker looks (`match_ms`, one
-//! small look per interval; switched off in Settings → Champions).
+//! `ui.json` (`UiPrefs::tracking`). In a match only the scoreboard is looked at (`match_ms`, one
+//! small look per interval): the match clock for reminders (every mode) and the Champions tracker.
 
 use serde::{Deserialize, Serialize};
 
@@ -10,9 +10,12 @@ pub const WATCH_MIN_MS: u32 = 16;
 pub const WATCH_MAX_MS: u32 = 1000;
 /// Read delays (ms). 0 = read on the first unchanged look.
 pub const READ_MAX_MS: u32 = 10_000;
-/// In a match (Champions): one look every 0.5–3 s.
-pub const MATCH_MIN_MS: u32 = 500;
-pub const MATCH_MAX_MS: u32 = 3000;
+/// In a match: one look at the scoreboard every 0.25–10 s (continuous on a strong PC, every 10 s on
+/// a weak one – user 2026-11-01).
+pub const MATCH_MIN_MS: u32 = 250;
+pub const MATCH_MAX_MS: u32 = 10_000;
+/// The Champions tracker looks at least this often (the goal banner stays ~4 s).
+pub const MATCH_CHAMPIONS_MAX_MS: u32 = 3000;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(default)]
@@ -34,8 +37,9 @@ pub struct TrackingPrefs {
     pub animated_ms: u32,
     /// The transfer market (search results, Bidding Options, the purchase): read after this long.
     pub market_ms: u32,
-    /// In a match (Champions tracker): one look at the scoreboard this often (ms). After full time
-    /// the screens are read at once, whatever this says (the result card can be gone in ~1.5 s).
+    /// In a match: one look at the scoreboard this often (ms) – the clock for match reminders, the
+    /// Champions tracker (at most every 3 s there). After a Champions full time the screens are
+    /// read at once, whatever this says (the result card can be gone in ~1.5 s).
     pub match_ms: u32,
 }
 
@@ -50,10 +54,10 @@ impl Default for TrackingPrefs {
 /// The values of a named preset.
 pub fn preset(name: &str) -> Option<TrackingPrefs> {
     let (continuous, watch_ms, still_ms, animated_ms, market_ms, match_ms) = match name {
-        "light" => (false, 250, 300, 2000, 800, 2000),
+        "light" => (false, 250, 300, 2000, 800, 10_000),
         "balanced" => (true, 100, 150, 1000, 500, 1000),
-        "fast" => (true, 50, 50, 600, 300, 1000),
-        "max" => (true, WATCH_MIN_MS, 0, 300, 200, 1000),
+        "fast" => (true, 50, 50, 600, 300, 500),
+        "max" => (true, WATCH_MIN_MS, 0, 300, 200, 250),
         _ => return None,
     };
     Some(TrackingPrefs { preset: name.into(), continuous, watch_ms, same_for_all: false, all_ms: animated_ms, still_ms, animated_ms, market_ms, match_ms })
@@ -123,7 +127,6 @@ pub fn clamp(mut p: TrackingPrefs) -> TrackingPrefs {
     if !p.continuous {
         p.watch_ms = p.watch_ms.max(50);
     }
-    // the goal banner stays ~4 s: no slower than every 3 s, and no faster than twice a second
     p.match_ms = p.match_ms.clamp(MATCH_MIN_MS, MATCH_MAX_MS);
     for v in [&mut p.all_ms, &mut p.still_ms, &mut p.animated_ms, &mut p.market_ms] {
         *v = (*v).min(READ_MAX_MS);

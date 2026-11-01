@@ -444,6 +444,16 @@
     }
   }
 
+  function academyCriteria() {
+    let c = null;
+    try {
+      if (typeof window.UTAcademySlotSearchCriteriaDTO === "function") c = new window.UTAcademySlotSearchCriteriaDTO();
+    } catch {}
+    c ??= { count: 20, offset: 0, sort: "asc", slotStatus: "NOT_STARTED", categoryId: null };
+    c.forceFetch = true;
+    return c;
+  }
+
   async function syncExtras() {
     const s = window.services ?? {};
     const steps = [
@@ -458,7 +468,9 @@
       () => s.Rivals?.getWeeklyRewardsInfo?.(),
       () => s.SquadBattles?.requestCurrentEventFullScope?.(),
       () => s.Leaderboards?.requestOptions?.(),
-      () => s.Academy?.requestAcademyHub?.(),
+      // the Evolutions hub (active evos, their objectives and progress): EA's call needs its search
+      // criteria – without them it threw and no sync ever had evos (2026-11-01)
+      () => s.Academy?.requestAcademyHub?.(academyCriteria()),
       () => s.Squad?.requestSquadList?.(),
       () => s.Club?.getStats?.(),
       () => s.EventToken?.requestDefinitions?.(),
