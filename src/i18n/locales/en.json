@@ -1018,6 +1018,8 @@
   "rules.notice.range": "Cards rated {{min}}–{{max}} – the squad keeps to it",
   "rules.notice.min": "Cards rated {{min}} or more – the squad keeps to it",
   "rules.notice.max": "Cards rated {{max}} or less – the squad keeps to it",
+  "objread.notice.title": "{{event}}: progress read from the game",
+  "objread.notice.line": "{{count}} objectives updated – the plan follows",
   "squads.accel.explosive": "Explosive",
   "squads.accel.controlled": "Controlled",
   "squads.accel.lengthy": "Lengthy",

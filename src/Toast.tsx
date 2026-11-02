@@ -193,6 +193,19 @@ export default function Toast() {
     );
   }
 
+  // The game's Objectives screen: its real progress replaced the last sync's
+  if (toast.kind === "objectives-read") {
+    return (
+      <div className="toast read" key={`objectives-read-${toast.event}`} role="status">
+        <span className="toast-mark read" aria-hidden="true" />
+        <div className="toast-body">
+          <p className="toast-title">{t("objread.notice.title", { event: toast.event })}</p>
+          <p className="toast-line">{t("objread.notice.line", { count: toast.count })}</p>
+        </div>
+      </div>
+    );
+  }
+
   // A live event's entry rules read on its page: its squad can be built now
   if (toast.kind === "rules") {
     const line = toast.min != null && toast.max != null ? t("rules.notice.range", { min: toast.min, max: toast.max }) : toast.min != null ? t("rules.notice.min", { min: toast.min }) : toast.max != null ? t("rules.notice.max", { max: toast.max }) : t("rules.notice.any");

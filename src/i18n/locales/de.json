@@ -1018,6 +1018,8 @@
   "rules.notice.range": "Karten mit {{min}}–{{max}} – das Team hält sich daran",
   "rules.notice.min": "Karten ab {{min}} – das Team hält sich daran",
   "rules.notice.max": "Karten bis {{max}} – das Team hält sich daran",
+  "objread.notice.title": "{{event}}: Fortschritt aus dem Spiel gelesen",
+  "objread.notice.line": "{{count}} Objectives aktualisiert – der Plan folgt",
   "squads.accel.explosive": "Explosiv",
   "squads.accel.controlled": "Kontrolliert",
   "squads.accel.lengthy": "Lang",

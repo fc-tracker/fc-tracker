@@ -568,6 +568,7 @@ pub fn spawn(app: AppHandle) {
                             squads_menu(&app, &frame);
                             evo_menu(&app, &frame);
                             event_rules_menu(&app, &frame);
+                            objectives_screen_menu(&app, &frame);
                         }
                         on_preview = matches!(&page, Page::Swap { preview: Some(_), .. });
                         // A notice belongs to its screen: hide it on any other page.
@@ -842,6 +843,34 @@ fn event_rules_menu(app: &AppHandle, frame: &scan::Frame) {
         }
         None => {}
     }
+}
+
+/// The game's Objectives screen (objectives_screen.rs): the progress it shows replaces the last
+/// sync's at once – the plan, its "N left" and the match plan follow. A notice when numbers moved.
+fn objectives_screen_menu(app: &AppHandle, frame: &scan::Frame) {
+    if !frame.words.iter().any(|w| w.text.contains('/')) {
+        return;
+    }
+    let state = app.state::<AppState>();
+    let (title, changed) = {
+        let mut store = state.store.lock().unwrap();
+        let Some(o) = store.web.objectives.as_ref() else { return };
+        let groups = crate::squads::groups_from_value(&o.body);
+        let Some((group, seen)) = crate::objectives_screen::read_screen(&frame.words, &groups) else { return };
+        let title = groups.iter().find(|g| g.id == group).map(|g| g.title.clone()).unwrap_or_default();
+        let o = store.web.objectives.as_mut().unwrap();
+        let changed = crate::objectives_screen::apply(&mut o.body, group, &seen);
+        if changed == 0 {
+            return;
+        }
+        // the objectives are as new as this look (the plan counts matches from here)
+        o.at = crate::store::now_ms();
+        store.web_changed();
+        (title, changed)
+    };
+    log(&state.data_dir, &format!("objectives: {title} – {changed} read from the game"));
+    let _ = app.emit("squads-changed", ());
+    crate::show_notice(app, serde_json::json!({ "kind": "objectives-read", "event": title, "count": changed }), 5);
 }
 
 /// One Champions screen to the tracker: logged (no gamertags in the log), saved, sent to the UI.

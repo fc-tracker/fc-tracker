@@ -1018,6 +1018,8 @@
   "rules.notice.range": "Cartes notées {{min}}–{{max}} : l'équipe s'y tient",
   "rules.notice.min": "Cartes notées {{min}} ou plus : l'équipe s'y tient",
   "rules.notice.max": "Cartes notées {{max}} ou moins : l'équipe s'y tient",
+  "objread.notice.title": "{{event}} : progression lue dans le jeu",
+  "objread.notice.line": "{{count}} objectifs mis à jour : le plan suit",
   "squads.accel.explosive": "Explosive",
   "squads.accel.controlled": "Contrôlée",
   "squads.accel.lengthy": "Allongée",

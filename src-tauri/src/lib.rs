@@ -15,6 +15,7 @@ mod lineup;
 mod merge;
 mod model;
 mod names;
+mod objectives_screen;
 mod remind;
 mod scan;
 mod session;

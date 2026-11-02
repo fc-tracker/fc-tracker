@@ -1018,6 +1018,8 @@
   "rules.notice.range": "Kort med rating {{min}}–{{max}} – holdet holder sig til det",
   "rules.notice.min": "Kort med rating {{min}} eller mere – holdet holder sig til det",
   "rules.notice.max": "Kort med rating {{max}} eller mindre – holdet holder sig til det",
+  "objread.notice.title": "{{event}}: fremskridt læst fra spillet",
+  "objread.notice.line": "{{count}} objectives opdateret – planen følger med",
   "squads.accel.explosive": "Explosiv",
   "squads.accel.controlled": "Kontrolleret",
   "squads.accel.lengthy": "Langstrakt",

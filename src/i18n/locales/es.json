@@ -1018,6 +1018,8 @@
   "rules.notice.range": "Cartas de {{min}}–{{max}}: la plantilla las respeta",
   "rules.notice.min": "Cartas de {{min}} o más: la plantilla las respeta",
   "rules.notice.max": "Cartas de {{max}} o menos: la plantilla las respeta",
+  "objread.notice.title": "{{event}}: progreso leído del juego",
+  "objread.notice.line": "{{count}} objetivos actualizados: el plan los sigue",
   "squads.accel.explosive": "Explosiva",
   "squads.accel.controlled": "Controlada",
   "squads.accel.lengthy": "Larga",
