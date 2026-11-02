@@ -77,6 +77,16 @@ html[data-view="launcher"] body {
 .ln-update p { margin: 0; flex: 1; font-size: 14px; }
 .ln-update b { color: var(--accent-2); }
 .ln-update-mark { width: 10px; height: 10px; flex: none; background: var(--accent-2); transform: rotate(45deg); box-shadow: 0 0 10px var(--accent-2); }
+/* home: the account in one line (signed out: sign in; signed in: who, last sync, dashboard) */
+.ln-acct {
+  display: flex; align-items: center; gap: 12px; margin-top: 14px; padding: 8px 12px 8px 14px;
+  background: var(--surface); border-left: 3px solid var(--good, var(--accent));
+}
+.ln-acct.out { background: var(--surface-hi); border-left-color: var(--accent); }
+.ln-acct p { margin: 0; flex: 1; min-width: 0; font-size: 14px; color: var(--muted, var(--text)); }
+.ln-acct b { color: var(--text); margin-right: 4px; }
+.ln-acct-mark { width: 10px; height: 10px; flex: none; background: var(--accent); transform: rotate(45deg); box-shadow: 0 0 10px var(--accent); }
+.ln-rail-btn .me-avatar { font-size: 12px; }
 
 /* ── hero ───────────────────────────────────────────────────────────── */
 /* "safe": when the hero is taller than its room it starts at the top instead of growing over the header */

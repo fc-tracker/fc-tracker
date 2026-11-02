@@ -63,6 +63,8 @@ struct Live {
     fired: Vec<u16>,
     /// Players already told to come on.
     subbed: Vec<String>,
+    /// The clock was read at least once (logged once per match).
+    clock_seen: bool,
 }
 
 static LIVE: Mutex<Option<Live>> = Mutex::new(None);
@@ -97,7 +99,17 @@ pub fn match_started(app: &AppHandle) {
     let app = app.clone();
     std::thread::spawn(move || {
         let view = crate::squads::plan(&input, &squad_prefs);
-        let needs = view.combos.first().map(|s| needs_of(s, &squad_prefs, &prefs)).unwrap_or_default();
+        let mut needs = view.combos.first().map(|s| needs_of(s, &squad_prefs, &prefs)).unwrap_or_default();
+        // No plan for this match (another mode than the planned one, no squad yet …): the active
+        // evolutions that a match moves on still get their sub reminder – a match without it is a
+        // wasted level (user 2026-11-02).
+        if needs.is_empty() {
+            needs = active_evo_needs(&input, &squad_prefs, &prefs);
+        }
+        crate::tracking::log(
+            &app.state::<crate::AppState>().data_dir,
+            &format!("match reminders: {} to remind of ({})", needs.len(), needs.iter().map(|n| format!("{} {}'", n.player, n.at)).collect::<Vec<_>>().join(", ")),
+        );
         {
             let mut live = LIVE.lock().unwrap();
             let Some(l) = live.as_mut() else { return };
@@ -109,6 +121,19 @@ pub fn match_started(app: &AppHandle) {
     });
 }
 
+/// Every active evolution a match moves on, its player subbed on at his minute (or starting).
+fn active_evo_needs(input: &crate::squads::Input, squad: &crate::squads::SquadPrefs, prefs: &Prefs) -> Vec<Need> {
+    input
+        .evos
+        .iter()
+        .filter(|e| !e.modes.is_empty())
+        .filter_map(|e| {
+            let player = input.club.iter().find(|p| p.key == e.item)?.name.clone();
+            Some(Need { player, evo: e.name.clone(), level: e.level, levels: e.levels, start: e.start, bench: false, at: squad.sub_at.get(&e.item).copied().unwrap_or(prefs.sub_at) })
+        })
+        .collect()
+}
+
 pub fn match_ended() {
     *LIVE.lock().unwrap() = None;
 }
@@ -118,6 +143,15 @@ pub fn minute(app: &AppHandle, minute: u16) {
     let prefs = clamp(app.state::<crate::AppState>().ui.lock().unwrap().reminders.clone());
     if !prefs.on {
         return;
+    }
+    {
+        let mut live = LIVE.lock().unwrap();
+        if let Some(l) = live.as_mut() {
+            if !l.clock_seen {
+                l.clock_seen = true;
+                crate::tracking::log(&app.state::<crate::AppState>().data_dir, &format!("match clock: first reading {minute}'"));
+            }
+        }
     }
     let now: Vec<Need> = {
         let mut live = LIVE.lock().unwrap();

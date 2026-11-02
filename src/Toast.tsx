@@ -193,6 +193,33 @@ export default function Toast() {
     );
   }
 
+  // A live event's entry rules read on its page: its squad can be built now
+  if (toast.kind === "rules") {
+    const line = toast.min != null && toast.max != null ? t("rules.notice.range", { min: toast.min, max: toast.max }) : toast.min != null ? t("rules.notice.min", { min: toast.min }) : toast.max != null ? t("rules.notice.max", { max: toast.max }) : t("rules.notice.any");
+    return (
+      <div className="toast read best" key={`rules-${toast.event}`} role="status">
+        <span className="toast-mark read" aria-hidden="true" />
+        <div className="toast-body">
+          <p className="toast-title">{t("rules.notice.title", { event: toast.event.replace(/(^| )(\S)/g, (_m, a: string, c: string) => a + c.toUpperCase()) })}</p>
+          <p className="toast-line">{line}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Evolutions: one activated or paused in the game – the bench follows
+  if (toast.kind === "evo") {
+    return (
+      <div className="toast read" key={`evo-${toast.evo}-${toast.active}`} role="status">
+        <span className="toast-mark read" aria-hidden="true" />
+        <div className="toast-body">
+          <p className="toast-title">{t(toast.active ? "evo.notice.on" : "evo.notice.off", { evo: toast.evo, player: toast.player || toast.evo })}</p>
+          <p className="toast-line">{t(toast.active ? "evo.notice.onLine" : "evo.notice.offLine")}</p>
+        </div>
+      </div>
+    );
+  }
+
   // Match reminders: an evolution player to sub on (or one that has to start)
   if (toast.kind === "match-reminder") {
     return (

@@ -9,7 +9,7 @@ import { api, events, formatAge, IS_WEB } from "./api";
 import { num } from "./format";
 import { Flag } from "./flags";
 import { t, type MessageKey } from "./i18n";
-import { defaultSquadPrefs, pitchRows, type ClubEntry, type EventPlan, type GetOption, type Mode, type ObjectiveView, type ReqView, type SessionItem, type BenchPick, type MatchBrief, type SessionEvo, type SessionPlan, type SlotView, type SquadPrefs, type SquadView, type SquadsView, sameMode } from "./squadsData";
+import { defaultSquadPrefs, pitchRows, type ClubEntry, type EventPlan, type GetOption, type Mode, type ObjectiveView, type ReqView, type SessionItem, type BenchPick, type MatchBrief, type BriefTask, type SessionEvo, type SessionPlan, type SlotView, type SquadPrefs, type SquadView, type SquadsView, sameMode } from "./squadsData";
 import { removeSquad, saveSquad, useSavedSquads } from "./savedSquads";
 import { voteAvailability } from "./objectives";
 
@@ -1355,6 +1355,26 @@ export function MatchBriefView({ s, inMatch = false }: { s: SessionPlan; inMatch
         return t("brief.unread", { event: x.text });
     }
   };
+  // the step's own subject (formation, card, kit, names) in bold, the wording around it regular
+  const strong = (x: MatchBrief["before"][number]) => {
+    const text = step(x);
+    const key = x.kind === "bench" ? bench.map((b) => `${b.name} ${subs.minute(b.key)}:00`).join(", ") || x.text : x.text;
+    const at = key ? text.indexOf(key) : -1;
+    if (at < 0) return text;
+    return (
+      <>
+        {text.slice(0, at)}
+        <b>{key}</b>
+        {text.slice(at + key.length)}
+      </>
+    );
+  };
+  const task = (x: BriefTask, k: number) => (
+    <li key={k}>
+      <span>{x.text}</span>
+      {x.left > 1 && <small>{t("brief.left", { count: x.left })}</small>}
+    </li>
+  );
   const more = Math.max(0, b.anyone.length - ANYONE_SHOWN);
   return (
     <section className={`sq-brief ${inMatch ? "in-match" : ""}`} aria-label={t("brief.title")}>
@@ -1364,7 +1384,10 @@ export function MatchBriefView({ s, inMatch = false }: { s: SessionPlan; inMatch
           <ol className="sq-brief-before">
             {b.before.map((x, i) => (
               <li key={i} className={x.kind}>
-                {step(x)}
+                <span className="sq-brief-n" aria-hidden="true">
+                  {i + 1}
+                </span>
+                <span>{strong(x)}</span>
               </li>
             ))}
           </ol>
@@ -1378,14 +1401,7 @@ export function MatchBriefView({ s, inMatch = false }: { s: SessionPlan; inMatch
             <p className="sq-brief-who">
               <b>{p.name}</b> <span>{p.bench ? t("brief.fromBench", { pos: p.pos }) : p.pos}</span>
             </p>
-            <ul>
-              {p.tasks.map((x, k) => (
-                <li key={k}>
-                  {x.text}
-                  {x.left > 1 && <small> · {t("brief.left", { count: x.left })}</small>}
-                </li>
-              ))}
-            </ul>
+            <ul>{p.tasks.map(task)}</ul>
           </li>
         ))}
         {b.anyone.length > 0 && (
@@ -1394,13 +1410,8 @@ export function MatchBriefView({ s, inMatch = false }: { s: SessionPlan; inMatch
               <b>{t("brief.anyone")}</b>
             </p>
             <ul>
-              {b.anyone.slice(0, ANYONE_SHOWN).map((x, k) => (
-                <li key={k}>
-                  {x.text}
-                  {x.left > 1 && <small> · {t("brief.left", { count: x.left })}</small>}
-                </li>
-              ))}
-              {more > 0 && <li className="sq-muted">{t("brief.more", { count: more })}</li>}
+              {b.anyone.slice(0, ANYONE_SHOWN).map(task)}
+              {more > 0 && <li className="sq-brief-more">{t("brief.more", { count: more })}</li>}
             </ul>
           </li>
         )}
@@ -1448,7 +1459,7 @@ export function SquadQuick({ inMatch = false }: { inMatch?: boolean }) {
         <>
           <MatchBriefView s={s} />
           {st && (
-            <p className="sq-muted">
+            <p className="sq-muted sq-brief-stage">
               {st.to == null ? t("squads.plan.from", { from: st.from }) : t("squads.plan.range", { from: st.from, to: st.to })}
               {st.to != null && <> · {t("squads.plan.nextChange", { count: Math.max(0, st.to - s.played) })}</>}
             </p>

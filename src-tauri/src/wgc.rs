@@ -42,6 +42,7 @@ pub fn borderless(session: &GraphicsCaptureSession) {
     let _ = session.SetIsCursorCaptureEnabled(false);
     static NOTED: std::sync::Once = std::sync::Once::new();
     NOTED.call_once(|| {
+        BORDER_STUCK.store(!matches!(session.IsBorderRequired(), Ok(false)), std::sync::atomic::Ordering::Relaxed);
         let border = match session.IsBorderRequired() {
             Ok(false) => "off",
             Ok(true) => "still on",
@@ -49,6 +50,13 @@ pub fn borderless(session: &GraphicsCaptureSession) {
         };
         *BORDER_NOTE.lock().unwrap() = Some(format!("capture: borderless access {access} – Windows' yellow frame {border}"));
     });
+}
+
+/// Windows keeps its yellow frame on our capture (Windows 10 can't switch it off).
+static BORDER_STUCK: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+pub fn border_stuck() -> bool {
+    BORDER_STUCK.load(std::sync::atomic::Ordering::Relaxed)
 }
 
 /// The borderless-capture outcome, once (for the tracking log).

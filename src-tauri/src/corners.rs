@@ -43,7 +43,9 @@ fn shape(hwnd: HWND, i: usize, arm: i32, thick: i32) {
 /// Starts the corner marks (one thread owning four tiny windows) on the game window while the
 /// continuous capture of it runs.
 pub fn spawn() {
-    run(|| crate::watch::watching().then(crate::scan::game_window).flatten());
+    // Windows that can't drop its yellow capture frame (Windows 10) already show it all the way
+    // round: no second mark on top (user 2026-11-02 – "both the yellow border and the corners")
+    run(|| (crate::watch::watching() && !crate::wgc::border_stuck()).then(crate::scan::game_window).flatten());
 }
 
 /// The marks on `target()` whenever that window is in front.

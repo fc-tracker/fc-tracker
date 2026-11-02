@@ -59,6 +59,14 @@ pub struct Latest {
     pub body: Value,
 }
 
+/// One event's entry rules as read on screen.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ReadRules {
+    pub rules: crate::squads::EntryRules,
+    /// ms
+    pub at: u64,
+}
+
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct WebData {
     /// Request path (ids kept, query dropped) → its latest response.
@@ -85,6 +93,10 @@ pub struct WebData {
     pub names: Option<Latest>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub formations: Option<Latest>,
+    /// Live events' entry rules read on the event's page in the game (lower-case event name, no
+    /// "event" → the rules and when they were read). LIVE-EVENTS.md.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub event_rules: BTreeMap<String, ReadRules>,
     /// The club players' in-game attributes (the player bio's data), merged over syncs.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub attributes: Option<Latest>,
@@ -176,6 +188,11 @@ impl WebData {
     /// response wins per request, card sources are unions, the first known origin stays.
     pub fn merge(&mut self, other: WebData) {
         let newer = |a: &Option<Latest>, b: &Option<Latest>| b.as_ref().map(|l| l.at) > a.as_ref().map(|l| l.at);
+        for (k, v) in other.event_rules {
+            if self.event_rules.get(&k).is_none_or(|r| v.at > r.at) {
+                self.event_rules.insert(k, v);
+            }
+        }
         for (k, v) in other.latest {
             if self.latest.get(&k).is_none_or(|l| v.at > l.at) {
                 self.latest.insert(k, v);

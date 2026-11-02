@@ -10,7 +10,9 @@ import { boardName, champsNewsState, NAME_RE, setBoardName, setChampsNewsState, 
 import { startPrices } from "./prices";
 import { startGallerySets } from "./gallerySets";
 import { Account } from "./AccountSettings";
-import { startAccount } from "./account";
+import { startAccount, useAccount } from "./account";
+import { Avatar } from "./OverlayMenu";
+import { timeAgo } from "./SyncConflict";
 import { afterSync as objectivesAfterSync, startObjectives } from "./objectives";
 import SyncConflict from "./SyncConflict";
 import { RequiredUpdate, useUpdate } from "./UpdateRequired";
@@ -23,7 +25,7 @@ type Message = { kind: "ok" | "error"; text: () => string } | null;
 const ok = (text: () => string): Message => ({ kind: "ok", text });
 const fail = (err: unknown): Message => ({ kind: "error", text: () => tError(err) });
 
-type View = "home" | "help" | "settings";
+type View = "home" | "account" | "help" | "settings";
 
 export default function Launcher() {
   const [locale, setLocale] = useLocale();
@@ -50,7 +52,7 @@ export default function Launcher() {
       un.then((u) => u());
     };
   }, []);
-  const [settingsTab, setSettingsTab] = useState<"general" | "account" | "speed">("general");
+  const [settingsTab, setSettingsTab] = useState<"general" | "speed">("general");
   const [missingSide, setMissingSide] = useState<"left" | "right">("left");
   const [autostart, setAutostart] = useState<boolean | null>(null);
   const [usageOn, setUsageOn] = useState(usageEnabled);
@@ -256,6 +258,7 @@ export default function Launcher() {
         <Logo />
         <nav className="ln-nav">
           <RailButton icon={<IconHome />} label={t("nav.home")} on={view === "home"} onClick={() => setView("home")} />
+          <RailButton icon={<RailAvatar />} label={t("nav.account")} on={view === "account"} onClick={() => setView("account")} />
           <RailButton icon={<IconHelp />} label={t("nav.help")} on={view === "help"} onClick={() => setView("help")} />
           <RailButton icon={<IconGear />} label={t("nav.settings")} on={view === "settings"} onClick={() => setView("settings")} />
         </nav>
@@ -378,6 +381,7 @@ export default function Launcher() {
                 </Hero>
               )}
               {message && <p className={`ln-message ${message.kind}`}>{message.text()}</p>}
+              {!syncing && <AccountStrip onSignIn={() => setView("account")} />}
               {!syncing && <ChampsNewsCard on={champsOn} news={champsNews} onSwitch={switchChampsOn} onClose={closeChampsNews} />}
             </section>
 
@@ -440,6 +444,13 @@ export default function Launcher() {
           </>
         )}
 
+        {view === "account" && (
+          <section className="ln-page">
+            <h1>{t("nav.account")}</h1>
+            <Account />
+          </section>
+        )}
+
         {view === "help" && <Help />}
 
         {view === "settings" && (
@@ -447,15 +458,14 @@ export default function Launcher() {
             <h1>{t("nav.settings")}</h1>
             <nav className="help-bar settings-tabs" aria-label={t("nav.settings")}>
               <span className="help-tabs">
-                {(["general", "account", "speed"] as const).map((tab) => (
+                {(["general", "speed"] as const).map((tab) => (
                   <button key={tab} className={settingsTab === tab ? "on" : ""} aria-pressed={settingsTab === tab} onClick={() => setSettingsTab(tab)}>
-                    {t(tab === "general" ? "settings.general" : tab === "account" ? "settings.account" : "speed.tab")}
+                    {t(tab === "general" ? "settings.general" : "speed.tab")}
                   </button>
                 ))}
               </span>
             </nav>
             {settingsTab === "speed" && <Speed />}
-            {settingsTab === "account" && <Account />}
             {settingsTab === "general" && (
             <>
             <div className="ln-form">
@@ -780,6 +790,50 @@ function InfoMark({ text }: { text: string }) {
     </span>
   );
 }
+
+/** Home: the account in one visible line – signed out it asks to sign in, signed in it shows who
+ *  and when the last sync was, with the way to the dashboard on fc-tracker.com. */
+function AccountStrip({ onSignIn }: { onSignIn: () => void }) {
+  const acc = useAccount();
+  if (acc.status === "loading") return null;
+  if (acc.status === "out")
+    return (
+      <div className="ln-acct out">
+        <span className="ln-acct-mark" aria-hidden="true" />
+        <p>
+          <b>{t("acct.strip.outTitle")}</b> {t("acct.strip.outText")}
+        </p>
+        <button className="ln-btn small" onClick={onSignIn}>
+          {t("acct.strip.signIn")}
+        </button>
+      </div>
+    );
+  const s = acc.sync;
+  const line =
+    s.phase === "syncing" ? t("account.syncing") : s.phase === "conflict" ? t("account.conflict.pending") : s.phase === "error" ? tError(s.error) : s.at ? t("account.synced", { when: timeAgo(s.at) }) : t("account.syncing");
+  return (
+    <div className="ln-acct">
+      <Avatar size={30} />
+      <p>
+        <b>{acc.user?.display_name ?? acc.user?.email}</b> {line}
+      </p>
+      <button className="ln-btn small ghost" onClick={() => api.openSite("/dashboard").catch(() => {})}>
+        {t("acct.dashboard")} ↗
+      </button>
+    </div>
+  );
+}
+
+/** The rail's account button: the profile picture / initial when signed in, a person otherwise. */
+function RailAvatar() {
+  const acc = useAccount();
+  return acc.status === "in" ? <Avatar size={24} /> : <IconPerson />;
+}
+const IconPerson = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M12 3a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Zm0 10.5c4.4 0 8 2.3 8 5.2V21H4v-2.3c0-2.9 3.6-5.2 8-5.2Z" />
+  </svg>
+);
 
 function RailButton({ icon, label, on, onClick }: { icon: ReactNode; label: string; on: boolean; onClick: () => void }) {
   return (

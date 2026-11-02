@@ -4,6 +4,8 @@ mod champions;
 mod clock;
 mod corners;
 mod diag;
+mod event_rules;
+mod evo_screen;
 mod fcsetup;
 mod gallery;
 mod gallery_sets;
@@ -1102,7 +1104,7 @@ fn squads_input(store: &store::Store) -> squads::Input {
         read_at: web.objectives.as_ref().map(|o| o.at),
         now_ms: now,
         evos: web.latest.iter().find(|(k, _)| k.ends_with("/academy/hub/v2")).map(|(_, v)| squads::evos_from_hub(&v.body)).unwrap_or_default(),
-        event_rules: Default::default(),
+        event_rules: web.event_rules.iter().map(|(k, r)| (k.clone(), r.rules.clone())).collect(),
     }
 }
 

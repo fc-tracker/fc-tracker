@@ -300,6 +300,8 @@ export type ToastPayload =
   | { kind: "squads-swap"; played: number; swaps: { pos: string; out: string; in: string; buy: boolean }[] }
   /** … or not yet (matches until the next change). */
   | { kind: "squads-match"; played: number; next: number | null }
+  | { kind: "evo"; evo: string; player: string; active: boolean }
+  | { kind: "rules"; event: string; min: number | null; max: number | null }
   | { kind: "match-reminder"; at: number; now?: boolean; needs: { player: string; evo: string; level: number; levels: number; start: boolean; bench?: boolean; at: number }[] }
   /** An incomplete set page: cards in the club can fill its open slots (names/points when certain). */
   | { kind: "fill"; set_name: string; count: number; names: string[]; points: number | null }

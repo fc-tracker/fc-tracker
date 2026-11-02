@@ -122,7 +122,26 @@ let squadPrefs: SquadPrefs | null = null;
 export const mockSquads = (): SquadsView => {
   const gaps = typeof location !== "undefined" && new URLSearchParams(location.search).has("squads-gaps");
   const v = (gaps ? squadsGaps : squadsDemo) as unknown as SquadsView;
-  return { ...v, read_at: Date.now() - 12 * 60_000, prefs: squadPrefs ?? v.prefs };
+  // the demo plan predates the match brief: the user's real Rivals brief (2026-11-02) stands in (design only)
+  const combos = v.combos?.map((c, i) => (i > 0 || c.brief ? c : { ...c, brief: MOCK_BRIEF }));
+  return { ...v, combos, read_at: Date.now() - 12 * 60_000, prefs: squadPrefs ?? v.prefs };
+};
+const MOCK_BRIEF: NonNullable<SquadsView["combos"][number]["brief"]> = {
+  before: [
+    { kind: "squad", text: "4-3-1-2", count: 8 },
+    { kind: "buy", text: "Herrera · CB", count: null },
+    { kind: "buy", text: "Hernández · LB", count: null },
+    { kind: "buy", text: "Paradela · CM", count: 10500 },
+    { kind: "use", text: "Mexico National team Away kit", count: null },
+    { kind: "use", text: "Ghoul Fest Animated TIFO", count: null },
+    { kind: "bench", text: "Therkildsen, Suhonen", count: null },
+  ],
+  players: [
+    { name: "Adeyemi", pos: "ST", bench: false, tasks: [{ text: "Score 10 goals", left: 10 }, { text: "Assist at least 1 goal in 7 separate matches", left: 7 }, { text: "Score at least 1 goal in 13 separate matches", left: 13 }, { text: "Score at least one Chip Shot goal in 5 separate matches", left: 3 }, { text: "Score 10 headers", left: 3 }] },
+    { name: "Marcos Llorente", pos: "RB", bench: false, tasks: [{ text: "Score at least 1 goal from outside the box in 10 separate matches", left: 2 }, { text: "Win 6 matches", left: 6 }] },
+    { name: "Mandžukić", pos: "ST", bench: false, tasks: [{ text: "Score 4 goals", left: 4 }] },
+  ],
+  anyone: [{ text: "Keep a clean sheet", left: 1 }, { text: "Win 3 matches", left: 3 }, { text: "Win 10 matches", left: 10 }, { text: "Score 2 goals", left: 2 }, { text: "Win 1 match", left: 1 }],
 };
 // the demo has no catalog: the cards the demo plan suggests stand in for a search
 export const mockSquadsSearch = (q: string): ClubEntry[] => {

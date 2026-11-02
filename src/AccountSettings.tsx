@@ -20,6 +20,7 @@ import {
   verifyCode,
   type Device,
 } from "./account";
+import { api } from "./api";
 import { t, tError } from "./i18n";
 import { timeAgo as ago } from "./SyncConflict";
 import { Avatar } from "./OverlayMenu";
@@ -329,6 +330,16 @@ function SignedIn() {
         </div>
         <button className="ln-btn small ghost" disabled={busy != null} onClick={() => { setBusy("out"); void signOut().finally(() => setBusy(null)); }}>
           {busy === "out" ? t("account.signingOut") : t("account.signOut")}
+        </button>
+      </div>
+
+      <div className="ln-row">
+        <div>
+          <b>{t("acct.dashboard")}</b>
+          <p>{t("acct.dashboardText")}</p>
+        </div>
+        <button className="ln-btn small" onClick={() => api.openSite("/dashboard").catch(() => {})}>
+          {t("acct.dashboard")} ↗
         </button>
       </div>
 

@@ -566,6 +566,8 @@ pub fn spawn(app: AppHandle) {
                         if matches!(page, Page::Other) {
                             champions_menu(&app, &frame);
                             squads_menu(&app, &frame);
+                            evo_menu(&app, &frame);
+                            event_rules_menu(&app, &frame);
                         }
                         on_preview = matches!(&page, Page::Swap { preview: Some(_), .. });
                         // A notice belongs to its screen: hide it on any other page.
@@ -765,6 +767,81 @@ fn squads_menu(app: &AppHandle, frame: &scan::Frame) {
     crate::objective_focus(app, *id);
     let _ = app.emit("squads-focus", *id);
     crate::show_notice(app, serde_json::json!({ "kind": "squads", "event": title }), 6);
+}
+
+/// Evolutions: an evolution activated or paused in the game (its detail says Active / Inactive) –
+/// the kept Evolutions hub follows at once, so the plan's bench and the match reminders do too
+/// (evo_screen.rs). A notice says so, once per change.
+fn evo_menu(app: &AppHandle, frame: &scan::Frame) {
+    if !frame.words.iter().any(|w| w.text == "Active" || w.text == "Inactive") {
+        return;
+    }
+    let state = app.state::<AppState>();
+    let seen = {
+        let mut store = state.store.lock().unwrap();
+        let Some(key) = store.web.latest.keys().find(|k| k.ends_with("/academy/hub/v2")).cloned() else { return };
+        let hub = &store.web.latest[&key].body;
+        let Some((slot, active)) = crate::evo_screen::read_screen(&frame.words, &crate::evo_screen::started_slots(hub)) else { return };
+        let s = hub.get("slots").and_then(serde_json::Value::as_array).and_then(|a| a.iter().find(|s| s.get("id").and_then(serde_json::Value::as_u64) == Some(slot)));
+        let evo = s.and_then(|s| s.get("slotName")).and_then(serde_json::Value::as_str).unwrap_or("").trim().to_string();
+        let item = s.and_then(|s| s.get("realPlayerId")).and_then(serde_json::Value::as_u64).unwrap_or(0);
+        let asset = s.and_then(|s| s.pointer("/player/assetId")).and_then(serde_json::Value::as_u64).unwrap_or(0);
+        let player = store.snapshot.items.get(&item).and_then(|i| i.name.clone()).or_else(|| store.snapshot.gallery.get(&asset).and_then(|c| c.name.clone())).unwrap_or_default();
+        let latest = store.web.latest.get_mut(&key).unwrap();
+        if !crate::evo_screen::apply(&mut latest.body, slot, active) {
+            return;
+        }
+        // newer than the last sync: the account carries it to the user's other devices
+        latest.at = crate::store::now_ms();
+        store.web_changed();
+        (evo, player, active)
+    };
+    let (evo, player, active) = seen;
+    log(&state.data_dir, &format!("evolutions: {evo} {} (read on screen)", if active { "active" } else { "paused" }));
+    let _ = app.emit("squads-changed", ());
+    crate::show_notice(app, serde_json::json!({ "kind": "evo", "evo": evo, "player": player, "active": active }), 6);
+}
+
+/// A live event's page with its entry rules (event_rules.rs): kept, the plan follows at once and the
+/// event gets its squad. Rules the reader can't make out yet are logged once per event with the
+/// screen's text, so the reader can learn the wording – never taken as "any card".
+fn event_rules_menu(app: &AppHandle, frame: &scan::Frame) {
+    static NOTED: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
+    let state = app.state::<AppState>();
+    let read = {
+        let store = state.store.lock().unwrap();
+        let Some(o) = store.web.objectives.as_ref() else { return };
+        let events = crate::event_rules::event_names(&o.body);
+        if events.is_empty() {
+            return;
+        }
+        crate::event_rules::read_screen(&frame.words, &events)
+    };
+    match read {
+        Some(crate::event_rules::Read::Rules(event, rules)) => {
+            {
+                let mut store = state.store.lock().unwrap();
+                if store.web.event_rules.get(&event).is_some_and(|r| r.rules == rules) {
+                    return;
+                }
+                store.web.event_rules.insert(event.clone(), crate::webdata::ReadRules { rules: rules.clone(), at: crate::store::now_ms() });
+                store.web_changed();
+            }
+            log(&state.data_dir, &format!("event rules: {event} read – rating {:?}–{:?}", rules.min_rating, rules.max_rating));
+            let _ = app.emit("squads-changed", ());
+            crate::show_notice(app, serde_json::json!({ "kind": "rules", "event": event, "min": rules.min_rating, "max": rules.max_rating }), 6);
+        }
+        Some(crate::event_rules::Read::Unread(event)) => {
+            let mut noted = NOTED.lock().unwrap();
+            if noted.contains(&event) {
+                return;
+            }
+            noted.push(event.clone());
+            let text: String = frame.words.iter().map(|w| w.text.as_str()).collect::<Vec<_>>().join(" ");
+            log(&state.data_dir, &format!("event rules: {event} – requirements on screen not read yet: {}", text.chars().take(600).collect::<String>()));
+        }
+        None => {}
+    }
 }
 
 /// One Champions screen to the tracker: logged (no gamertags in the log), saved, sent to the UI.
