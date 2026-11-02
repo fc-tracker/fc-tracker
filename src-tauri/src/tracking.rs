@@ -569,6 +569,7 @@ pub fn spawn(app: AppHandle) {
                             evo_menu(&app, &frame);
                             event_rules_menu(&app, &frame);
                             objectives_screen_menu(&app, &frame);
+                            squad_screen_menu(&app, &frame);
                         }
                         on_preview = matches!(&page, Page::Swap { preview: Some(_), .. });
                         // A notice belongs to its screen: hide it on any other page.
@@ -774,7 +775,11 @@ fn squads_menu(app: &AppHandle, frame: &scan::Frame) {
 /// the kept Evolutions hub follows at once, so the plan's bench and the match reminders do too
 /// (evo_screen.rs). A notice says so, once per change.
 fn evo_menu(app: &AppHandle, frame: &scan::Frame) {
-    if !frame.words.iter().any(|w| w.text == "Active" || w.text == "Inactive") {
+    if !frame.words.iter().any(|w| matches!(w.text.as_str(), "Active" | "Inactive" | "Complete" | "Claim")) {
+        // an evolution started in the game: not in the kept hub yet – the next sync brings it
+        if frame.words.windows(2).any(|w| w[0].text == "Evolution" && w[1].text == "Started") {
+            evo_started(app);
+        }
         return;
     }
     let state = app.state::<AppState>();
@@ -782,25 +787,50 @@ fn evo_menu(app: &AppHandle, frame: &scan::Frame) {
         let mut store = state.store.lock().unwrap();
         let Some(key) = store.web.latest.keys().find(|k| k.ends_with("/academy/hub/v2")).cloned() else { return };
         let hub = &store.web.latest[&key].body;
-        let Some((slot, active)) = crate::evo_screen::read_screen(&frame.words, &crate::evo_screen::started_slots(hub)) else { return };
+        let Some(seen) = crate::evo_screen::read(&frame.words, &crate::evo_screen::started_slots(hub)) else { return };
+        let (slot, active, level) = match seen {
+            crate::evo_screen::Seen::State(slot, active) => (slot, active, None),
+            crate::evo_screen::Seen::LevelDone(slot, level) => (slot, true, Some(level)),
+        };
         let s = hub.get("slots").and_then(serde_json::Value::as_array).and_then(|a| a.iter().find(|s| s.get("id").and_then(serde_json::Value::as_u64) == Some(slot)));
         let evo = s.and_then(|s| s.get("slotName")).and_then(serde_json::Value::as_str).unwrap_or("").trim().to_string();
         let item = s.and_then(|s| s.get("realPlayerId")).and_then(serde_json::Value::as_u64).unwrap_or(0);
         let asset = s.and_then(|s| s.pointer("/player/assetId")).and_then(serde_json::Value::as_u64).unwrap_or(0);
         let player = store.snapshot.items.get(&item).and_then(|i| i.name.clone()).or_else(|| store.snapshot.gallery.get(&asset).and_then(|c| c.name.clone())).unwrap_or_default();
         let latest = store.web.latest.get_mut(&key).unwrap();
-        if !crate::evo_screen::apply(&mut latest.body, slot, active) {
+        let changed = match level {
+            Some(l) => crate::evo_screen::apply_level(&mut latest.body, slot, l),
+            None => crate::evo_screen::apply(&mut latest.body, slot, active),
+        };
+        if !changed {
             return;
         }
         // newer than the last sync: the account carries it to the user's other devices
         latest.at = crate::store::now_ms();
         store.web_changed();
-        (evo, player, active)
+        (evo, player, active, level)
     };
-    let (evo, player, active) = seen;
-    log(&state.data_dir, &format!("evolutions: {evo} {} (read on screen)", if active { "active" } else { "paused" }));
+    let (evo, player, active, level) = seen;
+    let what = match level {
+        Some(l) => format!("level {l} done"),
+        None => (if active { "active" } else { "paused" }).to_string(),
+    };
+    log(&state.data_dir, &format!("evolutions: {evo} {what} (read on screen)"));
     let _ = app.emit("squads-changed", ());
-    crate::show_notice(app, serde_json::json!({ "kind": "evo", "evo": evo, "player": player, "active": active }), 6);
+    crate::show_notice(app, serde_json::json!({ "kind": "evo", "evo": evo, "player": player, "active": active, "level": level }), 6);
+}
+
+/// "Evolution Started" in the game: the new evolution isn't in the last sync's hub – a sync is
+/// suggested (once per run) so its player joins the plan's bench.
+fn evo_started(app: &AppHandle) {
+    static ONCE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+    if ONCE.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    let state = app.state::<AppState>();
+    log(&state.data_dir, "evolutions: a new evolution was started in the game – a sync brings it into the plan");
+    state.sync_suggested.store(true, Ordering::SeqCst);
+    let _ = app.emit("sync-suggested", true);
 }
 
 /// A live event's page with its entry rules (event_rules.rs): kept, the plan follows at once and the
@@ -830,7 +860,7 @@ fn event_rules_menu(app: &AppHandle, frame: &scan::Frame) {
             }
             log(&state.data_dir, &format!("event rules: {event} read – rating {:?}–{:?}", rules.min_rating, rules.max_rating));
             let _ = app.emit("squads-changed", ());
-            crate::show_notice(app, serde_json::json!({ "kind": "rules", "event": event, "min": rules.min_rating, "max": rules.max_rating }), 6);
+            crate::show_notice(app, serde_json::json!({ "kind": "rules", "event": event, "min": rules.min_rating, "max": rules.max_rating, "cap": rules.cap }), 6);
         }
         Some(crate::event_rules::Read::Unread(event)) => {
             let mut noted = NOTED.lock().unwrap();
@@ -852,12 +882,18 @@ fn objectives_screen_menu(app: &AppHandle, frame: &scan::Frame) {
         return;
     }
     let state = app.state::<AppState>();
-    let (title, changed) = {
+    let (title, changed, done, before, after) = {
         let mut store = state.store.lock().unwrap();
         let Some(o) = store.web.objectives.as_ref() else { return };
         let groups = crate::squads::groups_from_value(&o.body);
         let Some((group, seen)) = crate::objectives_screen::read_screen(&frame.words, &groups) else { return };
-        let title = groups.iter().find(|g| g.id == group).map(|g| g.title.clone()).unwrap_or_default();
+        let g = groups.iter().find(|g| g.id == group);
+        let title = g.map(|g| g.title.clone()).unwrap_or_default();
+        // objectives finished since the last read (claimed or about to be): the squad may change
+        let done: Vec<String> = g
+            .map(|g| g.objectives.iter().filter(|o| !o.done && seen.iter().any(|(id, p)| *id == o.id && *p >= o.target)).map(|o| o.name.clone()).collect())
+            .unwrap_or_default();
+        let before = (!done.is_empty()).then(|| crate::squads_input(&store));
         let o = store.web.objectives.as_mut().unwrap();
         let changed = crate::objectives_screen::apply(&mut o.body, group, &seen);
         if changed == 0 {
@@ -866,11 +902,88 @@ fn objectives_screen_menu(app: &AppHandle, frame: &scan::Frame) {
         // the objectives are as new as this look (the plan counts matches from here)
         o.at = crate::store::now_ms();
         store.web_changed();
-        (title, changed)
+        let after = before.is_some().then(|| crate::squads_input(&store));
+        (title, changed, done, before, after)
     };
-    log(&state.data_dir, &format!("objectives: {title} – {changed} read from the game"));
+    log(&state.data_dir, &format!("objectives: {title} – {changed} read from the game{}", if done.is_empty() { String::new() } else { format!(", done: {}", done.join(", ")) }));
     let _ = app.emit("squads-changed", ());
-    crate::show_notice(app, serde_json::json!({ "kind": "objectives-read", "event": title, "count": changed }), 5);
+    let (Some(before), Some(after)) = (before, after) else {
+        crate::show_notice(app, serde_json::json!({ "kind": "objectives-read", "event": title, "count": changed }), 5);
+        return;
+    };
+    // An objective is done: the plan without it – the players to change, more objectives or a
+    // better squad (user 2026-11-02: "squad changes")
+    let prefs = state.ui.lock().unwrap().squads.clone();
+    let app2 = app.clone();
+    std::thread::spawn(move || {
+        let (b, a) = (crate::squads::plan(&before, &prefs), crate::squads::plan(&after, &prefs));
+        let (Some(bs), Some(as_)) = (b.combos.first(), a.combos.first()) else { return };
+        let slots = |c: &crate::squads::ComboPlan| c.squad.as_ref().map(|q| q.slots.clone()).unwrap_or_default();
+        let (old, new) = (slots(bs), slots(as_));
+        let swaps: Vec<serde_json::Value> = new
+            .iter()
+            .enumerate()
+            .filter(|(i, s)| old.get(*i).is_none_or(|o| o.def_id != s.def_id))
+            .map(|(i, s)| serde_json::json!({ "pos": s.pos, "out": old.get(i).map(|o| o.name.clone()), "in": s.name, "buy": !s.owned }))
+            .collect();
+        let payload = serde_json::json!({ "kind": "squad-changes", "done": done.first(), "swaps": swaps, "counted": as_.counted, "place": as_.place_name });
+        log(&app2.state::<AppState>().data_dir, &format!("objectives done: the squad changes in {} place(s), {} objectives now", swaps.len(), as_.counted));
+        let a3 = app2.clone();
+        let _ = app2.run_on_main_thread(move || crate::show_notice(&a3, payload, 10));
+    });
+}
+
+/// The game's Squad screen (squad_screen.rs): the cards on the pitch against the plan's XI – the
+/// match brief ticks "Build the squad" and the players already in (event `squad-seen`). In the
+/// background (a card-by-card read takes a moment), at most every 3 s.
+fn squad_screen_menu(app: &AppHandle, frame: &scan::Frame) {
+    static BUSY: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+    static LAST: std::sync::Mutex<Option<std::time::Instant>> = std::sync::Mutex::new(None);
+    if !crate::squad_screen::is_squad_screen(&frame.words) {
+        // another Ultimate Team screen (not Objectives): a panel the app opened goes again
+        if *app.state::<AppState>().session.lock().unwrap() == GameSession::InUltimateTeam && !frame.words.iter().any(|w| w.text == "Objectives") {
+            crate::auto_panel(app, false);
+        }
+        return;
+    }
+    // the Squad screen: the side panel with the plan's squad and the brief
+    crate::auto_panel(app, true);
+    if BUSY.load(Ordering::SeqCst) {
+        return;
+    }
+    {
+        let mut last = LAST.lock().unwrap();
+        if last.is_some_and(|t| t.elapsed() < Duration::from_secs(3)) {
+            return;
+        }
+        *last = Some(std::time::Instant::now());
+    }
+    BUSY.store(true, Ordering::SeqCst);
+    let frame = scan::Frame { width: frame.width, height: frame.height, bgra: frame.bgra.clone(), words: frame.words.clone() };
+    let app = app.clone();
+    std::thread::spawn(move || {
+        let seen = crate::squad_screen::read_pitch(&frame);
+        let state = app.state::<AppState>();
+        let (input, prefs) = (crate::squads_input(&state.store.lock().unwrap()), state.ui.lock().unwrap().squads.clone());
+        let view = crate::squads::plan(&input, &prefs);
+        BUSY.store(false, Ordering::SeqCst);
+        let Some(xi) = view.combos.first().and_then(|c| c.squad.as_ref()) else { return };
+        let plan: Vec<(String, String, u32)> = xi.slots.iter().map(|s| (s.pos.clone(), s.name.clone(), s.rating)).collect();
+        let confirmed = crate::squad_screen::confirmed(&plan, &seen);
+        let missing = crate::squad_screen::missing(&plan, &seen);
+        if confirmed.is_empty() && missing.is_none() {
+            return;
+        }
+        log(&state.data_dir, &format!("squad screen: {} cards read, {} of the plan's XI seen{}", seen.len(), confirmed.len(), missing.as_ref().map_or(String::new(), |m| format!(", {} to change", m.len()))));
+        let _ = app.emit(
+            "squad-seen",
+            serde_json::json!({
+                "matched": confirmed.len(), "total": plan.len(), "complete": missing.is_some(), "confirmed": confirmed,
+                "missing": missing.unwrap_or_default().iter().map(|(p, n)| serde_json::json!({ "pos": p, "name": n })).collect::<Vec<_>>(),
+                "at": crate::store::now_ms(),
+            }),
+        );
+    });
 }
 
 /// One Champions screen to the tracker: logged (no gamertags in the log), saved, sent to the UI.
@@ -965,6 +1078,8 @@ pub fn set_session(app: &AppHandle, next: GameSession) {
     // A match starts: step aside (no window of ours over the game – Windows can then present
     // it like fullscreen). After it: the missing list comes back if it was open.
     if next == GameSession::InMatch {
+        // the kit selection / matchmaking: the match brief in the side panel
+        crate::auto_panel(app, true);
         crate::enter_match_mode(app);
     } else if matches!(next, GameSession::InUltimateTeam | GameSession::MainMenu | GameSession::UtSelected) {
         // Back in a menu (also via Closed/Unknown, e.g. the game lost focus mid-match).

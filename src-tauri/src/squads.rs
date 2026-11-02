@@ -1735,17 +1735,22 @@ fn rush_counts(text: &str, req: Option<&Req>) -> bool {
 pub struct EntryRules {
     pub min_rating: Option<u32>,
     pub max_rating: Option<u32>,
+    /// "88 and Higher OVR Players: Max. 1 in Squad" → [88, 1] (Ghoul Fest, read 2026-11-02).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cap: Option<[u32; 2]>,
 }
 
 impl EntryRules {
+    /// May this card play? A cap keeps every card at or above its rating out – always within the
+    /// rule (at most N), though one such card would be allowed; the plan never breaks it.
     pub fn allows(&self, p: &Player) -> bool {
-        self.min_rating.is_none_or(|m| p.rating >= m) && self.max_rating.is_none_or(|m| p.rating <= m)
+        self.min_rating.is_none_or(|m| p.rating >= m) && self.max_rating.is_none_or(|m| p.rating <= m) && self.cap.is_none_or(|[r, _]| p.rating < r)
     }
 }
 
 /// Entry rules confirmed by hand (lower-case event name → rules). Silver Bullets Flash Rush: silver
 /// cards only, 65–74 (user 2026-11-01).
-const KNOWN_RULES: &[(&str, EntryRules)] = &[("silver bullets flash rush", EntryRules { min_rating: Some(65), max_rating: Some(74) })];
+const KNOWN_RULES: &[(&str, EntryRules)] = &[("silver bullets flash rush", EntryRules { min_rating: Some(65), max_rating: Some(74), cap: None })];
 
 /// What a place lets in: Some(rules) known (an empty set = any card), None = a live event whose
 /// rules aren't read yet – no squad is suggested for it (user 2026-11-01: be blunt).
@@ -4011,7 +4016,7 @@ mod tests {
         let s = &v.combos[0];
         assert_eq!(s.place, sb);
         assert!(s.rush_format && s.squad.is_none() && !s.rules_unread);
-        assert_eq!(s.rules, Some(EntryRules { min_rating: Some(65), max_rating: Some(74) }));
+        assert_eq!(s.rules, Some(EntryRules { min_rating: Some(65), max_rating: Some(74), cap: None }));
         // one player within the rules – the striker, the event asks for a striker's goals
         let p = s.rush.as_ref().expect("a Rush player");
         assert_eq!((p.name.as_str(), p.rating), ("Silverst", 70));

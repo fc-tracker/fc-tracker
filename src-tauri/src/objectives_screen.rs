@@ -172,6 +172,13 @@ mod tests {
                 let g = groups.iter().find(|x| x.id == g).unwrap();
                 (g.title.clone(), seen.iter().map(|(id, p)| format!("{} {p}/{}", g.objectives.iter().find(|o| o.id == *id).unwrap().name, g.objectives.iter().find(|o| o.id == *id).unwrap().target)).collect::<Vec<_>>())
             });
+            if std::env::var("FCT_WORDS").is_ok() {
+                println!("   words: {}", frame.words.iter().map(|w| w.text.as_str()).collect::<Vec<_>>().join(" "));
+            }
+            if crate::squad_screen::is_squad_screen(&frame.words) {
+                println!("   squad: {:?}", crate::squad_screen::cards(&frame.words, frame.width, frame.height));
+                println!("   squad (pitch read): {:?}", crate::squad_screen::read_pitch(&frame));
+            }
             println!("{name}
    objectives: {read:?}
    evo: {:?}

@@ -20,6 +20,7 @@ mod remind;
 mod scan;
 mod session;
 mod speed;
+mod squad_screen;
 mod squads;
 mod store;
 mod sync_data;
@@ -60,6 +61,8 @@ struct AppState {
     data_dir: std::path::PathBuf,
     /// The missing list was open when a match started (shown again afterwards).
     missing_before_match: AtomicBool,
+    /// The side panel is open because the app opened it (`auto_panel`) – the app may close it again.
+    missing_auto: AtomicBool,
     /// The side panel shows two tabs for its set; the first double-tap switched tab already.
     /// Where the user is in FC 27 (see session.rs).
     session: Mutex<session::GameSession>,
@@ -288,9 +291,47 @@ fn side_switch_watch(app: AppHandle) {
         .expect("failed to start side switch watcher");
 }
 
+/// The side panel by itself (Settings → "Opens by itself", on by default): `open` where it helps,
+/// closed again only when it was the app that opened it – a panel the user opened stays.
+pub(crate) fn auto_panel(app: &AppHandle, open: bool) {
+    if !app.state::<AppState>().ui.lock().unwrap().auto_panel {
+        return;
+    }
+    let app2 = app.clone();
+    let _ = app.run_on_main_thread(move || {
+        let Some(win) = app2.get_webview_window(MISSING) else { return };
+        let state = app2.state::<AppState>();
+        let shown = ui::is_shown(&win);
+        if open && !shown {
+            ui::place_missing(&win, &state.ui.lock().unwrap());
+            ui::set_click_through(&win, true);
+            ui::show_without_focus(&win);
+            state.missing_auto.store(true, Ordering::SeqCst);
+            let _ = app2.emit("missing-visible", true);
+        } else if !open && shown && state.missing_auto.swap(false, Ordering::SeqCst) {
+            ui::hide(&win);
+            let _ = app2.emit("missing-visible", false);
+        }
+    });
+}
+
+#[tauri::command]
+fn set_auto_panel(app: AppHandle, on: bool) -> ui::UiPrefs {
+    let prefs = {
+        let state = app.state::<AppState>();
+        let mut p = state.ui.lock().unwrap();
+        p.auto_panel = on;
+        p.clone()
+    };
+    save_ui(&app);
+    prefs
+}
+
 /// The missing-players list never takes focus or clicks, so the game keeps mouse and controller.
 fn toggle_missing(app: &AppHandle) {
     let Some(win) = app.get_webview_window(MISSING) else { return };
+    // the user's own toggle: the app no longer closes it by itself
+    app.state::<AppState>().missing_auto.store(false, Ordering::SeqCst);
     // Double-tap View / Create opens and closes – nothing else (user 2026-10-17: a double-tap that
     // sometimes switched the tab instead was confusing). The tab follows what the app knows.
     if ui::is_shown(&win) {
@@ -1505,6 +1546,7 @@ pub fn run() {
                 ui: Mutex::new(ui::UiPrefs::load(&data_dir)),
                 data_dir: data_dir.clone(),
                 missing_before_match: AtomicBool::new(false),
+                missing_auto: AtomicBool::new(false),
                 session: Mutex::new(if game::is_running() { session::GameSession::Unknown } else { session::GameSession::Closed }),
                 notice_until: Mutex::new(None),
                 played_ut: AtomicBool::new(false),
@@ -1722,6 +1764,7 @@ pub fn run() {
             set_diagnostics,
             open_diagnostics,
             set_after_play,
+            set_auto_panel,
             champions_data,
             squads_plan,
             squads_search,

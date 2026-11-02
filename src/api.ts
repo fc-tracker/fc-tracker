@@ -301,8 +301,9 @@ export type ToastPayload =
   /** … or not yet (matches until the next change). */
   | { kind: "squads-match"; played: number; next: number | null }
   | { kind: "evo"; evo: string; player: string; active: boolean }
-  | { kind: "rules"; event: string; min: number | null; max: number | null }
+  | { kind: "rules"; event: string; min: number | null; max: number | null; cap?: [number, number] | null }
   | { kind: "objectives-read"; event: string; count: number }
+  | { kind: "squad-changes"; done: string | null; swaps: { pos: string; out: string | null; in: string; buy: boolean }[]; counted: number; place: string }
   | { kind: "match-reminder"; at: number; now?: boolean; needs: { player: string; evo: string; level: number; levels: number; start: boolean; bench?: boolean; at: number }[] }
   /** An incomplete set page: cards in the club can fill its open slots (names/points when certain). */
   | { kind: "fill"; set_name: string; count: number; names: string[]; points: number | null }
@@ -349,6 +350,8 @@ export interface UiPrefs {
   missing_side: "left" | "right";
   /** FC 27 closed after Ultimate Team: remind to sync (default), sync by itself, or nothing. */
   after_play: AfterPlay;
+  /** The side panel opens by itself (Squad screen, kit selection). */
+  auto_panel?: boolean;
   /** Champions tracker (beta) on / off. */
   champions?: boolean;
   /** Settings → Squads. */
@@ -480,6 +483,8 @@ const appApi = {
   setAutostart: (on: boolean) => (browserDev ? Promise.resolve(on) : invoke<boolean>("set_autostart", { on })),
   /** Opens a page of fc-tracker.com, e.g. "/download". */
   openSite: (path: string) => (browserDev ? Promise.resolve() : invoke<void>("open_site", { path })),
+  setAutoPanel: (on: boolean) =>
+    browserDev ? Promise.resolve<UiPrefs>({ mode: "panel", missing_side: "left", after_play: "remind", auto_panel: on }) : invoke<UiPrefs>("set_auto_panel", { on }),
   setAfterPlay: (mode: AfterPlay) =>
     browserDev ? Promise.resolve<UiPrefs>({ mode: "panel", missing_side: "left", after_play: mode }) : invoke<UiPrefs>("set_after_play", { mode }),
   syncSuggested: () => (browserDev ? Promise.resolve(new URLSearchParams(location.search).has("suggest")) : invoke<boolean>("sync_suggested")),
@@ -725,9 +730,16 @@ const appEvents = {
   /** The app read an event's hub in the game: its squad checklist (the objective group id). */
   onSquadsFocus: (cb: (id: number) => void) => (browserDev ? noListen() : listen<number>("squads-focus", (e) => cb(e.payload))),
   onSquadsChanged: (cb: () => void) => (browserDev ? noListen() : listen("squads-changed", () => cb())),
+  /** The game's Squad screen was read: its XI compared with the plan's (live squad check). */
+  onSquadSeen: (cb: (s: SquadSeen) => void) => (browserDev ? noListen() : listen<SquadSeen>("squad-seen", (e) => cb(e.payload))),
   /** The update watcher found a release (or one went away) – at once, no reload needed. */
   onUpdate: (cb: (u: UpdateInfo | null) => void) => (browserDev ? noListen() : listen<UpdateInfo | null>("update", (e) => cb(e.payload))),
 };
+
+/** The game's Squad screen compared with the plan's XI: who still has to come in. */
+/** The game's Squad screen read: `confirmed` = planned players seen on the pitch; `missing` (who is
+ *  still to come in) only counts when `complete` – the whole XI was read. */
+export type SquadSeen = { matched: number; total: number; missing: { pos: string; name: string }[]; confirmed: string[]; complete: boolean; at: number };
 
 export const events: typeof appEvents = IS_WEB
   ? {
@@ -743,6 +755,7 @@ export const events: typeof appEvents = IS_WEB
       onChampions: () => noListen(),
       onSquadsFocus: () => noListen(),
       onSquadsChanged: () => noListen(),
+      onSquadSeen: () => noListen(),
       onUpdate: () => noListen(),
     }
   : appEvents;

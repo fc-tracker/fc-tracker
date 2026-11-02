@@ -861,6 +861,15 @@ export default function Overlay() {
         else if (action === "back") api.hideOverlay();
         return;
       }
+      if (section === "squads") {
+        // like the game's own sub-tabs: L1/R1 (Q/E) the squad tabs (1. Rivals, 2. Ghoul Fest …),
+        // ◀ / ▶ where to play, up/down scroll
+        if (action === "prev_category" || action === "next_category") window.dispatchEvent(new CustomEvent("fct:squads-session", { detail: action === "next_category" ? 1 : -1 }));
+        else if (action === "left" || action === "right") window.dispatchEvent(new CustomEvent("fct:squads-place", { detail: action === "right" ? 1 : -1 }));
+        else if (action === "up" || action === "down") document.querySelector(".planner-body .detail-wrap")?.scrollBy({ top: action === "down" ? 240 : -240, behavior: "smooth" });
+        else if (action === "back") api.hideOverlay();
+        return;
+      }
       if (section === "planner") {
         // L1/R1 (Q/E) switch the goal, up/down scroll the plan
         if (action === "prev_category" || action === "next_category") window.dispatchEvent(new CustomEvent("fct:planner-goal", { detail: action === "next_category" ? 1 : -1 }));
@@ -1245,6 +1254,8 @@ export default function Overlay() {
             <>
               <span><PadButton id="l2" layout={pad} size={20} /><PadButton id="r2" layout={pad} size={20} /> {t("overlay.hintSection")}</span>
               {section !== "champions" && section !== "squads" && <span><PadButton id="l1" layout={pad} size={20} /><PadButton id="r1" layout={pad} size={20} /> {t(section === "planner" ? "value.hintGoal" : "overlay.hintCategory")}</span>}
+              {section === "squads" && <span><PadButton id="l1" layout={pad} size={20} /><PadButton id="r1" layout={pad} size={20} /> {t("squads.hintSession")}</span>}
+              {section === "squads" && <span><PadButton id="left" layout={pad} size={20} /><PadButton id="right" layout={pad} size={20} /> {t("squads.hintPlace")}</span>}
               <span><PadButton id="up" layout={pad} size={20} /><PadButton id="down" layout={pad} size={20} /> {t(scrolls ? "value.hintScroll" : "overlay.hintSet")}</span>
               {enterHint && <span><PadButton id="south" layout={pad} size={20} /> {t(enterHint)}</span>}
               <span><PadButton id="east" layout={pad} size={20} /> {t("overlay.hintBack")}</span>
@@ -1256,6 +1267,8 @@ export default function Overlay() {
             <>
               <span><kbd>Tab</kbd> {t("overlay.hintSection")}</span>
               {section !== "champions" && section !== "squads" && <span><kbd>Q</kbd> <kbd>E</kbd> {t(section === "planner" ? "value.hintGoal" : "overlay.hintCategory")}</span>}
+              {section === "squads" && <span><kbd>Q</kbd> <kbd>E</kbd> {t("squads.hintSession")}</span>}
+              {section === "squads" && <span><kbd>←</kbd> <kbd>→</kbd> {t("squads.hintPlace")}</span>}
               <span><kbd>Ctrl</kbd>+<kbd>scroll</kbd> {t("overlay.zoom")}</span>
               <span><kbd>↑</kbd> <kbd>↓</kbd> {t(scrolls ? "value.hintScroll" : "overlay.hintSet")}</span>
               {enterHint && <span><kbd>Enter</kbd> {t(enterHint)}</span>}

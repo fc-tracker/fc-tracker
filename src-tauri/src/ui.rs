@@ -38,6 +38,14 @@ pub struct UiPrefs {
     /// Settings → Match reminders: the match clock read in every match, and when to remind.
     #[serde(default)]
     pub reminders: crate::remind::Prefs,
+    /// The side panel opens by itself where it helps (the Squad screen, the kit selection before a
+    /// match) and closes again when it opened itself (user 2026-11-02: double-tapping View is clumsy).
+    #[serde(default = "yes")]
+    pub auto_panel: bool,
+}
+
+fn yes() -> bool {
+    true
 }
 
 fn remind() -> String {
@@ -50,7 +58,7 @@ fn default_side() -> String {
 
 impl Default for UiPrefs {
     fn default() -> Self {
-        Self { mode: "panel".into(), panel: None, missing_side: default_side(), after_play: remind(), game_exe: None, tracking: Default::default(), champions: false, squads: Default::default(), reminders: Default::default() }
+        Self { mode: "panel".into(), panel: None, missing_side: default_side(), after_play: remind(), game_exe: None, tracking: Default::default(), champions: false, squads: Default::default(), reminders: Default::default(), auto_panel: true }
     }
 }
 

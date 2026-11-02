@@ -1691,3 +1691,39 @@ button.sq-card.must { box-shadow: inset 0 0 0 1px var(--accent); }
 .ml-swap-out, .ml-swap-in { gap: 8px; }
 .ml-swaps .ml-rating { flex: none; min-width: 30px; padding: 4px 6px 3px; font-size: 15px; }
 .ml-swaps p { font-size: 12px; }
+
+/* Objectives, lean by default (user 2026-11-02): the match brief folded to one line in the full
+   overlay (the side panel shows it whole), every event folded, objective texts on demand. */
+.sq-fold {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-width: 0; padding: 8px 12px;
+  background: var(--bg-2); color: var(--text); border: 0; cursor: pointer; text-align: left;
+  font: 500 13px/1.3 var(--font-body);
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+  transition: background var(--dur) var(--ease);
+}
+.sq-fold:hover, .sq-fold:focus-visible { background: var(--surface-hi); }
+.sq-fold { flex-wrap: wrap; row-gap: 2px; }
+.sq-fold b { font: 700 14px/1.2 var(--font-display); letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; }
+.sq-fold small { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sq-fold .sq-fold-where { flex-basis: 100%; padding-left: 17px; font-size: 11px; }
+.sq-fold-mark { flex: none; width: 7px; height: 7px; border-right: 2px solid var(--accent); border-bottom: 2px solid var(--accent); transform: rotate(-45deg); transition: transform var(--dur) var(--ease); }
+.sq-fold[aria-expanded="true"] .sq-fold-mark { transform: rotate(45deg); }
+.sq-brief-fold { display: grid; gap: 6px; min-width: 0; }
+.sq-all.folded .sq-all-head { margin: 0; }
+.sq-all .sq-all-head .sq-fold { width: auto; flex: 1; }
+.sq-all .sq-fold .sq-section-title { margin: 0; }
+.sq-texts-toggle { display: flex; justify-content: flex-end; }
+.sq-texts-toggle .cat-tab { font-size: 11px; padding: 3px 10px; }
+/* live squad check: the game's Squad screen compared with the plan */
+.sq-check { display: inline-block; margin-left: 8px; color: var(--tag-gold); font-weight: 700; font-size: 12px; }
+.sq-check.ok { color: var(--accent-2); }
+.sq-check-mark { margin-left: 6px; color: var(--accent-2); font-weight: 800; }
+.sq-check-mark.miss { color: var(--muted); }
+.sq-brief-before .sq-check { display: block; margin: 2px 0 0; }
+/* controller hints on the Objectives tab rows (L1/R1 squad tabs, left/right where) */
+.sq-pad-hint { display: inline-flex; align-items: center; gap: 2px; color: var(--muted); vertical-align: middle; }
+.sq-pad-hint kbd { font: 700 10px/1 var(--font-body); padding: 2px 5px; border: 1px solid var(--line); color: var(--muted); }
+.sq-sessions { align-items: center; }
+@media (prefers-reduced-motion: reduce) {
+  .sq-fold, .sq-fold-mark { transition: none; }
+}

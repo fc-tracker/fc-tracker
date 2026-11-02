@@ -193,6 +193,25 @@ export default function Toast() {
     );
   }
 
+  // An objective done (read on the Objectives screen): the plan without it – who to change
+  if (toast.kind === "squad-changes") {
+    return (
+      <div className="toast read best" key={`squad-changes-${toast.done}`} role="status">
+        <span className="toast-mark read" aria-hidden="true" />
+        <div className="toast-body">
+          <p className="toast-title">{toast.swaps.length ? t("squadchg.title", { done: toast.done ?? "" }) : t("squadchg.keepTitle", { done: toast.done ?? "" })}</p>
+          {toast.swaps.slice(0, 4).map((w, i) => (
+            <p className="toast-line" key={i}>
+              {w.out ? t("squads.plan.swap", { out: w.out, in: w.in, pos: w.pos }) : t("squads.plan.in", { in: w.in, pos: w.pos })}
+              {w.buy ? ` · ${t("squads.toast.buy")}` : ""}
+            </p>
+          ))}
+          <p className="toast-line">{t("squadchg.line", { count: toast.counted, place: toast.place })}</p>
+        </div>
+      </div>
+    );
+  }
+
   // The game's Objectives screen: its real progress replaced the last sync's
   if (toast.kind === "objectives-read") {
     return (
@@ -208,7 +227,7 @@ export default function Toast() {
 
   // A live event's entry rules read on its page: its squad can be built now
   if (toast.kind === "rules") {
-    const line = toast.min != null && toast.max != null ? t("rules.notice.range", { min: toast.min, max: toast.max }) : toast.min != null ? t("rules.notice.min", { min: toast.min }) : toast.max != null ? t("rules.notice.max", { max: toast.max }) : t("rules.notice.any");
+    const line = toast.cap ? t("rules.notice.cap", { rating: toast.cap[0], count: toast.cap[1] }) : toast.min != null && toast.max != null ? t("rules.notice.range", { min: toast.min, max: toast.max }) : toast.min != null ? t("rules.notice.min", { min: toast.min }) : toast.max != null ? t("rules.notice.max", { max: toast.max }) : t("rules.notice.any");
     return (
       <div className="toast read best" key={`rules-${toast.event}`} role="status">
         <span className="toast-mark read" aria-hidden="true" />

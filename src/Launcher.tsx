@@ -44,6 +44,7 @@ export default function Launcher() {
   const [updating, setUpdating] = useState(false);
   const [version, setVersion] = useState("");
   const [afterPlay, setAfterPlay] = useState<AfterPlay>("remind");
+  const [autoPanel, setAutoPanel] = useState(true);
   const [suggested, setSuggested] = useState(false);
   useEffect(() => {
     api.syncSuggested().then(setSuggested).catch(() => {});
@@ -91,6 +92,7 @@ export default function Launcher() {
       .uiPrefs()
       .then((p) => {
         setAfterPlay(p.after_play);
+        setAutoPanel(p.auto_panel ?? true);
         setMissingSide(p.missing_side);
         setChampsOn(p.champions === true);
         setReminders(p.reminders ?? { on: true, at: [0, 45], sub_at: 70 });
@@ -657,6 +659,15 @@ export default function Launcher() {
                     </button>
                   ))}
                 </div>
+              </div>
+              <div className="ln-row">
+                <div>
+                  <b>{t("settings.autoPanel")}</b>
+                  <p>{t("settings.autoPanelText")}</p>
+                </div>
+                <button className={`ln-btn small ${autoPanel ? "" : "ghost"}`} aria-pressed={autoPanel} onClick={() => api.setAutoPanel(!autoPanel).then((p) => setAutoPanel(p.auto_panel ?? !autoPanel)).catch(() => {})}>
+                  {autoPanel ? t("settings.on") : t("settings.off")}
+                </button>
               </div>
               <div className="ln-row">
                 <div>

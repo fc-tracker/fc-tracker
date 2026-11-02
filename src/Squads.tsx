@@ -5,13 +5,14 @@
 // Below, every event with its checklist (mark done by hand). The same view in the app overlay and
 // on FC-Tracker Web; the side panel shows the quick version (SquadQuick).
 import { useEffect, useRef, useState, createContext, useContext } from "react";
-import { api, events, formatAge, IS_WEB } from "./api";
+import { api, events, formatAge, IS_WEB, type SquadSeen } from "./api";
 import { num } from "./format";
 import { Flag } from "./flags";
 import { t, type MessageKey } from "./i18n";
 import { defaultSquadPrefs, pitchRows, type ClubEntry, type EventPlan, type GetOption, type Mode, type ObjectiveView, type ReqView, type SessionItem, type BenchPick, type MatchBrief, type BriefTask, type SessionEvo, type SessionPlan, type SlotView, type SquadPrefs, type SquadView, type SquadsView, sameMode } from "./squadsData";
 import { removeSquad, saveSquad, useSavedSquads } from "./savedSquads";
 import { voteAvailability } from "./objectives";
+import { PadButton, usePadLayout } from "./padGlyphs";
 
 /** The XI as built now, kept to build later (in the game, from the dashboard, on another device). */
 function SaveButton({ e }: { e: Pick<EventPlan, "id" | "title" | "squad" | "reqs"> }) {
@@ -80,6 +81,48 @@ const writeEvent = (id: number) => {
     localStorage.setItem(EVENT_PREF, String(id));
   } catch {}
 };
+
+/** A remembered on/off for this viewer (a folded section): local only, a default without storage. */
+function useFlag(key: string, initial: boolean): [boolean, (v: boolean) => void] {
+  const [v, setV] = useState(() => {
+    try {
+      const s = localStorage.getItem(key);
+      return s == null ? initial : s === "1";
+    } catch {
+      return initial;
+    }
+  });
+  const set = (next: boolean) => {
+    setV(next);
+    try {
+      localStorage.setItem(key, next ? "1" : "0");
+    } catch {}
+  };
+  return [v, set];
+}
+
+/** The latest look at the game's Squad screen (live squad check), shared by every view of the window. */
+let lastSeen: SquadSeen | null = null;
+const seenListeners = new Set<(s: SquadSeen) => void>();
+let seenStarted = false;
+function useSquadSeen(): SquadSeen | null {
+  const [seen, setSeen] = useState(lastSeen);
+  useEffect(() => {
+    if (!seenStarted) {
+      seenStarted = true;
+      const push = (x: SquadSeen) => {
+        lastSeen = x;
+        seenListeners.forEach((l) => l(x));
+      };
+      void events.onSquadSeen(push);
+      // dev only: try the check without the game – window.dispatchEvent(new CustomEvent("fct:dev-squad-seen", { detail }))
+      if (import.meta.env.DEV) window.addEventListener("fct:dev-squad-seen", (e) => push((e as CustomEvent<SquadSeen>).detail));
+    }
+    seenListeners.add(setSeen);
+    return () => void seenListeners.delete(setSeen);
+  }, []);
+  return seen;
+}
 
 /** The plan, rebuilt after every sync and every settings change. */
 /** The plan, kept between visits of the tab (user 2026-11-01: "it must not load every time"):
@@ -847,6 +890,21 @@ function EventSelect({ list, value, onPick, auto, label }: { list: EventPlan[]; 
 function PlayPick({ view, prefs, onPrefs, filter }: { view: SquadsView; prefs: SquadPrefs; onPrefs: (p: SquadPrefs) => void; filter: Filter }) {
   const first = view.combos[0];
   const list = filtered(view.events, filter).filter((e) => e.playable);
+  // left / right (D-pad, arrows) step through where to play – the controller's way to these tabs
+  const placesRef = useRef({ view, prefs, onPrefs });
+  placesRef.current = { view, prefs, onPrefs };
+  useEffect(() => {
+    const on = (e: Event) => {
+      const { view, prefs, onPrefs } = placesRef.current;
+      const ps = view.primary != null ? view.places : [];
+      if (ps.length < 2) return;
+      const cur = Math.max(0, ps.findIndex((p) => sameMode(p.place, prefs.place ?? view.combos[0]?.place)));
+      const next = ps[(cur + (e as CustomEvent<number>).detail + ps.length) % ps.length];
+      onPrefs({ ...prefs, place: next.place });
+    };
+    window.addEventListener("fct:squads-place", on);
+    return () => window.removeEventListener("fct:squads-place", on);
+  }, []);
   return (
     <div className="sq-play">
       <label className="sq-choice">
@@ -855,7 +913,9 @@ function PlayPick({ view, prefs, onPrefs, filter }: { view: SquadsView; prefs: S
       </label>
       {view.primary != null && view.places.length > 1 && (
         <div className="sq-choice" role="radiogroup" aria-label={t("squads.play.where")}>
-          <span className="sq-choice-label">{t("squads.play.where")}</span>
+          <span className="sq-choice-label">
+            {t("squads.play.where")} <PadHint ids={["left", "right"]} keys="← →" />
+          </span>
           {view.places.map((p) => {
             const on = sameMode(p.place, prefs.place ?? first?.place);
             return (
@@ -871,7 +931,7 @@ function PlayPick({ view, prefs, onPrefs, filter }: { view: SquadsView; prefs: S
 }
 
 /** A session's objectives by event: ✓ counts with this squad, ✕ needs a card, ? not readable. */
-export function SessionList({ s, compact = false, elsewhere }: { s: SessionPlan; compact?: boolean; elsewhere?: Map<string, SessionPlan> }) {
+export function SessionList({ s, compact = false, elsewhere, texts = false }: { s: SessionPlan; compact?: boolean; elsewhere?: Map<string, SessionPlan>; texts?: boolean }) {
   const groups: { title: string; items: SessionItem[] }[] = [];
   for (const it of s.items.filter((x) => !x.bonus)) {
     const g = groups.find((x) => x.title === it.event_title);
@@ -894,7 +954,7 @@ export function SessionList({ s, compact = false, elsewhere }: { s: SessionPlan;
         </span>
         <div>
           {compact ? <b>{o.text}</b> : <b>{o.name || o.text}</b>}
-          {!compact && o.name && <p>{o.text}</p>}
+          {!compact && texts && o.name && <p>{o.text}</p>}
           {other ? (
             <small className="sq-req">{t("squads.play.elsewhere", { id: other.id, count: other.quick ?? 1 })}</small>
           ) : o.ask ? (
@@ -909,9 +969,9 @@ export function SessionList({ s, compact = false, elsewhere }: { s: SessionPlan;
             </small>
           ) : o.unknown ? (
             <small className="sq-req warn">{t("squads.notRead", { text: o.unknown })}</small>
-          ) : (
+          ) : texts ? (
             <small className="sq-req">{t("squads.play.anySquad")}</small>
-          )}
+          ) : null}
         </div>
         {!compact && (
           <span className="sq-progress">
@@ -1145,9 +1205,23 @@ function Why({ s }: { s: SessionPlan }) {
 function Sessions({ view, prefs, onPrefs }: { view: SquadsView; prefs: SquadPrefs; onPrefs: (p: SquadPrefs) => void }) {
   const [picked, setPicked] = useState<number | null>(null);
   const [stage, setStage] = useState(0);
+  const [texts, setTexts] = useFlag("fct.squads.texts", false);
   useEffect(() => setPicked(null), [view.primary, view.prefs.place?.kind]);
   const list = view.combos;
   const s = list.find((x) => x.id === picked) ?? list[0];
+  // L1 / R1 (Q / E) step through the squad tabs, like the game's own sub-tabs
+  const tabsRef = useRef({ list, id: s?.id });
+  tabsRef.current = { list, id: s?.id };
+  useEffect(() => {
+    const on = (e: Event) => {
+      const { list, id } = tabsRef.current;
+      if (list.length < 2) return;
+      const i = Math.max(0, list.findIndex((x) => x.id === id));
+      setPicked(list[(i + (e as CustomEvent<number>).detail + list.length) % list.length].id);
+    };
+    window.addEventListener("fct:squads-session", on);
+    return () => window.removeEventListener("fct:squads-session", on);
+  }, []);
   // the stage being played now opens first
   const nowStage = s ? Math.max(0, s.stages.findIndex((st) => st.from <= s.played + 1 && (st.to == null || s.played + 1 <= st.to))) : 0;
   useEffect(() => setStage(nowStage), [s?.id, nowStage, s?.stages.length]);
@@ -1163,6 +1237,7 @@ function Sessions({ view, prefs, onPrefs }: { view: SquadsView; prefs: SquadPref
     <>
       {list.length > 1 && (
         <nav className="sq-sessions" aria-label={t("squads.play.sessions")}>
+          <PadHint ids={["l1"]} keys="Q" />
           {list.map((x) => (
             <button key={x.id} className={`sq-event-tab ${x.id === s.id ? "active" : ""}`} aria-pressed={x.id === s.id} title={x.quick != null ? undefined : placeLabel(x.place, x.place_name)} onClick={() => setPicked(x.id)}>
               <span className="sq-event-name">
@@ -1171,6 +1246,7 @@ function Sessions({ view, prefs, onPrefs }: { view: SquadsView; prefs: SquadPref
               <small className={x.counted > 0 ? "ok" : ""}>{t("squads.play.objectives", { count: x.counted })}</small>
             </button>
           ))}
+          <PadHint ids={["r1"]} keys="E" />
         </nav>
       )}
       <article className="sq-event sq-session">
@@ -1190,11 +1266,16 @@ function Sessions({ view, prefs, onPrefs }: { view: SquadsView; prefs: SquadPref
         <AskCards s={s} prefs={prefs} onPrefs={onPrefs} />
         <div className="sq-split">
           <div className="sq-col">
-            <MatchBriefView s={s} />
+            <BriefFold s={s} />
             <MatchPlan s={s} stage={stage} onStage={setStage} quick={s.id === list[0].id ? quick : []} onPick={setPicked} />
             <EvoList s={s} />
             <BenchList s={s} />
-            <SessionList s={s} elsewhere={s.id === list[0].id ? elsewhere : undefined} />
+            <div className="sq-texts-toggle">
+              <button className="cat-tab" aria-pressed={texts} onClick={() => setTexts(!texts)}>
+                {t(texts ? "squads.texts.hide" : "squads.texts.show")}
+              </button>
+            </div>
+            <SessionList s={s} texts={texts} elsewhere={s.id === list[0].id ? elsewhere : undefined} />
           </div>
           <div className="sq-col">
             <Lineup s={s} shown={shown} />
@@ -1247,13 +1328,18 @@ function AllEvents({ view, prefs, onPrefs, filter }: { view: SquadsView; prefs: 
   const [current, pick] = useEventChoice(view);
   const list = filtered(view.events, filter);
   const e = current && list.some((x) => x.id === current.id) ? current : list[0] ?? null;
+  const [open, setOpen] = useFlag("fct.squads.allOpen", false);
   return (
-    <section className="sq-all">
+    <section className={open ? "sq-all open" : "sq-all folded"}>
       <div className="sq-all-head">
-        <h3 className="sq-section-title">{t("squads.allEvents")}</h3>
-        {list.length > 0 && <EventSelect list={list} value={e?.id ?? null} label={t("squads.events")} onPick={(id) => id != null && pick(id)} />}
+        <button className="sq-fold" aria-expanded={open} onClick={() => setOpen(!open)}>
+          <span className="sq-fold-mark" aria-hidden="true" />
+          <h3 className="sq-section-title">{t("squads.allEvents")}</h3>
+          <small className="sq-muted">{t("squads.allEventsCount", { count: list.length })}</small>
+        </button>
+        {open && list.length > 0 && <EventSelect list={list} value={e?.id ?? null} label={t("squads.events")} onPick={(id) => id != null && pick(id)} />}
       </div>
-      {e ? <Event e={e} prefs={prefs} onPrefs={onPrefs} /> : <p className="sq-muted">{t("squads.filter.empty")}</p>}
+      {open && (e ? <Event e={e} prefs={prefs} onPrefs={onPrefs} /> : <p className="sq-muted">{t("squads.filter.empty")}</p>)}
     </section>
   );
 }
@@ -1328,11 +1414,56 @@ const ANYONE_SHOWN = 4;
 
 /** The match brief (user 2026-11-01): before the match in broad strokes, in it something specific
  *  to go for, by player. In a match only the second half shows. */
+/** A controller hint next to a tab row: PlayStation / Xbox glyphs with a controller, keys without. */
+function PadHint({ ids, keys }: { ids: ("l1" | "r1" | "left" | "right")[]; keys: string }) {
+  const { layout, controller } = usePadLayout();
+  return (
+    <span className="sq-pad-hint" aria-hidden="true">
+      {controller ? ids.map((id) => <PadButton key={id} id={id} layout={layout} size={16} />) : <kbd>{keys}</kbd>}
+    </span>
+  );
+}
+
+/** The full overlay: the match brief folded to one line (it lives in the side panel – double-tap
+ *  View); opened once, it stays open for this viewer (user 2026-11-02: "not shown by default"). */
+function BriefFold({ s }: { s: SessionPlan }) {
+  const [open, setOpen] = useFlag("fct.brief.open", false);
+  const seen = useSquadSeen();
+  const b = s.brief;
+  if (!b) return null;
+  const tasks = b.players.reduce((n, p) => n + p.tasks.length, 0) + b.anyone.length;
+  const check = seen?.complete && s.squad ? (seen.missing.length === 0 ? t("brief.check.ok") : t("brief.check.change", { count: seen.missing.length })) : null;
+  return (
+    <section className={open ? "sq-brief-fold open" : "sq-brief-fold"}>
+      <button className="sq-fold" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <span className="sq-fold-mark" aria-hidden="true" />
+        <b>{t("brief.title")}</b>
+        <small>{t("brief.fold", { steps: b.before.length, tasks })}</small>
+        {check && <small className={seen?.missing.length ? "sq-check" : "sq-check ok"}>{check}</small>}
+        {!open && !IS_WEB && <small className="sq-muted sq-fold-where">{t("brief.foldWhere")}</small>}
+      </button>
+      {open && <MatchBriefView s={s} />}
+    </section>
+  );
+}
+
 export function MatchBriefView({ s, inMatch = false }: { s: SessionPlan; inMatch?: boolean }) {
   const subs = useContext(SubCtx);
+  const seen = useSquadSeen();
   const bench = benchOf(s);
   const b = s.brief;
   if (!b) return null;
+  // live squad check (the game's Squad screen read): who is in, who still has to come in
+  const missing = seen?.complete ? new Set(seen.missing.map((m) => m.name)) : null;
+  const confirmed = seen ? new Set(seen.confirmed) : null;
+  const squadCheck = (x: MatchBrief["before"][number]) => {
+    if (!seen?.complete || (x.kind !== "squad" && x.kind !== "ready")) return null;
+    return seen.missing.length === 0 ? (
+      <small className="sq-check ok">{t("brief.check.ok")}</small>
+    ) : (
+      <small className="sq-check">{t("brief.check.list", { count: seen.missing.length, names: seen.missing.map((m) => m.name + " (" + m.pos + ")").join(", ") })}</small>
+    );
+  };
   const step = (x: MatchBrief["before"][number]) => {
     switch (x.kind) {
       case "ready":
@@ -1387,7 +1518,10 @@ export function MatchBriefView({ s, inMatch = false }: { s: SessionPlan; inMatch
                 <span className="sq-brief-n" aria-hidden="true">
                   {i + 1}
                 </span>
-                <span>{strong(x)}</span>
+                <span>
+                  {strong(x)}
+                  {squadCheck(x)}
+                </span>
               </li>
             ))}
           </ol>
@@ -1400,6 +1534,7 @@ export function MatchBriefView({ s, inMatch = false }: { s: SessionPlan; inMatch
           <li key={i}>
             <p className="sq-brief-who">
               <b>{p.name}</b> <span>{p.bench ? t("brief.fromBench", { pos: p.pos }) : p.pos}</span>
+              {!p.bench && (confirmed?.has(p.name) || (missing && !missing.has(p.name)) ? <span className="sq-check-mark" title={t("brief.check.in")}>✓</span> : missing?.has(p.name) ? <span className="sq-check-mark miss" title={t("brief.check.out")}>✕</span> : null)}
             </p>
             <ul>{p.tasks.map(task)}</ul>
           </li>
