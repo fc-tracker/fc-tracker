@@ -7,8 +7,8 @@
 //! Read from the screen only (tracking.rs), never from the game process or the input devices:
 //! - main menu: the upper-case mode list (ULTIMATE TEAM, MANAGER CAREER, KICK OFF …);
 //! - Ultimate Team selected: the "Enter Ultimate Team" button that only shows for that entry;
-//! - leaving the main menu while Ultimate Team is selected = entering Ultimate Team
-//!   (keyboard, PlayStation or Xbox controller alike – we see the screen, not the input);
+//! - inside Ultimate Team only once a screen in it is read (leaving the main menu with Ultimate
+//!   Team selected is no proof: the menu's idle cutscene does that too);
 //! - inside Ultimate Team: Gallery pages or the UT navigation bar (Club, Gallery, Transfers …);
 //! - a match about to start: "Searching for Opponent…" or the kit selection ("Select a kit for
 //!   you and your opponent", "Your Kit" / "Opponent's Kit") – the app steps aside until the user
@@ -47,8 +47,11 @@ impl GameSession {
             Screen::UltimateTeam => Self::InUltimateTeam,
             Screen::PreMatch => Self::InMatch,
             Screen::Other => match self {
-                // Left the menu with Ultimate Team selected: the user entered it.
-                Self::UtSelected => Self::InUltimateTeam,
+                // Left the menu with Ultimate Team selected: not Ultimate Team until a screen in it
+                // proves it (UT_NAV, a Gallery page) – the main menu's idle cutscene leaves the menu
+                // too and used to stop a sync (user 2026-11-02). The few seconds of UT's loading
+                // screen still count as the menu.
+                Self::UtSelected => Self::UtSelected,
                 Self::MainMenu => Self::OtherMode,
                 // Closed/Unknown/OtherMode/InUltimateTeam stay until a menu or UT screen is seen.
                 s => s,
@@ -118,8 +121,12 @@ mod tests {
         // Carousel or other menu animation: still the menu.
         let s = s.next(Screen::MainMenu { ut_selected: true }).next(Screen::MainMenu { ut_selected: true });
         assert_eq!(s, GameSession::UtSelected);
-        // Loading screen after pressing Enter / X / A.
+        // Loading screen after pressing Enter / X / A – or the menu's idle cutscene: not proof
         let s = s.next(Screen::Other);
+        assert_eq!(s, GameSession::UtSelected);
+        assert!(s.sync_allowed());
+        // a screen inside Ultimate Team is
+        let s = s.next(Screen::UltimateTeam);
         assert_eq!(s, GameSession::InUltimateTeam);
         assert!(!s.sync_allowed());
         // Unknown screens inside UT keep the state; only the main menu releases it.

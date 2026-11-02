@@ -1327,6 +1327,15 @@ pub fn capture_pixels_game() -> Result<(u32, u32, Vec<u8>), String> {
         return Ok(picture);
     }
     if steady() {
+        // A recorder runs: no new capture session. With the game in front the screen copy is the
+        // game (our windows left out of it) – before, every look failed here, so in a match while
+        // recording the clock was never read and the reminders never came (user 2026-11-02).
+        if game_in_view() {
+            *LAST_SOURCE.lock().unwrap() = "screen copy (recording)";
+            // the side panel may sit over the scoreboard: left out of the copy even now (a game
+            // recorder like Game Bar records the game only, so nothing of this shows in it)
+            return own_windows_left_out(capture_pixels_raw);
+        }
         return Err("recording_steady".into());
     }
     *LAST_SOURCE.lock().unwrap() = "one-frame window capture";
@@ -1574,11 +1583,16 @@ fn own_window_rects() -> Vec<windows::Win32::Foundation::RECT> {
 /// the rest of the time. `DwmFlush` waits until the compositor has applied the change, so our
 /// picture never contains the overlay.
 fn while_own_windows_hidden<T>(capture: impl FnOnce() -> T) -> T {
-    use windows::Win32::UI::WindowsAndMessaging::IsWindowVisible;
     if steady() {
         // a recorder runs: no capture-exclusion toggles, no DwmFlush
         return capture();
     }
+    own_windows_left_out(capture)
+}
+
+/// The capture with our visible windows left out of it (capture exclusion for its moment).
+fn own_windows_left_out<T>(capture: impl FnOnce() -> T) -> T {
+    use windows::Win32::UI::WindowsAndMessaging::IsWindowVisible;
     // Only windows on screen need hiding (none in a match: no affinity changes, no DwmFlush).
     let windows: Vec<isize> = OWN_WINDOWS
         .lock()
