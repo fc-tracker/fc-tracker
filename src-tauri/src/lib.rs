@@ -1,5 +1,4 @@
 mod account;
-mod auto_panel;
 mod bridge;
 mod champions;
 mod clock;
@@ -62,10 +61,7 @@ struct AppState {
     data_dir: std::path::PathBuf,
     /// The missing list was open when a match started (shown again afterwards).
     missing_before_match: AtomicBool,
-    /// The side panel is open because the app opened it (`auto_panel`) – the app may close it again.
-    missing_auto: AtomicBool,
-    /// Where the side panel's "opens by itself" stands (auto_panel.rs).
-    panel_auto: Mutex<auto_panel::State>,
+
     /// The side panel shows two tabs for its set; the first double-tap switched tab already.
     /// Where the user is in FC 27 (see session.rs).
     session: Mutex<session::GameSession>,
@@ -303,74 +299,9 @@ fn side_switch_watch(app: AppHandle) {
         .expect("failed to start side switch watcher");
 }
 
-/// The side panel by itself (Settings → "Opens by itself", on by default): `open` where it helps,
-/// closed again only when it was the app that opened it – a panel the user opened stays.
-pub(crate) fn auto_panel(app: &AppHandle, open: bool) {
-    if app.state::<AppState>().ui.lock().unwrap().panel_mode() == "off" {
-        return;
-    }
-    let app2 = app.clone();
-    let _ = app.run_on_main_thread(move || {
-        let Some(win) = app2.get_webview_window(MISSING) else { return };
-        let state = app2.state::<AppState>();
-        let shown = ui::is_shown(&win);
-        if open && !shown {
-            ui::place_missing(&win, &state.ui.lock().unwrap());
-            ui::set_click_through(&win, true);
-            ui::show_without_focus(&win);
-            state.missing_auto.store(true, Ordering::SeqCst);
-            let _ = app2.emit("missing-visible", true);
-        } else if !open && shown && state.missing_auto.swap(false, Ordering::SeqCst) {
-            ui::hide(&win);
-            let _ = app2.emit("missing-visible", false);
-        }
-    });
-}
-
-/// A menu screen for the side panel's "opens by itself" (auto_panel.rs decides).
-pub(crate) fn panel_screen(app: &AppHandle, screen: auto_panel::Screen) {
-    let state = app.state::<AppState>();
-    let mode = state.ui.lock().unwrap().panel_mode().to_string();
-    let action = state.panel_auto.lock().unwrap().screen(&mode, screen);
-    match action {
-        auto_panel::Action::Open => auto_panel(app, true),
-        auto_panel::Action::Close => auto_panel(app, false),
-        auto_panel::Action::Nothing => {}
-    }
-}
-
-#[tauri::command]
-fn set_auto_panel(app: AppHandle, on: bool) -> ui::UiPrefs {
-    set_auto_panel_mode(app, if on { "first".into() } else { "off".into() }).unwrap_or_default()
-}
-
-/// Settings → Side panel opens by itself, and the overlay menu's quick setting.
-#[tauri::command]
-fn set_auto_panel_mode(app: AppHandle, mode: String) -> Result<ui::UiPrefs, String> {
-    if !auto_panel::MODES.contains(&mode.as_str()) {
-        return Err("invalid_mode".into());
-    }
-    let prefs = {
-        let state = app.state::<AppState>();
-        let mut p = state.ui.lock().unwrap();
-        p.auto_panel = mode != "off";
-        p.auto_panel_mode = Some(mode);
-        p.clone()
-    };
-    save_ui(&app);
-    let _ = app.emit("ui-prefs", &prefs);
-    Ok(prefs)
-}
-
 /// The missing-players list never takes focus or clicks, so the game keeps mouse and controller.
 fn toggle_missing(app: &AppHandle) {
     let Some(win) = app.get_webview_window(MISSING) else { return };
-    // the user's own toggle: the app no longer closes it by itself – and a panel closed on the
-    // Squad screen stays closed until the user leaves (auto_panel.rs)
-    app.state::<AppState>().missing_auto.store(false, Ordering::SeqCst);
-    if ui::is_shown(&win) {
-        app.state::<AppState>().panel_auto.lock().unwrap().user_closed();
-    }
     // Double-tap View / Create opens and closes – nothing else (user 2026-10-17: a double-tap that
     // sometimes switched the tab instead was confusing). The tab follows what the app knows.
     if ui::is_shown(&win) {
@@ -1108,6 +1039,9 @@ fn set_squad_prefs(app: AppHandle, prefs: squads::SquadPrefs) -> ui::UiPrefs {
         p.clone()
     };
     save_ui(&app);
+    // every window plans again with them (user 2026-11-03: the side panel kept the squad from
+    // before a change in the overlay)
+    let _ = app.emit("squads-changed", ());
     out
 }
 
@@ -1585,8 +1519,6 @@ pub fn run() {
                 ui: Mutex::new(ui::UiPrefs::load(&data_dir)),
                 data_dir: data_dir.clone(),
                 missing_before_match: AtomicBool::new(false),
-                missing_auto: AtomicBool::new(false),
-                panel_auto: Mutex::new(auto_panel::State::default()),
                 session: Mutex::new(if game::is_running() { session::GameSession::Unknown } else { session::GameSession::Closed }),
                 notice_until: Mutex::new(None),
                 played_ut: AtomicBool::new(false),
@@ -1804,8 +1736,6 @@ pub fn run() {
             set_diagnostics,
             open_diagnostics,
             set_after_play,
-            set_auto_panel,
-            set_auto_panel_mode,
             overlay_focus,
             champions_data,
             squads_plan,
@@ -1864,6 +1794,9 @@ mod real_plan {
             let attrs = store.web.attributes.as_ref().map(|a| crate::squads::Attributes::from_value(&a.body)).unwrap_or_default();
             let extra = crate::squads::evo_players(hub, &input.club, &store.snapshot.gallery, &attrs);
             input.club.extend(extra);
+        }
+        if let Ok(f) = std::env::var("FCT_FORMATIONS") {
+            prefs.formations = f.split(',').map(str::to_string).collect();
         }
         if let Ok(n) = std::env::var("FCT_MUST") {
             prefs.must = input.club.iter().filter(|p| p.name == n).map(|p| p.key).collect();

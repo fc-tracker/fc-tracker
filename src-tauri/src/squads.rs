@@ -49,8 +49,21 @@ pub struct SquadPrefs {
     pub goal: String,
     /// The most cards to buy for one squad; none = no limit, 0 = club cards only.
     pub max_buys: Option<u32>,
-    /// A formation the user picked (EA's name, "f4312"); none = the best one.
+    /// A formation the user picked (EA's name, "f4312"); none = the best one. (Older single pick –
+    /// `formations` holds the list now; both count.)
     pub formation: Option<String>,
+    /// Preferred formations (EA's names, user 2026-11-03: "4-3-1-2 and 4-4-1-1 (2)"): squads are
+    /// built in these only; empty = every formation.
+    pub formations: Vec<String>,
+    /// Chemistry: "balanced" (default – the best players, chemistry as each card's boost),
+    /// "30" (30 or more, then the best players) or "33" (full chemistry first). User 2026-11-03:
+    /// "Balanced always gives the best squads – the default unless set on purpose".
+    pub chem_mode: String,
+    /// Club cards the user took out of every squad ("Change" on a card).
+    pub exclude: Vec<u64>,
+    /// A squad the user locked in for the coming challenges ("Lock in squad"): these cards play,
+    /// in this formation, until unlocked.
+    pub locked: Option<LockedSquad>,
     /// Follow the plan in the game: count matches, say when to change the squad (on by default).
     pub track: bool,
     /// Matches the app counted since `played_at` (the objectives' read time they follow).
@@ -69,6 +82,19 @@ pub struct SquadPrefs {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct LockedSquad {
+    /// The event it was locked for (shown with it).
+    pub event: u64,
+    pub title: String,
+    /// EA's formation name.
+    pub formation: String,
+    /// Club item ids (or card definitions for cards to get).
+    pub keys: Vec<u64>,
+    /// ms
+    pub at: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct DoneMark {
     /// The event (objective group).
     pub group: u64,
@@ -80,7 +106,7 @@ pub struct DoneMark {
 
 impl Default for SquadPrefs {
     fn default() -> Self {
-        Self { chem_target: 33, chem_first: false, hide_loans: true, budget: None, must: Vec::new(), must_cards: Vec::new(), done_marks: Vec::new(), primary: None, place: None, goal: "progress".into(), max_buys: Some(3), formation: None, track: true, played: 0, played_at: 0, skip: Vec::new(), keep: Vec::new(), facts: BTreeMap::new(), sub_at: BTreeMap::new() }
+        Self { chem_target: 33, chem_first: false, hide_loans: true, budget: None, must: Vec::new(), must_cards: Vec::new(), done_marks: Vec::new(), primary: None, place: None, goal: "progress".into(), max_buys: Some(3), formation: None, formations: Vec::new(), chem_mode: "balanced".into(), exclude: Vec::new(), locked: None, track: true, played: 0, played_at: 0, skip: Vec::new(), keep: Vec::new(), facts: BTreeMap::new(), sub_at: BTreeMap::new() }
     }
 }
 
@@ -1075,8 +1101,16 @@ struct Pick {
 const CHEM_VALUE: [f64; 4] = [0.0, 1.4, 2.1, 2.6];
 /// Each point the squad is short of the chemistry target (Settings): a nudge, not a wall.
 const CHEM_SHORT: f64 = 0.4;
-/// The same with "chemistry first" on: a point of chemistry ≈ 1.5 rating points of one card.
-const CHEM_SHORT_FIRST: f64 = 1.5;
+/// With a chemistry mode of 30+ or 33: each missing point weighs like 4 rating points of a card.
+const CHEM_SHORT_FIRST: f64 = 4.0;
+/// A keeper from a women's league: only when nothing else is there (below any requirement's weight).
+const WOMEN_GK: f64 = 60.0;
+
+/// EA's women's leagues (the Web App's league table, FC 27): WSL, Frauen-Bundesliga, Arkema,
+/// NWSL, Liga F, Liga Portugal Feminino, the Scottish women's league, the women's international cup.
+pub fn is_womens_league(league: u64) -> bool {
+    matches!(league, 2136 | 2215 | 2216 | 2218 | 2221 | 2222 | 2228 | 2233 | 2236 | 2237)
+}
 
 /// A card in a slot it has no chemistry in: 0 chemistry, it adds to nobody's, and it plays worse –
 /// worth it only for a live requirement (a met one weighs 2e6), never for a bonus one or strength.
@@ -1156,6 +1190,8 @@ impl Ctx<'_> {
         // themselves (user 2026-11-03: with it on – 4e5 a point – Bethune, Miley and Thiaw stayed for
         // their links while Lavelle, Rice and Debinha sat out; "the BEST players on the pitch, always")
         must + reqs * 1.0e6 + power - short * if self.prefs.chem_first { CHEM_SHORT_FIRST } else { CHEM_SHORT }
+            // a women's-league keeper only as the last way out (user 2026-11-03: "they are much lower")
+            - slots.iter().zip(&f.slots).filter(|(s, pos)| *pos == "GK" && s.is_some_and(|i| is_womens_league(self.players[i].league))).count() as f64 * WOMEN_GK
     }
 
     fn used(slots: &[Option<usize>], p: usize, players: &[Player]) -> bool {
@@ -1351,7 +1387,8 @@ fn solve_with(players: &[Player], reqs: &[Req], formations: &[Formation], prefs:
     let meets: Vec<Vec<usize>> = players.iter().map(|p| reqs.iter().enumerate().filter(|(_, r)| r.need.met_by(p, links)).map(|(i, _)| i).collect()).collect();
     let must = (0..players.len()).filter(|&i| prefs.must.contains(&players[i].key)).collect();
     // a formation the user picked is the only one tried
-    let only: Vec<usize> = (0..formations.len()).filter(|&i| prefs.formation.as_deref().is_none_or(|n| formations[i].name == n || formations[i].label == n)).collect();
+    let picked: Vec<&str> = prefs.formations.iter().map(String::as_str).chain(prefs.formation.as_deref()).collect();
+    let only: Vec<usize> = (0..formations.len()).filter(|&i| picked.is_empty() || picked.iter().any(|n| formations[i].name == *n || formations[i].label == *n)).collect();
     let tried: Vec<usize> = if only.is_empty() { (0..formations.len()).collect() } else { only };
     let ctx = Ctx { players, reqs, prefs, links, o, meets, must };
     let mut best: Option<(usize, Pick)> = None;
@@ -1434,6 +1471,11 @@ pub struct SquadsView {
     pub club: Vec<ClubEntry>,
 }
 
+/// The meta rating of a card in each of its positions (one decimal).
+fn meta_of(p: &Player) -> BTreeMap<String, f64> {
+    p.positions.iter().map(|pos| (pos.clone(), round1(strength(p, pos)))).collect()
+}
+
 #[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct ClubEntry {
     /// Club item id (owned) or card definition (not owned).
@@ -1447,6 +1489,8 @@ pub struct ClubEntry {
     pub owned: bool,
     /// EA's price (not owned, when known and recent).
     pub price: Option<u64>,
+    /// FC-Tracker's meta rating per position the card can play (the picker sorts by it).
+    pub meta: BTreeMap<String, f64>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -1540,6 +1584,8 @@ pub struct ManagerView {
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct SlotView {
+    /// The card's key: a club item id, or a card definition for a card to get ("Change" uses it).
+    pub key: u64,
     pub pos: String,
     pub name: String,
     pub def_id: u64,
@@ -1725,6 +1771,7 @@ pub fn search(input: &Input, q: &str, limit: usize) -> Vec<ClubEntry> {
             loan: false,
             owned: false,
             price: fresh_price(input, c.def_id),
+            meta: meta_of(c),
         })
         .collect();
     out.sort_by(|a, b| b.rating.cmp(&a.rating).then_with(|| a.name.cmp(&b.name)));
@@ -2465,6 +2512,7 @@ fn squad_view(club: &[Player], f: &Formation, pick: &Pick, reqs: &[Req], prefs: 
         cost += price.unwrap_or(0);
         let evo = p.owned.then(|| input.evos.iter().find(|e| e.item == p.key).map(|e| e.name.clone())).flatten();
         slots.push(SlotView {
+            key: p.key,
             pos: pos.clone(),
             name: p.name.clone(),
             def_id: p.def_id,
@@ -3243,7 +3291,7 @@ const LIVE_WITHIN_S: u64 = 400 * 24 * 3600;
 pub fn plan(input: &Input, prefs: &SquadPrefs) -> SquadsView {
     let links = link_map(&input.team_links);
     let formations = if input.formations.is_empty() { builtin_formations() } else { input.formations.clone() };
-    let mut club: Vec<Player> = input.club.iter().filter(|p| !p.positions.is_empty() && (!(prefs.hide_loans && p.loan) || prefs.must.contains(&p.key))).cloned().collect();
+    let mut club: Vec<Player> = input.club.iter().filter(|p| !p.positions.is_empty() && (!(prefs.hide_loans && p.loan) || prefs.must.contains(&p.key)) && (!prefs.exclude.contains(&p.key) || prefs.must.contains(&p.key))).cloned().collect();
     // a card EA names "---" that no catalog knows: its club and position, never an empty name
     for p in club.iter_mut().filter(|p| p.name.trim().is_empty()) {
         let team = input.names.team_name(p.club).unwrap_or("?");
@@ -3256,6 +3304,29 @@ pub fn plan(input: &Input, prefs: &SquadPrefs) -> SquadsView {
     // marks a later sync has overtaken are dropped (EA's word stands from then on)
     shown_prefs.done_marks.retain(|m| m.at > input.read_at.unwrap_or(0));
     let mut prefs = prefs.clone();
+    // the chemistry mode decides the target (the older target / "chemistry first" fields are only
+    // the way the modes are carried out)
+    match prefs.chem_mode.as_str() {
+        "33" => (prefs.chem_target, prefs.chem_first) = (33, true),
+        "30" => (prefs.chem_target, prefs.chem_first) = (30, true),
+        _ => (prefs.chem_target, prefs.chem_first) = (0, false),
+    }
+    if let Some(l) = prefs.locked.clone() {
+        for k in l.keys {
+            if input.club.iter().any(|p| p.key == k) {
+                if !prefs.must.contains(&k) {
+                    prefs.must.push(k);
+                }
+            } else if !prefs.must_cards.contains(&k) {
+                prefs.must_cards.push(k);
+            }
+        }
+        prefs.formations = vec![l.formation];
+    } else if let Some(f) = prefs.formation.take() {
+        if !prefs.formations.contains(&f) {
+            prefs.formations.push(f);
+        }
+    }
     for &def in &prefs.must_cards.clone() {
         if owned_now.contains(&def) {
             continue;
@@ -3549,13 +3620,13 @@ pub fn plan(input: &Input, prefs: &SquadPrefs) -> SquadsView {
                 .club
                 .iter()
                 .filter(|p| !p.positions.is_empty())
-                .map(|p| ClubEntry { key: p.key, name: p.name.clone(), rating: p.rating, positions: p.positions.clone(), nation: p.nation, nation_name: input.names.nations.get(&p.nation).cloned(), loan: p.loan, owned: true, price: None })
+                .map(|p| ClubEntry { key: p.key, name: p.name.clone(), rating: p.rating, positions: p.positions.clone(), nation: p.nation, nation_name: input.names.nations.get(&p.nation).cloned(), loan: p.loan, owned: true, price: None, meta: meta_of(p) })
                 .collect();
             // the cards to get the user picked, so their chips have a name
             for &def in &prefs.must_cards {
                 if let Some(p) = input.catalog.iter().find(|c| c.def_id == def) {
                     if !c.iter().any(|x| x.key == def) {
-                        c.push(ClubEntry { key: def, name: p.name.clone(), rating: p.rating, positions: p.positions.clone(), nation: p.nation, nation_name: input.names.nations.get(&p.nation).cloned(), loan: false, owned: false, price: fresh_price(input, def) });
+                        c.push(ClubEntry { key: def, name: p.name.clone(), rating: p.rating, positions: p.positions.clone(), nation: p.nation, nation_name: input.names.nations.get(&p.nation).cloned(), loan: false, owned: false, price: fresh_price(input, def), meta: meta_of(p) });
                     }
                 }
             }
@@ -4013,6 +4084,7 @@ mod tests {
     /// A squad whose only free slot (counting for no requirement) is a striker of this strength.
     fn squad_with_free_st(strength: f64) -> SquadView {
         let slot = SlotView {
+            key: 9_999,
             pos: "ST".into(), name: "Owned ST".into(), def_id: 9_999, rating: 80, chem: 3, strength, loan: false, counts_for: vec![], accel: None, key_ps: 0, key_ps_plus: 0,
             full: false, nation: 1, nation_name: None, foot: 0, weak_foot: 3, skill_moves: 3, must: false, owned: true, price: None,
             league: 0, league_name: None, out_of_position: false, generic: false, evo: None, face: None,
@@ -4196,6 +4268,36 @@ mod tests {
         assert!(s.brief.anyone.iter().any(|x| x.text.starts_with("Win")), "winning is the team's");
         // the kit and the Spanish XI get a session of their own, with an XI
         assert!(v.combos.iter().any(|c| !c.rush_format && c.squad.is_some() && c.items.iter().any(|x| x.event == 2 && x.counts)));
+    }
+
+    /// User 2026-11-03: a women's-league keeper only as the last way out; cards left out stay out;
+    /// a locked squad plays as locked; preferred formations are the only ones built.
+    #[test]
+    fn keeper_exclude_lock_and_formations() {
+        let mut input = scenario(json!({ "groups": [ev(1, "Weekly", &[(11, "Win 10 matches in any FUT game mode.", 0, 10)])] }));
+        input.club.push(pl(700, "Womengk", 90, &["GK"], 2216, 900, 14));
+        let gk = |v: &SquadsView| v.combos[0].squad.as_ref().unwrap().slots.iter().find(|s| s.pos == "GK").unwrap().name.clone();
+        let v = plan(&input, &SquadPrefs::default());
+        assert_ne!(gk(&v), "Womengk", "a men's keeper is there");
+        // leave the men's keepers out: then she plays
+        let men: Vec<u64> = input.club.iter().filter(|p| p.positions.first().is_some_and(|x| x == "GK") && p.league != 2216).map(|p| p.key).collect();
+        let v = plan(&input, &SquadPrefs { exclude: men.clone(), ..SquadPrefs::default() });
+        assert_eq!(gk(&v), "Womengk");
+        // locked in: that XI and formation, whatever else
+        let q = plan(&input, &SquadPrefs::default()).combos[0].squad.clone().unwrap();
+        let keys: Vec<u64> = q.slots.iter().map(|s| s.key).collect();
+        let all = builtin_formations();
+        let f = all.iter().find(|f| f.label == q.formation).map(|f| f.name.clone()).expect("a known formation");
+        let v = plan(&input, &SquadPrefs { locked: Some(LockedSquad { event: 1, title: "Weekly".into(), formation: f.clone(), keys: keys.clone(), at: 0 }), ..SquadPrefs::default() });
+        let mut got: Vec<u64> = v.combos[0].squad.as_ref().unwrap().slots.iter().map(|s| s.key).collect();
+        let mut want = keys.clone();
+        got.sort();
+        want.sort();
+        assert_eq!(got, want);
+        // preferred formations: only those
+        // (the test club fits one formation; a preferred list holding it builds in it)
+        let v = plan(&input, &SquadPrefs { formations: vec![f.clone()], ..SquadPrefs::default() });
+        assert_eq!(v.combos[0].squad.as_ref().unwrap().formation, q.formation);
     }
 
     #[test]

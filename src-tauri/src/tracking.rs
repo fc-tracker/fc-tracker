@@ -940,11 +940,6 @@ fn squad_screen_menu(app: &AppHandle, frame: &scan::Frame) {
     static BUSY: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
     static LAST: std::sync::Mutex<Option<std::time::Instant>> = std::sync::Mutex::new(None);
     let is_squad = crate::squad_screen::is_squad_screen(&frame.words);
-    // the side panel by itself: the Squad screen opens it, other screens close one the app opened
-    // (auto_panel.rs: "first" – not again within the Club area)
-    if is_squad || *app.state::<AppState>().session.lock().unwrap() == GameSession::InUltimateTeam {
-        crate::panel_screen(app, crate::auto_panel::classify(&frame.words, frame.height, is_squad));
-    }
     if !is_squad {
         return;
     }
@@ -1086,8 +1081,6 @@ pub fn set_session(app: &AppHandle, next: GameSession) {
     // A match starts: step aside (no window of ours over the game – Windows can then present
     // it like fullscreen). After it: the missing list comes back if it was open.
     if next == GameSession::InMatch {
-        // the kit selection / matchmaking: the match brief in the side panel
-        crate::auto_panel(app, true);
         crate::enter_match_mode(app);
     } else if matches!(next, GameSession::InUltimateTeam | GameSession::MainMenu | GameSession::UtSelected) {
         // Back in a menu (also via Closed/Unknown, e.g. the game lost focus mid-match).

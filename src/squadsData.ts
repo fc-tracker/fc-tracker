@@ -35,6 +35,22 @@ export interface SquadPrefs {
   facts: Record<string, boolean>;
   /** A bench player's own sub minute (club item id → minute). */
   sub_at?: Record<string, number>;
+  /** Preferred formations (labels like "4-3-1-2" or EA names); empty = every formation. */
+  formations?: string[];
+  /** "balanced" (default) | "30" | "33" – replaces chem_target / chem_first in the UI. */
+  chem_mode?: string;
+  /** Club cards taken out of every squad ("Change" / "Leave out"). */
+  exclude?: number[];
+  /** A squad locked in for the coming challenges: these cards, this formation, until unlocked. */
+  locked?: LockedSquad | null;
+}
+
+export interface LockedSquad {
+  event: number;
+  title: string;
+  formation: string;
+  keys: number[];
+  at: number;
 }
 
 /** Where a match counts (squads.rs `Mode`). */
@@ -134,6 +150,8 @@ export interface ObjectiveView {
 }
 
 export interface SlotView {
+  /** Club item id, or the card definition for a card to get (older plans: missing – use def_id). */
+  key?: number;
   pos: string;
   name: string;
   def_id: number;
@@ -370,9 +388,11 @@ export interface ClubEntry {
   owned: boolean;
   /** EA's price (not owned, when known and recent). */
   price: number | null;
+  /** FC-Tracker's meta rating per position the card can play. */
+  meta?: Record<string, number>;
 }
 
-export const defaultSquadPrefs: SquadPrefs = { chem_target: 33, chem_first: false, hide_loans: true, budget: null, must: [], must_cards: [], done_marks: [], primary: null, place: null, goal: "progress", max_buys: 3, formation: null, track: true, played: 0, played_at: 0, skip: [], keep: [], facts: {} };
+export const defaultSquadPrefs: SquadPrefs = { chem_target: 33, chem_first: false, hide_loans: true, budget: null, must: [], must_cards: [], done_marks: [], primary: null, place: null, goal: "progress", max_buys: 3, formation: null, track: true, played: 0, played_at: 0, skip: [], keep: [], facts: {}, formations: [], chem_mode: "balanced", exclude: [], locked: null };
 
 export const emptySquads: SquadsView = { events: [], combos: [], apart: [], places: [], primary: null, needs_sync: true, names_missing: true, club_players: 0, coins: null, read_at: null, prefs: defaultSquadPrefs, club: [] };
 

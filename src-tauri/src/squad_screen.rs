@@ -14,6 +14,7 @@ pub fn is_squad_screen(words: &[Word]) -> bool {
 
 /// The cards on the pitch as (rating, position): a rating with a position right under it, left of
 /// the bench row and right of the left panel.
+#[cfg(test)]
 pub fn cards(words: &[Word], width: u32, height: u32) -> Vec<(u32, String)> {
     let (w, h) = (width as f32, height as f32);
     let mut out = Vec::new();
