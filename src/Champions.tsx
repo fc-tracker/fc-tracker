@@ -186,7 +186,7 @@ function Timeline({ m }: { m: ChampsMatch }) {
 }
 
 /** One of the 15 matches: played (result, score, opponent, notes, goal minutes), in play, or to come. */
-function Slot({ n, m, live }: { n: number; m?: ChampsMatch; live?: boolean }) {
+function Slot({ n, m, live, reported }: { n: number; m?: ChampsMatch; live?: boolean; reported?: boolean }) {
   if (!m) {
     return (
       <li className="ch-slot open">
@@ -214,8 +214,13 @@ function Slot({ n, m, live }: { n: number; m?: ChampsMatch; live?: boolean }) {
           {opp.record ? <small> · {t("champs.oppRecord", { wins: opp.record[0], losses: opp.record[1] })}</small> : null}
         </span>
       ) : (
-        <span className="ch-slot-opp quiet">{m.hub_only ? t("champs.notSeen") : t("champs.unknownOpp")}</span>
+        <span className="ch-slot-opp quiet">{m.hub_only ? t(reported ? "champs.fromYou" : "champs.notSeen") : t("champs.unknownOpp")}</span>
       )}
+      {!m.hub_only && !live && m.started > 0 ? (
+        <time className="ch-slot-time" dateTime={new Date(m.started).toISOString()}>
+          {new Date(m.started).toLocaleString(undefined, { weekday: "short", hour: "2-digit", minute: "2-digit" })}
+        </time>
+      ) : null}
       {(m.disconnect || s.whenLeft || (!m.confirmed && !live && !m.hub_only)) && (
         <span className="ch-slot-note">
           {m.disconnect ? t("champs.dnf") : s.whenLeft ? t("champs.whenLeft", { score: `${s.whenLeft[0]}–${s.whenLeft[1]}`, minute: s.minute ?? 0 }) : t("champs.unconfirmed")}
@@ -238,7 +243,7 @@ function Slots({ run, pending }: { run: ChampsRun | undefined; pending: ChampsMa
     <section className="ch-slots-wrap">
       <p className="eyebrow">{t("champs.matches")}</p>
       <ol className="ch-slots">
-        {at.map((m, i) => (i === liveAt ? <Slot key={i} n={i + 1} m={pending!} live /> : <Slot key={i} n={i + 1} m={m} />))}
+        {at.map((m, i) => (i === liveAt ? <Slot key={i} n={i + 1} m={pending!} live /> : <Slot key={i} n={i + 1} m={m} reported={run?.corrected} />))}
       </ol>
     </section>
   );
@@ -327,8 +332,8 @@ function BoardCard() {
   );
 }
 
-/** Earlier weekends: record, rank, date. */
-function History({ runs }: { runs: ChampsRun[] }) {
+/** Earlier weekends: record, rank, date – each opens its matches. */
+function History({ runs, open, onOpen }: { runs: ChampsRun[]; open: number | null; onOpen: (id: number) => void }) {
   if (!runs.length) return null;
   return (
     <section className="ch-history">
@@ -336,11 +341,13 @@ function History({ runs }: { runs: ChampsRun[] }) {
       <ul>
         {runs.map((r) => (
           <li key={r.id}>
-            <b>
-              {r.hub.wins}–{r.hub.losses}
-            </b>
-            <span>{rankFor(r.hub.wins) ?? ""}</span>
-            <small>{new Date(r.id).toLocaleDateString()}</small>
+            <button className={r.id === open ? "on" : ""} aria-pressed={r.id === open} title={t("champs.historyOpen")} onClick={() => onOpen(r.id)}>
+              <b>
+                {r.hub.wins}–{r.hub.losses}
+              </b>
+              <span>{rankFor(r.hub.wins) ?? ""}</span>
+              <small>{new Date(r.id).toLocaleDateString()}</small>
+            </button>
           </li>
         ))}
       </ul>
@@ -372,17 +379,37 @@ export default function Champions({ keys }: { keys?: ReactNode }) {
   const data = useChampions();
   const [on, switchOn] = useChampsOn();
   const now = useNow();
+  // an earlier weekend opened from the list (L1/R1 or Q/E step through them), null = this one
+  const [openId, setOpenId] = useState<number | null>(null);
+  const runs = data?.runs ?? [];
+  useEffect(() => {
+    const step = (e: Event) => {
+      const dir = (e as CustomEvent<number>).detail;
+      const done = runs.filter((r) => !(r.ends_at && r.ends_at > Date.now()));
+      // newest first, like the list: R1 goes back in time, L1 towards this weekend
+      const order: (number | null)[] = [null, ...[...done].reverse().map((r) => r.id)];
+      setOpenId((cur) => order[Math.max(0, Math.min(order.length - 1, order.indexOf(cur) + dir))] ?? null);
+    };
+    window.addEventListener("fct:champions-weekend", step);
+    return () => window.removeEventListener("fct:champions-weekend", step);
+  }, [runs]);
+  useEffect(() => {
+    document.querySelector(".planner-body .detail-wrap")?.scrollTo({ top: 0, behavior: "smooth" });
+  }, [openId]);
   if (!data && !IS_WEB) return <div className="ch"><p className="ml-loading">{t("champs.loading")}</p></div>;
-  const own = IS_WEB ? emptyChamps : data ?? emptyChamps;
+  // FC-Tracker Web shows the weekends the app read when signed in (from the account)
+  const own = data ?? emptyChamps;
   const last = own.runs[own.runs.length - 1];
   const clock = champsClock(own, now);
   // this weekend's run (its hub has time left, or a match is in play); otherwise a fresh weekend
   const pending = own.pending && (own.pending.last || own.pending.score || own.pending.home.abbr) ? own.pending : null;
   const current = last && last.ends_at && last.ends_at > now ? last : undefined;
-  const hub = current?.hub ?? null;
+  const opened = own.runs.find((r) => r.id === openId && r !== current);
+  const shown = opened ?? current;
+  const hub = shown?.hub ?? null;
   const wins = hub?.wins ?? 0;
   const losses = hub?.losses ?? 0;
-  const left = hub ? hub.remaining : SLOTS;
+  const left = hub ? (opened ? 0 : hub.remaining) : SLOTS;
   const playing = !!current || !!pending;
   const earlier = own.runs.filter((r) => r !== current).reverse();
   const status = IS_WEB
@@ -399,11 +426,16 @@ export default function Champions({ keys }: { keys?: ReactNode }) {
           <p className="eyebrow">
             {t("section.champions")} · {t("champs.beta")}
           </p>
-          <h1 className="detail-title">{t("champs.title")}</h1>
+          <h1 className="detail-title">{opened ? t("champs.weekendOf", { date: new Date(opened.id).toLocaleDateString() }) : t("champs.title")}</h1>
           <p className="detail-sub">
             <span className={`ch-on ${IS_WEB ? "web" : on ? "on" : on === false ? "off" : ""}`} aria-hidden="true" />
             {status}
           </p>
+          {opened && (
+            <button className="theme-btn ch-back" onClick={() => setOpenId(null)}>
+              ← {t("champs.backNow")}
+            </button>
+          )}
         </div>
         <Record wins={wins} losses={losses} left={left} />
         <ClockBox clock={clock} now={now} />
@@ -431,17 +463,19 @@ export default function Champions({ keys }: { keys?: ReactNode }) {
         </div>
       ) : null}
 
+      {opened?.corrected && <p className="ch-corrected">{t("champs.corrected")}</p>}
+
       <Ladder wins={wins} />
 
       <div className="ch-grid">
-        <Slots run={current} pending={pending} />
+        <Slots run={shown} pending={opened ? null : pending} />
         <div className="ch-side">
-          {current && current.matches.length > 0 ? <Stats run={current} /> : <Guide on={on} />}
+          {shown && shown.matches.length > 0 ? <Stats run={shown} /> : <Guide on={on} />}
           <BoardCard />
         </div>
       </div>
 
-      <History runs={earlier} />
+      <History runs={earlier} open={opened?.id ?? null} onOpen={(id) => setOpenId(id === openId ? null : id)} />
       <p className="ch-privacy">{t("champs.privacy")}</p>
     </div>
   );

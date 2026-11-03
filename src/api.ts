@@ -499,6 +499,8 @@ const appApi = {
   gameRunning: () => (browserDev ? Promise.resolve(demo === "running" || demo === "syncing") : invoke<boolean>("game_running")),
   launchGame: () => invoke<void>("launch_game"),
   hideOverlay: () => (browserDev ? Promise.resolve() : invoke<void>("hide_overlay")),
+  /** A click in an overlay opened without focus (while recording): it takes the focus. */
+  overlayFocus: () => (browserDev ? Promise.resolve() : invoke<void>("overlay_focus")),
   bridgeInfo: () =>
     browserDev
       ? Promise.resolve<BridgeInfo>({ port: 47827, paired: demo !== "unpaired", pairing_code: "4821", extension_version: demo === "outdated" ? "0.9.1" : "0.9.2", extension_latest: "0.9.2", needs_pairing: demo === "unpaired", extension_live: demo !== "chrome-closed" })
@@ -636,6 +638,7 @@ function withWeb(a: typeof appApi): typeof appApi {
     openHelp: () => Promise.resolve(void window.open("/faq", "_blank", "noopener")),
     openSite: (path: string) => Promise.resolve(void window.open(path, "_blank", "noopener")),
     hideOverlay: () => Promise.resolve(),
+    overlayFocus: () => Promise.resolve(),
     // the weekends the app read, from the account (src/account.ts) – else empty
     championsData: () =>
       import("./championsData").then((m) => {

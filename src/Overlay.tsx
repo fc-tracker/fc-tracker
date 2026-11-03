@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   IS_WEB,
   api,
@@ -690,6 +690,8 @@ export default function Overlay() {
 
   // Opened while a screen recorder runs (no focus: the controller stays with the game).
   const [passive, setPassive] = useState(false);
+  const passiveRef = useRef(false);
+  passiveRef.current = passive;
   useEffect(() => {
     const un = events.onOverlayPassive(setPassive);
     return () => {
@@ -855,8 +857,9 @@ export default function Overlay() {
         return;
       }
       if (section === "champions") {
-        // up/down scroll the weekend
-        if (action === "up" || action === "down") document.querySelector(".planner-body .detail-wrap")?.scrollBy({ top: action === "down" ? 240 : -240, behavior: "smooth" });
+        // up/down scroll the weekend, L1/R1 (Q/E) step through the earlier weekends
+        if (action === "prev_category" || action === "next_category") window.dispatchEvent(new CustomEvent("fct:champions-weekend", { detail: action === "next_category" ? 1 : -1 }));
+        else if (action === "up" || action === "down") document.querySelector(".planner-body .detail-wrap")?.scrollBy({ top: action === "down" ? 240 : -240, behavior: "smooth" });
         else if (action === "select") window.dispatchEvent(new Event("fct:champions-switch")); // switches the tracker on while it is off
         else if (action === "back") api.hideOverlay();
         return;
@@ -989,6 +992,11 @@ export default function Overlay() {
       nav(action);
     };
     window.addEventListener("keydown", onKey);
+    // opened without focus (recording): the first click takes it, so fields can be typed in
+    const onPointer = () => {
+      if (passiveRef.current) void api.overlayFocus();
+    };
+    window.addEventListener("pointerdown", onPointer);
     // Controller (PlayStation / Xbox): L1/R1 category, D-pad move, ✕/A open, ○/B back.
     const unlistenPad = events.onPad(nav);
     // Right stick scrolls the detail panel; speed grows with the tilt (squared) so a small push
@@ -1007,6 +1015,7 @@ export default function Overlay() {
     return () => {
       window.removeEventListener("wheel", onWheel);
       window.removeEventListener("keydown", onKey);
+      window.removeEventListener("pointerdown", onPointer);
       unlistenPad.then((u) => u());
       unlistenScroll.then((u) => u());
     };
@@ -1255,6 +1264,7 @@ export default function Overlay() {
               <span><PadButton id="l2" layout={pad} size={20} /><PadButton id="r2" layout={pad} size={20} /> {t("overlay.hintSection")}</span>
               {section !== "champions" && section !== "squads" && <span><PadButton id="l1" layout={pad} size={20} /><PadButton id="r1" layout={pad} size={20} /> {t(section === "planner" ? "value.hintGoal" : "overlay.hintCategory")}</span>}
               {section === "squads" && <span><PadButton id="l1" layout={pad} size={20} /><PadButton id="r1" layout={pad} size={20} /> {t("squads.hintSession")}</span>}
+              {section === "champions" && <span><PadButton id="l1" layout={pad} size={20} /><PadButton id="r1" layout={pad} size={20} /> {t("champs.hintWeekend")}</span>}
               {section === "squads" && <span><PadButton id="left" layout={pad} size={20} /><PadButton id="right" layout={pad} size={20} /> {t("squads.hintPlace")}</span>}
               <span><PadButton id="up" layout={pad} size={20} /><PadButton id="down" layout={pad} size={20} /> {t(scrolls ? "value.hintScroll" : "overlay.hintSet")}</span>
               {enterHint && <span><PadButton id="south" layout={pad} size={20} /> {t(enterHint)}</span>}
@@ -1268,6 +1278,7 @@ export default function Overlay() {
               <span><kbd>Tab</kbd> {t("overlay.hintSection")}</span>
               {section !== "champions" && section !== "squads" && <span><kbd>Q</kbd> <kbd>E</kbd> {t(section === "planner" ? "value.hintGoal" : "overlay.hintCategory")}</span>}
               {section === "squads" && <span><kbd>Q</kbd> <kbd>E</kbd> {t("squads.hintSession")}</span>}
+              {section === "champions" && <span><kbd>Q</kbd> <kbd>E</kbd> {t("champs.hintWeekend")}</span>}
               {section === "squads" && <span><kbd>←</kbd> <kbd>→</kbd> {t("squads.hintPlace")}</span>}
               <span><kbd>Ctrl</kbd>+<kbd>scroll</kbd> {t("overlay.zoom")}</span>
               <span><kbd>↑</kbd> <kbd>↓</kbd> {t(scrolls ? "value.hintScroll" : "overlay.hintSet")}</span>

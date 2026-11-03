@@ -15,7 +15,7 @@ import SyncConflict, { timeAgo } from "../SyncConflict";
 import { Account } from "../AccountSettings";
 import { SavedSquads } from "../Squads";
 import { devices, syncedParts, useAccount, type CloudPart, type Device, type Part } from "../account";
-import type { ChampsData } from "../championsData";
+import { shownScore, type ChampsData, type ChampsRun } from "../championsData";
 import type { SquadsView } from "../squadsData";
 
 type Tab = "overview" | "tracker" | "profile";
@@ -103,7 +103,39 @@ function GalleryTile({ cats, open }: { cats: GalleryCategory[] | null; open: () 
   );
 }
 
+/** Every match of one weekend: number, result, score, how it ended, when. */
+function WeekendMatches({ run }: { run: ChampsRun }) {
+  const ms = [...run.matches].sort((a, b) => (a.n ?? 99) - (b.n ?? 99));
+  return (
+    <>
+      {run.corrected && <p className="dash-muted dash-note">{t("champs.corrected")}</p>}
+      <ol className="dash-matches">
+        {ms.map((m, i) => {
+          const s = shownScore(m);
+          return (
+            <li key={i} className={m.outcome ?? ""}>
+              <span className="n">{m.n ?? "–"}</span>
+              <b>{m.outcome ? t(`champs.short.${m.outcome}`) : "…"}</b>
+              <span>{s.score ? `${s.score[0]}–${s.score[1]}${m.extra_time ? ` ${t("champs.aet")}` : ""}` : ""}</span>
+              <small>
+                {m.disconnect
+                  ? t("champs.dnf")
+                  : s.whenLeft
+                    ? t("champs.whenLeft", { score: `${s.whenLeft[0]}–${s.whenLeft[1]}`, minute: s.minute ?? 0 })
+                    : m.hub_only
+                      ? t(run.corrected ? "champs.fromYou" : "champs.notSeen")
+                      : new Date(m.started).toLocaleString(undefined, { weekday: "short", hour: "2-digit", minute: "2-digit" })}
+              </small>
+            </li>
+          );
+        })}
+      </ol>
+    </>
+  );
+}
+
 function ChampionsTile({ data, open }: { data: ChampsData | null; open: () => void }) {
+  const [shown, setShown] = useState<number | null>(null);
   const runs = (data?.runs ?? []).filter((r) => r.matches.length > 0 || r.hub.wins + r.hub.losses > 0);
   const best = runs.reduce<(typeof runs)[number] | null>((b, r) => (!b || r.hub.wins > b.hub.wins ? r : b), null);
   const wins = runs.reduce((a, r) => a + r.hub.wins, 0);
@@ -121,12 +153,15 @@ function ChampionsTile({ data, open }: { data: ChampsData | null; open: () => vo
           </div>
           <ul className="dash-list">
             {[...runs].reverse().slice(0, 5).map((r) => (
-              <li key={r.id}>
-                <span>{r.ends_at ? new Date(r.ends_at).toLocaleDateString() : "–"}</span>
-                <small>
-                  {r.hub.wins}–{r.hub.losses}
-                  {r.hub.rank ? ` · ${r.hub.rank}` : ""}
-                </small>
+              <li key={r.id} className="dash-weekend">
+                <button aria-expanded={shown === r.id} title={t("champs.historyOpen")} onClick={() => setShown(shown === r.id ? null : r.id)}>
+                  <span>{r.ends_at ? new Date(r.ends_at).toLocaleDateString() : "–"}</span>
+                  <small>
+                    {r.hub.wins}–{r.hub.losses}
+                    {r.hub.rank ? ` · ${r.hub.rank}` : ""}
+                  </small>
+                </button>
+                {shown === r.id && <WeekendMatches run={r} />}
               </li>
             ))}
           </ul>

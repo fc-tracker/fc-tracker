@@ -333,6 +333,25 @@
       }
     } catch {}
 
+    // Cards on the Transfer List are the club's too, but the club search leaves them out and EA's
+    // own transfer list response has no names (2026-11-03: Kelly and Ona Batlle showed as "Arsenal").
+    // Sold ones keep their closed trade state – the app leaves those out.
+    try {
+      if (window.services?.Item?.requestTransferItems) {
+        await sleep(PAGE_DELAY_MS);
+        const result = await observe(window.services.Item.requestTransferItems());
+        const items = (result?.response?.items ?? []).filter((e) => e && e.id);
+        const trade = (e) => {
+          try {
+            return (typeof e.getAuctionData === "function" ? e.getAuctionData() : e._auction)?.tradeState ?? null;
+          } catch {
+            return null;
+          }
+        };
+        if (items.length) post({ kind: "capture", url: "fct://club/transfers", body: { auctionInfo: items.map((e) => ({ tradeState: trade(e), itemData: toPlain(e) })) } });
+      }
+    } catch {}
+
     try {
       await syncAttributes(players);
     } catch {}

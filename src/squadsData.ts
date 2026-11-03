@@ -265,7 +265,7 @@ export interface RushPick {
 }
 
 export interface MatchBrief {
-  before: { kind: "squad" | "ready" | "buy" | "use" | "bench" | "rush" | "rush_buy" | "rules" | "unread"; text: string; count: number | null }[];
+  before: { kind: "squad" | "ready" | "buy" | "use" | "bench" | "rush" | "rush_buy" | "rules" | "cap" | "unread"; text: string; count: number | null }[];
   players: { name: string; pos: string; bench: boolean; tasks: BriefTask[] }[];
   anyone: BriefTask[];
 }

@@ -49,6 +49,8 @@ export interface ChampsRun {
   ends_at: number | null;
   hub: ChampsHub;
   matches: ChampsMatch[];
+  /** The final record came from the player, not a hub reading (champions.rs `set_final`). */
+  corrected?: boolean;
 }
 
 export interface ChampsData {

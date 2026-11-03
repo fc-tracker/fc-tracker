@@ -907,13 +907,21 @@ impl Store {
         let mut found = Vec::new();
         collect_items(body, &mut found, now);
         let n = found.len();
+        let mut nameless = false;
         for (item, owners, def_id) in found {
             self.note_owners(def_id.or(item.asset_id), owners);
             let item = match self.snapshot.items.get(&item.id) {
                 Some(old) => item.merged_with(old),
                 None => item,
             };
+            let card = item.play.as_ref().and_then(|p| p.def_id).or(item.asset_id).and_then(|d| self.snapshot.gallery.get(&d));
+            nameless |= !item.name.as_deref().is_some_and(crate::sync_data::real) || card.is_some_and(|c| !c.name.as_deref().is_some_and(crate::sync_data::real));
             self.snapshot.items.insert(item.id, item);
+        }
+        // EA's raw items (the transfer list …) carry no name, a Gallery read can bring "---": the
+        // names are filled now, not at the next sync
+        if nameless {
+            crate::sync_data::fill_names(&mut self.snapshot.gallery, Some(&mut self.snapshot.items));
         }
         n
     }
@@ -1262,6 +1270,76 @@ mod tests {
         assert_eq!(ids, vec![1]);
         assert_eq!(s.snapshot.items[&1].name.as_deref(), Some("Kept"));
         let _ = fs::remove_dir_all(s.dir());
+    }
+
+    #[test]
+    fn transfer_list_cards_get_their_names() {
+        // 2026-11-03: Kelly (86 RM) and Ona Batlle (87 RB) on the transfer list showed as "Arsenal" – EA's
+        // tradepile items carry no name and the Gallery read had brought "---" with the club name
+        let mut s = temp_store();
+        let card = |def: u64, rating: u64, pos: &str, name: &str| serde_json::json!({ "definitionId": def, "gradingScore": 4100, "isCollected": true, "rating": rating,
+            "leagueId": 2216, "teamId": 116009, "nationId": 14, "name": name, "preferredPosition": pos, "teamName": "Arsenal" });
+        s.ingest("fct://gallery/2216", &serde_json::json!({ "cards": [card(257001, 86, "RM", "---"), card(253436, 87, "RB", "Ona Batlle")] }));
+        // EA's own transfer list response (the shape of the real items)
+        let raw = |id: u64, def: u64, rating: u64, pos: &str, positions: &[&str]| serde_json::json!({ "tradeState": null, "itemData": {
+            "assetId": def, "resourceId": def, "id": id, "rating": rating, "preferredPosition": pos, "possiblePositions": positions, "itemType": "player",
+            "leagueId": 2216, "teamid": 116009, "nation": 14, "rareflag": 0, "untradeable": false, "owners": 2, "pile": 5,
+            "attributeArray": [89, 85, 85, 84, 43, 69], "resourceGameYear": 2027 } });
+        s.ingest("https://x/ut/game/fc27/tradepile", &serde_json::json!({ "auctionInfo": [
+            raw(948544191522, 257001, 86, "RM", &["RM", "LM", "RW", "LW"]), raw(950668373043, 253436, 87, "RB", &["RB", "LB", "RM", "LM"])] }));
+        // the Gallery has Ona Batlle's name: hers at once, without waiting for a sync
+        assert_eq!(s.snapshot.items[&950668373043].name.as_deref(), Some("Ona Batlle"));
+        // nobody has Kelly's yet: no name is made up, and the club is never taken for one
+        assert_eq!(s.snapshot.items[&948544191522].name, None);
+        let club = |s: &Store, id: u64| crate::squads::club_player(&s.snapshot.items[&id], &s.snapshot.gallery, &Default::default()).unwrap().name;
+        assert_eq!(club(&s, 948544191522), "");
+        assert_eq!(club(&s, 950668373043), "Ona Batlle");
+        // the extension's transfer list read (the Web App's own entities) names her – the card too
+        s.ingest("fct://club/transfers", &serde_json::json!({ "auctionInfo": [{ "tradeState": null, "itemData": {
+            "id": 948544191522u64, "assetId": 257001, "rating": 86, "preferredPosition": "RM", "itemType": "player", "name": "Kelly", "firstName": "Chloe", "lastName": "Kelly" } }] }));
+        assert_eq!(club(&s, 948544191522), "Kelly");
+        assert_eq!(s.snapshot.gallery[&257001].name.as_deref(), Some("Kelly"));
+        // … and a sold card on it is still not the club's
+        s.ingest("fct://club/transfers", &serde_json::json!({ "auctionInfo": [{ "tradeState": "closed", "itemData": { "id": 7, "assetId": 1, "itemType": "player", "name": "Sold" } }] }));
+        assert!(!s.snapshot.items.contains_key(&7));
+        let _ = fs::remove_dir_all(s.dir());
+    }
+
+    #[test]
+    fn a_special_card_without_a_name_takes_its_players() {
+        // a special version (base id + n × 2^24) the catalog doesn't have, no name in the item:
+        // the base card's name – never the club's
+        let special = 3 * (1 << 24) + 257001u64;
+        let mut gallery: BTreeMap<u64, GalleryCard> = BTreeMap::new();
+        gallery.insert(257001, serde_json::from_value(serde_json::json!({ "def_id": 257001, "score": 4100, "collected": true, "name": "Kelly", "team_name": "Arsenal" })).unwrap());
+        let raw = serde_json::json!({ "id": 948544191599u64, "assetId": 257001, "resourceId": special, "rating": 89, "preferredPosition": "RM", "itemType": "player",
+            "possiblePositions": ["RM", "LM"], "attributeArray": [90, 86, 86, 85, 45, 70], "teamid": 116009, "leagueId": 2216, "nation": 14 });
+        let item = crate::sync_data::parse_item(&raw, 1).unwrap();
+        assert_eq!(item.name, None);
+        assert_eq!(crate::squads::club_player(&item, &gallery, &Default::default()).unwrap().name, "Kelly");
+        // the special card known by its club only ("---"): still her name, through the asset id
+        gallery.insert(special, serde_json::from_value(serde_json::json!({ "def_id": special, "score": 0, "collected": true, "name": "---", "team_name": "Arsenal" })).unwrap());
+        assert_eq!(crate::squads::club_player(&item, &gallery, &Default::default()).unwrap().name, "Kelly");
+        // nothing names her anywhere: empty here, plan() marks the slot "Club (POS)"
+        gallery.get_mut(&257001).unwrap().name = Some("---".into());
+        assert_eq!(crate::squads::club_player(&item, &gallery, &Default::default()).unwrap().name, "");
+    }
+
+    #[test]
+    fn names_are_backfilled_on_load() {
+        // data saved before the fix: a named club card, its Gallery card "---", a nameless transfer list copy
+        let mut s = temp_store();
+        let dir = s.dir().to_path_buf();
+        let item = |id: u64, name: Option<&str>| serde_json::from_value::<Item>(serde_json::json!({ "id": id, "asset_id": 257001, "rating": 86, "position": "RM", "item_type": "player", "name": name, "last_seen": 1 })).unwrap();
+        s.snapshot.items.insert(1, item(1, Some("Kelly")));
+        s.snapshot.items.insert(2, item(2, None));
+        s.snapshot.gallery.insert(257001, serde_json::from_value(serde_json::json!({ "def_id": 257001, "score": 4100, "collected": true, "name": "---", "team_name": "Arsenal" })).unwrap());
+        s.dirty = true;
+        s.save();
+        let s = Store::load(dir.clone());
+        assert_eq!(s.snapshot.gallery[&257001].name.as_deref(), Some("Kelly"));
+        assert_eq!(s.snapshot.items[&2].name.as_deref(), Some("Kelly"));
+        let _ = fs::remove_dir_all(dir);
     }
 
     #[test]

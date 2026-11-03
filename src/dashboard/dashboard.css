@@ -45,6 +45,22 @@ html.dash-page body { margin: 0; font-family: var(--font-body); }
 .dash-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .dash-list li { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
 .dash-list small { color: var(--muted); text-align: right; }
+/* a weekend opens every match it had */
+.dash-list li.dash-weekend { display: grid; gap: 6px; }
+.dash-weekend > button {
+  all: unset; cursor: pointer; display: flex; justify-content: space-between; gap: 12px; padding: 4px 8px; margin: 0 -8px;
+  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+}
+.dash-weekend > button:hover, .dash-weekend > button:focus-visible, .dash-weekend > button[aria-expanded="true"] { background: var(--surface-hi); }
+.dash-note { margin: 0; font-size: 12px; }
+.dash-matches { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.dash-matches li { display: grid; grid-template-columns: 22px 52px 56px minmax(0, 1fr); gap: 8px; align-items: baseline; padding: 4px 8px; background: var(--surface-hi); box-shadow: inset 3px 0 0 var(--res, var(--line)); font-size: 13px; }
+.dash-matches li.win { --res: var(--result-win); }
+.dash-matches li.loss { --res: var(--result-loss); }
+.dash-matches li.quit { --res: var(--result-quit); }
+.dash-matches .n { color: var(--muted); font-variant-numeric: tabular-nums; }
+.dash-matches b { color: var(--res, var(--text)); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+.dash-matches small { text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dash-tile .sq-saved { margin-top: 4px; }
 .dash-tile .sq-saved h3 { font-size: 15px; }
 

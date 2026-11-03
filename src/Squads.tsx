@@ -1482,6 +1482,8 @@ export function MatchBriefView({ s, inMatch = false }: { s: SessionPlan; inMatch
         return x.count != null ? t("brief.rushBuy", { card: x.text, price: num(x.count) }) : t("brief.rushSearch", { card: x.text });
       case "rules":
         return t("brief.rules", { range: x.text });
+      case "cap":
+        return t("brief.cap", { rating: x.text, count: x.count ?? 1 });
       case "unread":
         return t("brief.unread", { event: x.text });
     }

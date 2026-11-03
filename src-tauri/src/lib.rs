@@ -122,6 +122,15 @@ fn toggle_overlay(app: &AppHandle) {
     }
 }
 
+/// A click in an overlay opened while recording (without focus): it takes the focus, so a search
+/// field can be typed in (user 2026-11-02: "the search for a player to include doesn't work").
+#[tauri::command]
+fn overlay_focus(app: AppHandle) {
+    if let Some(win) = app.get_webview_window(OVERLAY) {
+        wake_overlay(&app, &win);
+    }
+}
+
 /// The controller is used in an overlay opened while recording (without focus): from now on the
 /// overlay takes the focus, so the controller drives the overlay and not the game – the controller
 /// always works in the overlay. Only this first press also reaches the game (it had the focus).
@@ -1765,6 +1774,7 @@ pub fn run() {
             open_diagnostics,
             set_after_play,
             set_auto_panel,
+            overlay_focus,
             champions_data,
             squads_plan,
             squads_search,
@@ -1823,6 +1833,9 @@ mod real_plan {
             let extra = crate::squads::evo_players(hub, &input.club, &store.snapshot.gallery, &attrs);
             input.club.extend(extra);
         }
+        if let Ok(n) = std::env::var("FCT_MUST") {
+            prefs.must = input.club.iter().filter(|p| p.name == n).map(|p| p.key).collect();
+        }
         let view = crate::squads::plan(&input, &prefs);
         if let Ok(out) = std::env::var("FCT_SQUADS_OUT") {
             std::fs::write(out, serde_json::to_string_pretty(&view).unwrap()).unwrap();
@@ -1837,6 +1850,16 @@ mod real_plan {
             }
             if let Some(sq) = &c.squad {
                 println!("    {} chem {} changes {:?} buys {} cost {} manager {:?}: {}", sq.formation, sq.chem, sq.changes, sq.buys, sq.cost, sq.manager.as_ref().map(|m| (m.nation_name.clone(), m.league_name.clone(), m.gain, m.current)), sq.slots.iter().map(|s| format!("{} {} {}{}{}{}", s.pos, s.name, s.rating, if s.owned { "" } else { " BUY" }, if s.generic { " GENERIC" } else { "" }, if s.out_of_position { " OOP" } else { "" })).collect::<Vec<_>>().join(", "));
+            }
+            if let (Some(sq), true) = (&c.squad, std::env::var("FCT_SLOTS").is_ok()) {
+                for s in &sq.slots {
+                    println!("      SLOT {} {} {} chem {} meta {} reqs {:?}", s.pos, s.name, s.rating, s.chem, s.strength, s.counts_for.iter().map(|&k| c.reqs[k].name.clone()).collect::<Vec<_>>());
+                }
+                for name in ["Lavelle", "Debinha", "Musiala", "Carreras", "Cubarsí", "Bethune", "Mandžukić", "Adeyemi", "Kelly", "Batlle", "Pepe", "Eric García", "Corona", "Gilberto Silva", "LaBonta", "Kerkez", "Gulácsi", "Llorente", "Cancelo", "Canales", "Cardoso", "Neuer", "Rice", "Gabriel"] {
+                    for p in input.club.iter().filter(|p| p.name.contains(name)) {
+                        println!("      CLUB {} {} {:?} stats {} ps {:?} meta {}", p.name, p.rating, p.positions, p.stats.as_ref().map_or(0, |s| s.len()), p.playstyles, p.positions.iter().map(|pos| format!("{pos} {:.1}", crate::squads::strength(p, pos))).collect::<Vec<_>>().join(" "));
+                    }
+                }
             }
             println!("    counted {} bonus {} played {}", c.counted, c.bonus, c.played);
             for b in &c.bench {

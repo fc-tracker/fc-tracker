@@ -756,9 +756,33 @@ impl Attributes {
         Attributes { traits: table("traits"), cards }
     }
 
+    /// The Web App's name for a PlayStyle id – EA's own table from the sync, else the same enum as
+    /// the Web App ships it (`PlayerTrait`, read 2026-11-03): every club card's PlayStyles count
+    /// even before the attributes are synced.
     fn trait_name(&self, id: u64) -> Option<String> {
-        self.traits.get(&id).cloned()
+        self.traits.get(&id).cloned().or_else(|| EA_TRAITS.get(id as usize).map(|s| s.to_string()))
     }
+}
+
+/// EA's PlayerTrait enum in id order (the Web App's `window.PlayerTrait`, FC 27, 2026-11-03).
+const EA_TRAITS: [&str; 36] = [
+    "FINESSE_SHOT", "CHIP_SHOT", "POWER_SHOT", "FK_SPECIALIST", "PRECISION_HEADER", "ACROBATIC", "LOW_DRIVEN_SHOT", "TRAILBLAZING", "PASS_INTO_SPACE", "BULLET_PASSES", "LOB_PASS_MASTER", "TIKI_TAKA_MASTER",
+    "WHIPPED_CROSSES", "INVENTIVE", "FAST_JOCKEY", "BRICK_WALL", "INTERCEPTER", "TACKLE_VISION", "SLIDE_TACKLER", "AERIAL_DEFENSE", "TECHNICAL_DRIBBLER", "SPEED_DRIBBLER", "TRAP_MASTER", "TRICKSTER",
+    "POSSESSION_HOLDER", "EXPLOSIVE_SPRINT_BOOST", "RELENTLESS", "THROW_IN_SPECIALIST", "BRUISER", "ENFORCER", "LONG_THROWER", "SAVE_WITH_FOOT", "COMES_FOR_CROSSES", "RUSHES_OUT_OF_GOAL", "FAR_REACH", "DEFLECTOR",
+];
+
+/// What a card's PlayStyles add in a position (PlayStyle+ 2.5×), and a defender without a single
+/// defensive one loses (as the big sites rate them).
+fn playstyle_bonus(p: &Player, pos: &str) -> f64 {
+    let ps: f64 = playstyle_weights(pos)
+        .iter()
+        .filter_map(|(name, wt)| p.playstyles.iter().find(|(n, _)| n == name).map(|(_, plus)| if *plus { 2.5 * wt } else { *wt }))
+        .sum();
+    let mut s = 1.1 * ps.min(6.0);
+    if matches!(pos, "CB" | "CDM" | "LB" | "RB") && !p.playstyles.is_empty() && !p.playstyles.iter().any(|(n, _)| matches!(n.as_str(), "INTERCEPTER" | "TACKLE_VISION" | "FAST_JOCKEY" | "BRICK_WALL" | "BRUISER" | "ENFORCER")) {
+        s -= 1.5;
+    }
+    s
 }
 
 // ---------- rating (beta) ----------
@@ -767,14 +791,28 @@ impl Attributes {
 /// blind test later). Names as the Web App's ItemSubAttribute enum.
 fn attribute_weights(pos: &str) -> &'static [(&'static str, f64)] {
     match pos {
-        "ST" => &[("finishing", 22.0), ("positioning", 14.0), ("acceleration", 9.0), ("sprintspeed", 8.0), ("shotpower", 9.0), ("composure", 8.0), ("reactions", 8.0), ("ballcontrol", 7.0), ("dribbling", 6.0), ("agility", 4.0), ("longshots", 4.0), ("strength", 3.0), ("headingaccuracy", 3.0), ("volleys", 2.0)],
+        "ST" => &[("finishing", 20.0), ("positioning", 12.0), ("acceleration", 15.0), ("sprintspeed", 13.0), ("shotpower", 9.0), ("composure", 8.0), ("reactions", 8.0), ("ballcontrol", 7.0), ("dribbling", 6.0), ("agility", 4.0), ("longshots", 4.0), ("strength", 3.0), ("headingaccuracy", 3.0), ("volleys", 2.0)],
         "LW" | "RW" | "LM" | "RM" => &[("acceleration", 14.0), ("sprintspeed", 12.0), ("dribbling", 14.0), ("ballcontrol", 11.0), ("agility", 9.0), ("finishing", 9.0), ("crossing", 6.0), ("shortpassing", 6.0), ("reactions", 6.0), ("balance", 5.0), ("composure", 4.0), ("positioning", 4.0), ("curve", 3.0), ("longshots", 3.0), ("vision", 3.0)],
-        "CAM" => &[("shortpassing", 12.0), ("vision", 12.0), ("ballcontrol", 11.0), ("dribbling", 11.0), ("composure", 8.0), ("finishing", 8.0), ("agility", 7.0), ("reactions", 7.0), ("longshots", 6.0), ("acceleration", 6.0), ("positioning", 5.0), ("sprintspeed", 4.0), ("balance", 3.0)],
-        "CM" => &[("shortpassing", 15.0), ("longpassing", 11.0), ("vision", 10.0), ("ballcontrol", 10.0), ("reactions", 8.0), ("composure", 8.0), ("stamina", 7.0), ("interceptions", 6.0), ("dribbling", 6.0), ("acceleration", 4.0), ("sprintspeed", 4.0), ("marking", 4.0), ("standingtackle", 4.0), ("strength", 3.0)],
-        "CDM" => &[("interceptions", 14.0), ("standingtackle", 13.0), ("marking", 12.0), ("shortpassing", 11.0), ("strength", 8.0), ("reactions", 7.0), ("longpassing", 6.0), ("stamina", 6.0), ("composure", 6.0), ("aggression", 5.0), ("ballcontrol", 5.0), ("acceleration", 3.0), ("sprintspeed", 3.0), ("vision", 3.0)],
-        "LB" | "RB" => &[("acceleration", 12.0), ("sprintspeed", 12.0), ("standingtackle", 11.0), ("marking", 10.0), ("interceptions", 9.0), ("stamina", 8.0), ("shortpassing", 7.0), ("crossing", 6.0), ("reactions", 6.0), ("slidingtackle", 5.0), ("ballcontrol", 4.0), ("agility", 4.0), ("strength", 4.0), ("dribbling", 3.0)],
-        "CB" => &[("marking", 16.0), ("standingtackle", 15.0), ("interceptions", 12.0), ("strength", 11.0), ("headingaccuracy", 8.0), ("jumping", 7.0), ("reactions", 7.0), ("sprintspeed", 7.0), ("acceleration", 6.0), ("slidingtackle", 5.0), ("aggression", 4.0), ("composure", 3.0), ("shortpassing", 3.0)],
+        "CAM" => &[("shortpassing", 12.0), ("vision", 10.0), ("ballcontrol", 11.0), ("dribbling", 12.0), ("composure", 8.0), ("finishing", 9.0), ("agility", 8.0), ("reactions", 7.0), ("longshots", 6.0), ("acceleration", 11.0), ("positioning", 5.0), ("sprintspeed", 8.0), ("balance", 3.0)],
+        "CM" => &[("shortpassing", 15.0), ("longpassing", 11.0), ("vision", 10.0), ("ballcontrol", 10.0), ("reactions", 8.0), ("composure", 8.0), ("stamina", 7.0), ("interceptions", 7.0), ("dribbling", 6.0), ("acceleration", 8.0), ("sprintspeed", 7.0), ("marking", 4.0), ("standingtackle", 6.0), ("strength", 4.0)],
+        "CDM" => &[("interceptions", 14.0), ("standingtackle", 13.0), ("marking", 12.0), ("shortpassing", 11.0), ("strength", 8.0), ("reactions", 7.0), ("longpassing", 6.0), ("stamina", 6.0), ("composure", 6.0), ("aggression", 5.0), ("ballcontrol", 5.0), ("acceleration", 7.0), ("sprintspeed", 7.0), ("vision", 3.0)],
+        "LB" | "RB" => &[("acceleration", 15.0), ("sprintspeed", 15.0), ("standingtackle", 11.0), ("marking", 10.0), ("interceptions", 9.0), ("stamina", 8.0), ("shortpassing", 7.0), ("crossing", 6.0), ("reactions", 6.0), ("slidingtackle", 5.0), ("ballcontrol", 4.0), ("agility", 4.0), ("strength", 4.0), ("dribbling", 3.0)],
+        "CB" => &[("marking", 16.0), ("standingtackle", 15.0), ("interceptions", 12.0), ("strength", 11.0), ("headingaccuracy", 6.0), ("jumping", 6.0), ("reactions", 7.0), ("sprintspeed", 13.0), ("acceleration", 11.0), ("slidingtackle", 4.0), ("aggression", 4.0), ("composure", 3.0), ("shortpassing", 3.0)],
         "GK" => &[("gkdiving", 22.0), ("gkreflexes", 22.0), ("gkhandling", 18.0), ("gkpositioning", 18.0), ("gkkicking", 8.0), ("reactions", 8.0), ("sprintspeed", 2.0), ("jumping", 2.0)],
+        _ => &[],
+    }
+}
+
+/// Other ways to play a position (the roles the big sites rate a card in – a card counts at its
+/// best one): ST target forward, CM / CDM playmaker, CB ball-playing defender, CAM shadow striker.
+/// Checked against the big rating sites 2026-11-03 (Mandžukić is a target forward, Lavelle a playmaker).
+fn role_weights(pos: &str) -> &'static [(&'static str, f64)] {
+    match pos {
+        "ST" => &[("finishing", 18.0), ("shotpower", 12.0), ("headingaccuracy", 12.0), ("strength", 13.0), ("positioning", 12.0), ("jumping", 7.0), ("composure", 8.0), ("reactions", 8.0), ("ballcontrol", 6.0), ("volleys", 4.0), ("sprintspeed", 6.0), ("acceleration", 4.0)],
+        "CM" => &[("shortpassing", 18.0), ("vision", 15.0), ("longpassing", 13.0), ("ballcontrol", 13.0), ("dribbling", 10.0), ("composure", 9.0), ("agility", 6.0), ("curve", 4.0), ("reactions", 7.0), ("acceleration", 5.0)],
+        "CDM" => &[("shortpassing", 16.0), ("longpassing", 14.0), ("vision", 10.0), ("interceptions", 12.0), ("composure", 9.0), ("ballcontrol", 9.0), ("standingtackle", 9.0), ("reactions", 8.0), ("strength", 5.0), ("acceleration", 4.0), ("sprintspeed", 4.0)],
+        "CB" => &[("marking", 12.0), ("standingtackle", 13.0), ("interceptions", 12.0), ("shortpassing", 10.0), ("longpassing", 8.0), ("composure", 8.0), ("sprintspeed", 11.0), ("acceleration", 9.0), ("reactions", 7.0), ("strength", 6.0), ("ballcontrol", 4.0)],
+        "CAM" => &[("finishing", 15.0), ("positioning", 12.0), ("dribbling", 13.0), ("ballcontrol", 11.0), ("acceleration", 12.0), ("sprintspeed", 9.0), ("agility", 9.0), ("composure", 8.0), ("shotpower", 6.0), ("reactions", 5.0)],
         _ => &[],
     }
 }
@@ -815,17 +853,17 @@ pub fn accelerate(p: &Player) -> Option<&'static str> {
 pub fn strength(p: &Player, pos: &str) -> f64 {
     let ovr = p.rating as f64;
     if let Some(stats) = p.stats.as_ref().filter(|s| s.len() >= 20) {
-        let w = attribute_weights(pos);
-        let (sum, total) = w.iter().fold((0.0, 0.0), |(s, t), (name, wt)| match stats.get(*name) {
-            Some(&v) => (s + v as f64 * wt, t + wt),
-            None => (s, t),
-        });
-        let mut s = if total > 0.0 { 0.35 * ovr + 0.65 * (sum / total) } else { ovr };
-        let ps: f64 = playstyle_weights(pos)
-            .iter()
-            .filter_map(|(name, wt)| p.playstyles.iter().find(|(n, _)| n == name).map(|(_, plus)| if *plus { 2.0 * wt } else { *wt }))
-            .sum();
-        s += 0.6 * ps.min(4.0);
+        let avg = |w: &[(&str, f64)]| {
+            let (sum, total) = w.iter().fold((0.0, 0.0), |(s, t), (name, wt)| match stats.get(*name) {
+                Some(&v) => (s + v as f64 * wt, t + wt),
+                None => (s, t),
+            });
+            (total > 0.0).then(|| sum / total)
+        };
+        // the best way to play the position (its main role or another one)
+        let best = [avg(attribute_weights(pos)), avg(role_weights(pos))].into_iter().flatten().fold(f64::MIN, f64::max);
+        let mut s = if best > f64::MIN { 0.2 * ovr + 0.8 * best } else { ovr };
+        s += playstyle_bonus(p, pos);
         if let Some(h) = p.height {
             let h = h as f64;
             s += match pos {
@@ -837,14 +875,14 @@ pub fn strength(p: &Player, pos: &str) -> f64 {
             };
         }
         s += match (accelerate(p), pos) {
-            (Some("explosive"), "ST" | "LW" | "RW" | "LM" | "RM" | "CAM") => 0.8,
-            (Some("explosive"), "LB" | "RB") => 0.5,
-            (Some("lengthy"), "CB") => 0.4,
+            (Some("explosive"), "ST" | "LW" | "RW" | "LM" | "RM" | "CAM") => 1.2,
+            (Some("explosive"), "LB" | "RB" | "CM") => 0.6,
+            (Some("lengthy"), "CB" | "ST") => 0.5,
             (Some("lengthy"), "LW" | "RW" | "LM" | "RM" | "CAM") => -0.3,
             _ => 0.0,
         };
         if matches!(pos, "ST" | "LW" | "RW" | "CAM" | "LM" | "RM") {
-            s += 0.4 * (p.weak_foot as f64 - 3.0).max(0.0) + 0.3 * (p.skill_moves as f64 - 3.0).max(0.0);
+            s += 0.7 * (p.weak_foot as f64 - 3.0) + 0.5 * (p.skill_moves as f64 - 3.0).max(0.0);
         }
         s += 0.3 * p.roles_pp.min(2) as f64;
         if p.positions.first().is_some_and(|f| f != pos) {
@@ -865,20 +903,25 @@ fn strength_face(p: &Player, pos: &str) -> f64 {
         "CAM" => [0.15, 0.2, 0.3, 0.35, 0.0, 0.0],
         "CM" => [0.15, 0.1, 0.35, 0.2, 0.1, 0.1],
         "CDM" => [0.15, 0.0, 0.25, 0.1, 0.3, 0.2],
-        "LB" | "RB" => [0.35, 0.0, 0.15, 0.1, 0.3, 0.1],
-        "CB" => [0.2, 0.0, 0.05, 0.0, 0.45, 0.3],
+        "LB" | "RB" => [0.4, 0.0, 0.15, 0.1, 0.25, 0.1],
+        "CB" => [0.45, 0.0, 0.05, 0.0, 0.3, 0.2],
         _ => [0.0; 6],
     };
+    // a striker can also be a target forward (shooting and physical over pace – Mandžukić)
+    let tf: [f64; 6] = [0.12, 0.4, 0.05, 0.13, 0.0, 0.3];
     let mut s = match (&p.face, pos) {
         (Some(f), pos) if pos != "GK" => {
-            let weighted: f64 = f.iter().zip(w).map(|(&v, w)| v as f64 * w).sum();
-            0.5 * ovr + 0.5 * weighted
+            let weighted = |w: [f64; 6]| f.iter().zip(w).map(|(&v, w)| v as f64 * w).sum::<f64>();
+            let best = if pos == "ST" { weighted(w).max(weighted(tf)) } else { weighted(w) };
+            0.25 * ovr + 0.75 * best
         }
         _ => ovr,
     };
-    s += 0.4 * p.ps_plus.min(3) as f64 + 0.3 * p.roles_pp.min(2) as f64;
+    // tuned against the big rating sites (2026-11-03: Musiala 87.2, Lavelle 85.9 CM, Carreras 82.5)
+    s += if p.playstyles.is_empty() { 0.4 * p.ps_plus.min(3) as f64 } else { 0.75 * playstyle_bonus(p, pos) - 1.6 };
+    s += 0.3 * p.roles_pp.min(2) as f64;
     if matches!(pos, "ST" | "LW" | "RW" | "CAM" | "LM" | "RM") {
-        s += 0.3 * (p.weak_foot as f64 - 3.0).max(0.0) + 0.3 * (p.skill_moves as f64 - 3.0).max(0.0);
+        s += 0.6 * (p.weak_foot as f64 - 3.0) + 0.4 * (p.skill_moves as f64 - 3.0).max(0.0);
     }
     // the card's own position first, the others it can play right after
     if p.positions.first().is_some_and(|f| f != pos) {
@@ -1025,6 +1068,14 @@ struct Pick {
     score: f64,
 }
 
+/// What a card's chemistry is worth in rating points (0, 1, 2, 3): its chemistry style's boost,
+/// most of it from the first points (the sites rate cards at full chemistry with the best style:
+/// ≈ +2.5 over none). A card at 0 chemistry plays without boosts – the solver keeps it for one that
+/// is clearly better.
+const CHEM_VALUE: [f64; 4] = [0.0, 1.4, 2.1, 2.6];
+/// Each point the squad is short of the chemistry target (Settings): a nudge, not a wall.
+const CHEM_SHORT: f64 = 0.4;
+
 /// A card in a slot it has no chemistry in: 0 chemistry, it adds to nobody's, and it plays worse –
 /// worth it only for a live requirement (a met one weighs 2e6), never for a bonus one or strength.
 const OUT_OF_POSITION: f64 = 5.0e4;
@@ -1072,9 +1123,11 @@ impl Ctx<'_> {
         let short = self.prefs.chem_target.min(33).saturating_sub(total) as f64;
         let mut power = 0.0;
         let mut buys = 0u32;
+        let mut k = 0;
         for (&s, pos) in slots.iter().zip(&f.slots) {
             let Some(i) = s else { continue };
-            power += strength(&self.players[i], pos);
+            power += strength(&self.players[i], pos) + CHEM_VALUE[chem.get(k).copied().unwrap_or(0).min(3) as usize];
+            k += 1;
             if !self.eligible(i, pos) {
                 power -= OUT_OF_POSITION;
             }
@@ -1095,7 +1148,6 @@ impl Ctx<'_> {
         if self.o.active_formation == Some(f.name.as_str()) {
             power += 2.0 * self.o.keep;
         }
-        power += 0.35 * chem.iter().sum::<u32>() as f64;
         // "has to include" comes before everything
         let must = slots.iter().flatten().filter(|i| self.must.contains(i)).count() as f64 * 1.0e12;
         // "chemistry first" = a playable squad, but objectives still count: a met requirement
@@ -1103,7 +1155,7 @@ impl Ctx<'_> {
         must + if self.prefs.chem_first {
             -short * 4.0e5 + reqs * 1.0e6 + power
         } else {
-            reqs * 1.0e6 - short * 2.0e3 + power
+            reqs * 1.0e6 - short * CHEM_SHORT + power
         }
     }
 
@@ -2056,6 +2108,9 @@ pub fn match_brief(s: &ComboPlan) -> MatchBrief {
     if let Some(r) = s.rules.as_ref().filter(|r| r.min_rating.is_some() || r.max_rating.is_some()) {
         b.before.push(BriefStep { kind: "rules".into(), text: format!("{}–{}", r.min_rating.unwrap_or(40), r.max_rating.unwrap_or(99)), count: None });
     }
+    if let Some([at, n]) = s.rules.as_ref().and_then(|r| r.cap) {
+        b.before.push(BriefStep { kind: "cap".into(), text: at.to_string(), count: Some(n as u64) });
+    }
     if s.rush_format {
         // Rush: one player to bring; what he scores or sets up is his to do, the rest the team's
         if let Some(p) = &s.rush {
@@ -2315,8 +2370,9 @@ fn goal_weights(prefs: &SquadPrefs) -> (f64, f64) {
         "buys" => (9.0e5, 2000.0),
         "changes" => (2.0e5, 6000.0),
         "matches" => (2.0e5, 0.0),
-        // the most objectives per match, few changes, buys only where they open objectives up
-        _ => (2.0e5, 2000.0),
+        // the most objectives per match, buys only where they open objectives up; the user's own
+        // squad only breaks a tie (user 2026-11-03: a better player must come in)
+        _ => (2.0e5, 1.0),
     }
 }
 
@@ -2665,7 +2721,28 @@ impl<'a> Planner<'a> {
             max_buys: self.prefs.max_buys,
             keep,
         };
-        let s = solve_with(&players, reqs, self.formations, self.prefs, self.links, opts).map(|(fi, pick)| Solved { fi, pick, players: std::rc::Rc::new(players) });
+        let mut s = solve_with(&players, reqs, self.formations, self.prefs, self.links, opts.clone()).map(|(fi, pick)| Solved { fi, pick, players: std::rc::Rc::new(players.clone()) });
+        // A cap ("88 and Higher OVR Players: Max. 1 in Squad"): the XI above came without any such
+        // card; each of the club's strongest ones is tried in it, one at a time, and the best XI wins
+        // (user 2026-11-02: "let the plan use one 88+ card in Ghoul Fest"). One card even when the
+        // rule allows more.
+        if let Some(r) = self.rules.as_ref().filter(|r| r.cap.is_some_and(|[_, n]| n >= 1)) {
+            let [at, _] = r.cap.unwrap();
+            let range = EntryRules { cap: None, ..r.clone() };
+            let mut high: Vec<&Player> = self.club.iter().filter(|p| p.owned && p.rating >= at && range.allows(p)).collect();
+            high.sort_by_key(|p| std::cmp::Reverse(p.rating));
+            for p in high.into_iter().take(4) {
+                let mut with = players.clone();
+                with.push(p.clone());
+                let mut o = opts.clone();
+                o.cost.push(0.0);
+                if let Some((fi, pick)) = solve_with(&with, reqs, self.formations, self.prefs, self.links, o) {
+                    if s.as_ref().is_none_or(|b| pick.score > b.pick.score) {
+                        s = Some(Solved { fi, pick, players: std::rc::Rc::new(with) });
+                    }
+                }
+            }
+        }
         self.solved.borrow_mut().insert(key, s.clone());
         s
     }
@@ -3616,9 +3693,16 @@ pub fn club_player(item: &crate::types::Item, catalog: &BTreeMap<u64, crate::typ
     Some(Player {
         key: item.id,
         def_id,
-        // EA names some cards "---" (no licence): the club stands in
         // each source in turn: EA writes "---" for many cards in the club data – the catalog has the name
-        name: [item.name.clone(), card.and_then(|c| c.name.clone()), catalog.get(&crate::sync_data::base_id(def_id)).and_then(|c| c.name.clone()), item.full_name.clone()].into_iter().flatten().find(|n| n.chars().any(char::is_alphanumeric)).or_else(|| card.and_then(|c| c.team_name.clone())).unwrap_or_default(),
+        // (by the card, the player's base card, the item's asset id). Never the club as a name
+        // (2026-11-03: Kelly showed as "Arsenal"): none found → plan() marks it "Club (POS)".
+        name: [item.name.clone(), card.and_then(|c| c.name.clone()), catalog.get(&crate::sync_data::base_id(def_id)).and_then(|c| c.name.clone())]
+            .into_iter()
+            .chain(item.asset_id.into_iter().flat_map(|a| [catalog.get(&a), catalog.get(&crate::sync_data::base_id(a))]).map(|c| c.and_then(|c| c.name.clone())))
+            .chain([item.full_name.clone()])
+            .flatten()
+            .find(|n| crate::sync_data::real(n))
+            .unwrap_or_default(),
         rating: item.rating.or(card.and_then(|c| c.rating)).unwrap_or(0) as u32,
         positions,
         league: item.league_id.or(card.and_then(|c| c.league)).unwrap_or(0),
@@ -3746,6 +3830,25 @@ mod tests {
 
     fn pl(key: u64, name: &str, rating: u32, pos: &[&str], league: u64, club: u64, nation: u64) -> Player {
         Player { key, def_id: key, name: name.into(), rating, positions: pos.iter().map(|s| s.to_string()).collect(), league, club, nation, weak_foot: 3, skill_moves: 3, owned: true, ..Default::default() }
+    }
+
+    /// The meta, checked against the big rating sites (2026-11-03): a fast CB with defensive
+    /// PlayStyles beats a slower, higher-rated one (Carreras 81 → 82.5, Cubarsí 86 → 80.3); a
+    /// 1-chemistry card that is clearly better beats a 3-chemistry one.
+    #[test]
+    fn meta_over_ovr_and_chemistry() {
+        let ps = |v: &[&str]| v.iter().map(|s| (s.to_string(), false)).collect::<Vec<_>>();
+        let mut carreras = pl(1, "Carreras", 81, &["LB", "CB", "LM"], 53, 243, 45);
+        carreras.face = Some([86, 66, 77, 80, 75, 81]);
+        carreras.playstyles = ps(&["FAST_JOCKEY", "INTERCEPTER"]);
+        let mut cubarsi = pl(2, "Cubarsí", 86, &["CB"], 53, 241, 45);
+        cubarsi.face = Some([78, 44, 69, 77, 85, 81]);
+        cubarsi.playstyles = ps(&["BULLET_PASSES", "LOB_PASS_MASTER", "AERIAL_DEFENSE"]);
+        let (a, b) = (strength(&carreras, "CB"), strength(&cubarsi, "CB"));
+        println!("Carreras CB {a:.1} · Cubarsí CB {b:.1}");
+        assert!(a > b, "Carreras {a:.1} vs Cubarsí {b:.1}");
+        // 4 rating points of meta beat two chemistry points
+        assert!(4.0 + CHEM_VALUE[1] > CHEM_VALUE[3]);
     }
 
     #[test]
@@ -4030,6 +4133,20 @@ mod tests {
         assert!(s.brief.anyone.iter().any(|x| x.text.starts_with("Win")), "winning is the team's");
         // the kit and the Spanish XI get a session of their own, with an XI
         assert!(v.combos.iter().any(|c| !c.rush_format && c.squad.is_some() && c.items.iter().any(|x| x.event == 2 && x.counts)));
+    }
+
+    #[test]
+    fn a_cap_lets_one_strong_card_in() {
+        let mut input = scenario(json!({ "groups": [
+            ev(1, "Ghoul Fest", &[(11, "Score at least 1 goal in 13 separate matches in the Ghoul Fest Live Event.", 0, 13)]) ] }));
+        input.event_rules.insert("ghoul fest".into(), EntryRules { min_rating: None, max_rating: None, cap: Some([88, 1]) });
+        input.club.push(pl(95, "Bigstar", 91, &["ST"], 53, 240, 45));
+        input.club.push(pl(96, "Bigmid", 90, &["CM"], 53, 240, 45));
+        let v = plan(&input, &SquadPrefs { primary: Some(1), ..SquadPrefs::default() });
+        let q = v.combos[0].squad.as_ref().expect("a squad");
+        let high = q.slots.iter().filter(|s| s.rating >= 88).count();
+        assert_eq!(high, 1, "{:?}", q.slots.iter().map(|s| (&s.name, s.rating)).collect::<Vec<_>>());
+        assert!(v.combos[0].brief.before.iter().any(|x| x.kind == "cap" && x.text == "88" && x.count == Some(1)));
     }
 
     #[test]

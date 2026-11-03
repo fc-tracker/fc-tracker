@@ -207,12 +207,29 @@ pub fn base_id(def_id: u64) -> u64 {
 /// EA writes "---" for some (promo) cards everywhere – in the Gallery and in the club. Every card
 /// of a player gets the name another card of the same player has (the base card first). Global:
 /// the Gallery, the club, the overlay, the side panel and FC-Tracker Web all read these names.
+/// A club card the Web App named lends its name too: EA's raw responses (the transfer list) carry
+/// no name, and a Gallery read can bring "---" (2026-11-03: Kelly and Ona Batlle showed as "Arsenal").
 pub fn fill_names(gallery: &mut std::collections::BTreeMap<u64, GalleryCard>, items: Option<&mut std::collections::BTreeMap<u64, Item>>) {
     let mut by_player: std::collections::BTreeMap<u64, String> = std::collections::BTreeMap::new();
-    // the base card first, then any card of the player
+    // the base card first, then any card of the player, then the club's named cards
     for c in gallery.values().filter(|c| c.def_id == base_id(c.def_id)).chain(gallery.values()) {
         if let Some(n) = c.name.as_deref().filter(|n| real(n)) {
             by_player.entry(base_id(c.def_id)).or_insert_with(|| n.to_string());
+        }
+    }
+    let item_def = |i: &Item| i.play.as_ref().and_then(|p| p.def_id).or(i.asset_id).unwrap_or(0);
+    let mut by_card: std::collections::BTreeMap<u64, String> = std::collections::BTreeMap::new();
+    for i in items.iter().flat_map(|m| m.values()) {
+        if let Some(n) = i.name.as_deref().filter(|n| real(n)) {
+            by_card.entry(item_def(i)).or_insert_with(|| n.to_string());
+            by_player.entry(base_id(item_def(i))).or_insert_with(|| n.to_string());
+        }
+    }
+    for c in gallery.values_mut() {
+        if !c.name.as_deref().is_some_and(real) {
+            if let Some(n) = by_card.get(&c.def_id) {
+                c.name = Some(n.clone());
+            }
         }
     }
     for c in gallery.values_mut() {
@@ -227,7 +244,7 @@ pub fn fill_names(gallery: &mut std::collections::BTreeMap<u64, GalleryCard>, it
         if i.name.as_deref().is_some_and(real) {
             continue;
         }
-        let def = i.play.as_ref().and_then(|p| p.def_id).or(i.asset_id).unwrap_or(0);
+        let def = item_def(i);
         let found = gallery.get(&def).and_then(|c| c.name.clone()).filter(|n| real(n)).or_else(|| by_player.get(&base_id(def)).cloned()).or_else(|| i.asset_id.and_then(|a| by_player.get(&base_id(a)).cloned())).or_else(|| i.full_name.clone());
         if found.is_some() {
             i.name = found;

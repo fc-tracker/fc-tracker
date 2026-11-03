@@ -131,6 +131,91 @@ pub struct Run {
     /// The latest hub reading of this event.
     pub hub: Hub,
     pub matches: Vec<Match>,
+    /// The final record came from the player (`set_final`), not from a hub reading: the games
+    /// the tracker never saw are rows without details.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub corrected: bool,
+}
+
+/// One game of a weekend as the player reported it: won or lost (as EA counted it), and whether
+/// it ended in a lost connection (DNF).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Game {
+    pub win: bool,
+    pub dnf: bool,
+}
+
+impl Run {
+    /// The weekend's final record as the player gave it, every game in order of play. A match read
+    /// in that slot whose outcome agrees keeps all it read; every other slot becomes a row only the
+    /// record knows of. The hub's record follows the games. True when anything changed.
+    pub fn set_final(&mut self, games: &[Game]) -> bool {
+        let before = self.clone();
+        let base = self.matches.iter().map(|m| m.seen).max().unwrap_or(self.hub.at);
+        let mut by_n: std::collections::BTreeMap<u8, Match> = std::collections::BTreeMap::new();
+        for m in self.matches.drain(..) {
+            if let Some(n) = m.n {
+                by_n.entry(n).or_insert(m);
+            }
+        }
+        for (i, g) in games.iter().enumerate() {
+            let n = (i + 1) as u8;
+            let want = if g.win { Outcome::Win } else { Outcome::Loss };
+            let m = match by_n.remove(&n) {
+                Some(mut m) if m.outcome.is_none_or(|o| (o == Outcome::Win) == g.win) => {
+                    if m.outcome != Some(Outcome::Quit) {
+                        m.outcome = Some(want);
+                    }
+                    m.confirmed = true;
+                    m.disconnect |= g.dnf;
+                    m
+                }
+                _ => Match { started: base, seen: base, n: Some(n), outcome: Some(want), confirmed: true, hub_only: true, disconnect: g.dnf, ..Default::default() },
+            };
+            self.matches.push(m);
+        }
+        let wins = games.iter().filter(|g| g.win).count();
+        self.hub.wins = wins as u8;
+        self.hub.losses = (games.len() - wins) as u8;
+        self.hub.remaining = 15usize.saturating_sub(games.len()) as u8;
+        self.corrected = true;
+        *self != before
+    }
+}
+
+/// Weekends whose end the tracker missed and whose final record the player told us, by when the
+/// event ended (ms): W = win, L = loss, D = a loss by a lost connection (DNF).
+const KNOWN_FINALS: &[(u64, &str)] = &[
+    // Weekend League 23–26 Oct 2026 (the first with the tracker): 12–3, the last game a DNF.
+    // Counting stopped at 6–2 (a misread hub, fixed in 0.1.71); the user gave the order.
+    (1_793_001_600_000, "WWWWLWWLWWWWWWD"),
+];
+
+/// Puts the player's own final record (`KNOWN_FINALS`) on the run of that event – only while the
+/// run is still short of it and its record is the record of the player's first games. True when
+/// anything changed.
+pub fn apply_known_finals(d: &mut Data) -> bool {
+    let mut changed = false;
+    for &(ends, code) in KNOWN_FINALS {
+        let games: Vec<Game> = code.chars().map(|c| Game { win: c == 'W', dnf: c == 'D' }).collect();
+        for run in d.runs.iter_mut().filter(|r| !r.corrected) {
+            let of_event = match run.ends_at.or(run.hub.ends_at) {
+                Some(e) => e.abs_diff(ends) <= SAME_EVENT,
+                None => run.id <= ends && ends - run.id < 4 * 24 * HOUR,
+            };
+            let played = run.hub.played() as usize;
+            if !of_event || played >= games.len() {
+                continue;
+            }
+            // the hub's record is the start of the player's (rows read with another outcome – one
+            // loss shown as a win that weekend – are put right by set_final)
+            let fits = games[..played].iter().filter(|g| g.win).count() == run.hub.wins as usize;
+            if fits {
+                changed |= run.set_final(&games);
+            }
+        }
+    }
+    changed
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
@@ -674,7 +759,7 @@ impl Data {
             ends_close && h.played() >= r.hub.played()
         };
         if !self.runs.last().is_some_and(same) {
-            self.runs.push(Run { id: h.at, ends_at: h.ends_at, hub: h.clone(), matches: Vec::new() });
+            self.runs.push(Run { id: h.at, ends_at: h.ends_at, hub: h.clone(), ..Default::default() });
         }
         self.runs.last_mut().unwrap()
     }
@@ -991,7 +1076,7 @@ impl Data {
         if let Some(run) = self.runs.last_mut() {
             run.matches.push(m);
         } else {
-            self.runs.push(Run { id: m.started, ends_at: None, hub: Hub::default(), matches: vec![m] });
+            self.runs.push(Run { id: m.started, matches: vec![m], ..Default::default() });
         }
     }
 }
@@ -1060,8 +1145,13 @@ fn now_ms() -> u64 {
 /// Loads `champions.json` from the app data folder (once).
 pub fn init(dir: &Path) {
     let path = dir.join("champions.json");
-    let data = std::fs::read(&path).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default();
-    *STORE.lock().unwrap() = Some(Store { path, data });
+    let mut data = std::fs::read(&path).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default();
+    let fixed = apply_known_finals(&mut data);
+    let store = Store { path, data };
+    if fixed {
+        save(&store);
+    }
+    *STORE.lock().unwrap() = Some(store);
 }
 
 /// A Champions match was seen starting (kit selection titled CHAMPIONS / the versus card).
@@ -1148,6 +1238,7 @@ pub fn absorb_synced(other: Data, replace: bool) -> Data {
     let local = s.data.clone();
     let mut d = if replace { other } else { merge(local.clone(), other) };
     keep_local_tags(&mut d, &local);
+    apply_known_finals(&mut d);
     s.data = d;
     save(s);
     s.data.clone()
@@ -1723,6 +1814,88 @@ mod tests {
         d.observe(Seen::Hub(h), 1);
         assert_eq!(d.runs.len(), 1);
         assert_eq!(d.runs[0].matches.len(), 1);
+    }
+
+    /// The user's first weekend as it was stored: counting stopped at 6–2 after 8 games (match 1
+    /// read in full, the rest counted from the hub).
+    fn stuck_first_weekend() -> Data {
+        let ends = 1_793_001_600_000 - 3 * HOUR;
+        let order = "WWWWLWWL";
+        let matches = order
+            .chars()
+            .enumerate()
+            .map(|(i, c)| Match {
+                started: 1_792_800_000_000 + i as u64 * 2_400_000,
+                seen: 1_792_800_000_000 + i as u64 * 2_400_000,
+                n: Some(i as u8 + 1),
+                outcome: Some(if c == 'W' { Outcome::Win } else { Outcome::Loss }),
+                confirmed: true,
+                hub_only: i > 0,
+                score: (i == 0).then_some([4, 0]),
+                me_home: (i == 0).then_some(true),
+                ..Default::default()
+            })
+            .collect();
+        let h = Hub { at: 1_792_820_000_000, wins: 6, losses: 2, remaining: 7, ends_at: Some(ends), ..Default::default() };
+        Data { runs: vec![Run { id: 1_792_800_000_000, ends_at: Some(ends), hub: h.clone(), matches, ..Default::default() }], last_hub: Some(h), ..Default::default() }
+    }
+
+    #[test]
+    fn the_first_weekend_gets_the_final_record_the_user_gave() {
+        let mut d = stuck_first_weekend();
+        assert!(apply_known_finals(&mut d));
+        let r = &d.runs[0];
+        assert_eq!((r.hub.wins, r.hub.losses, r.hub.remaining), (12, 3, 0));
+        assert!(r.corrected);
+        assert_eq!(r.matches.len(), 15);
+        let code: String = r.matches.iter().map(|m| if m.disconnect { 'D' } else if m.outcome == Some(Outcome::Win) { 'W' } else { 'L' }).collect();
+        assert_eq!(code, "WWWWLWWLWWWWWWD");
+        assert!(r.matches.iter().enumerate().all(|(i, m)| m.n == Some(i as u8 + 1)));
+        // what was read stays: match 1's 4–0
+        assert_eq!(r.matches[0].score, Some([4, 0]));
+        assert!(!r.matches[0].hub_only && r.matches[14].hub_only);
+        // once only; and the account's 6–2 copy merged in doesn't undo it
+        assert!(!apply_known_finals(&mut d));
+        let mut merged = merge(d.clone(), stuck_first_weekend());
+        apply_known_finals(&mut merged);
+        assert_eq!((merged.runs[0].hub.wins, merged.runs[0].hub.losses), (12, 3));
+        // a row read with the wrong outcome (match 2 shown as a loss) is put right too
+        let mut other = stuck_first_weekend();
+        other.runs[0].matches[1].outcome = Some(Outcome::Loss);
+        assert!(apply_known_finals(&mut other));
+        assert_eq!(other.runs[0].matches[1].outcome, Some(Outcome::Win));
+    }
+
+    #[test]
+    fn a_known_final_never_touches_another_weekend_or_a_record_that_disagrees() {
+        // another weekend
+        let mut d = stuck_first_weekend();
+        d.runs[0].ends_at = Some(1_793_001_600_000 + 7 * 24 * HOUR);
+        d.runs[0].hub.ends_at = d.runs[0].ends_at;
+        assert!(!apply_known_finals(&mut d));
+        // the same weekend, but a record that isn't the start of 12–3's order
+        let mut d = stuck_first_weekend();
+        d.runs[0].hub.wins = 5;
+        d.runs[0].hub.losses = 3;
+        assert!(!apply_known_finals(&mut d));
+        // a weekend already complete
+        let mut d = stuck_first_weekend();
+        d.runs[0].hub.wins = 10;
+        d.runs[0].hub.losses = 5;
+        d.runs[0].hub.remaining = 0;
+        assert!(!apply_known_finals(&mut d));
+    }
+
+    #[test]
+    fn set_final_keeps_what_was_read_and_drops_what_disagrees() {
+        let mut r = Run { matches: vec![Match { n: Some(1), outcome: Some(Outcome::Quit), last: Some([60, 1, 3]), ..Default::default() }, Match { n: Some(2), outcome: Some(Outcome::Loss), score: Some([0, 1]), ..Default::default() }], ..Default::default() };
+        let g = |w| Game { win: w, dnf: false };
+        assert!(r.set_final(&[g(false), g(true), g(true)]));
+        // a quit stays a quit (a loss); match 2 read as a loss but the player says won → a plain row
+        assert_eq!(r.matches[0].outcome, Some(Outcome::Quit));
+        assert_eq!(r.matches[1].outcome, Some(Outcome::Win));
+        assert!(r.matches[1].hub_only && r.matches[1].score.is_none());
+        assert_eq!((r.hub.wins, r.hub.losses, r.hub.remaining), (2, 1, 12));
     }
 
     #[test]
