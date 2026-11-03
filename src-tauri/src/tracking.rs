@@ -939,15 +939,15 @@ fn objectives_screen_menu(app: &AppHandle, frame: &scan::Frame) {
 fn squad_screen_menu(app: &AppHandle, frame: &scan::Frame) {
     static BUSY: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
     static LAST: std::sync::Mutex<Option<std::time::Instant>> = std::sync::Mutex::new(None);
-    if !crate::squad_screen::is_squad_screen(&frame.words) {
-        // another Ultimate Team screen (not Objectives): a panel the app opened goes again
-        if *app.state::<AppState>().session.lock().unwrap() == GameSession::InUltimateTeam && !frame.words.iter().any(|w| w.text == "Objectives") {
-            crate::auto_panel(app, false);
-        }
+    let is_squad = crate::squad_screen::is_squad_screen(&frame.words);
+    // the side panel by itself: the Squad screen opens it, other screens close one the app opened
+    // (auto_panel.rs: "first" – not again within the Club area)
+    if is_squad || *app.state::<AppState>().session.lock().unwrap() == GameSession::InUltimateTeam {
+        crate::panel_screen(app, crate::auto_panel::classify(&frame.words, frame.height, is_squad));
+    }
+    if !is_squad {
         return;
     }
-    // the Squad screen: the side panel with the plan's squad and the brief
-    crate::auto_panel(app, true);
     if BUSY.load(Ordering::SeqCst) {
         return;
     }
@@ -962,7 +962,15 @@ fn squad_screen_menu(app: &AppHandle, frame: &scan::Frame) {
     let frame = scan::Frame { width: frame.width, height: frame.height, bgra: frame.bgra.clone(), words: frame.words.clone() };
     let app = app.clone();
     std::thread::spawn(move || {
-        let seen = crate::squad_screen::read_pitch(&frame);
+        let mut seen = crate::squad_screen::read_pitch(&frame);
+        seen.sort();
+        // the same cards as the last look: nothing to plan again (a plan takes a few seconds)
+        static LAST_SEEN: std::sync::Mutex<Vec<(u32, String)>> = std::sync::Mutex::new(Vec::new());
+        if seen.is_empty() || *LAST_SEEN.lock().unwrap() == seen {
+            BUSY.store(false, Ordering::SeqCst);
+            return;
+        }
+        *LAST_SEEN.lock().unwrap() = seen.clone();
         let state = app.state::<AppState>();
         let (input, prefs) = (crate::squads_input(&state.store.lock().unwrap()), state.ui.lock().unwrap().squads.clone());
         let view = crate::squads::plan(&input, &prefs);

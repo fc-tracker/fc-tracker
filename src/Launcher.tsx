@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { api, events, formatAge, olderThan, syncAllowed, type BridgeInfo, type GameSession, type SetupStatus, type SyncSummary, type AfterPlay, type RemindPrefs } from "./api";
+import { api, autoPanelMode, type AutoPanelMode, events, formatAge, olderThan, syncAllowed, type BridgeInfo, type GameSession, type SetupStatus, type SyncSummary, type AfterPlay, type RemindPrefs } from "./api";
 import { LOCALE_NAMES, t, tError, useLocale, type Locale, type MessageKey } from "./i18n";
 import Help from "./Help";
 import { SupportButton } from "./Support";
@@ -44,7 +44,7 @@ export default function Launcher() {
   const [updating, setUpdating] = useState(false);
   const [version, setVersion] = useState("");
   const [afterPlay, setAfterPlay] = useState<AfterPlay>("remind");
-  const [autoPanel, setAutoPanel] = useState(true);
+  const [autoPanel, setAutoPanel] = useState<AutoPanelMode>("first");
   const [suggested, setSuggested] = useState(false);
   useEffect(() => {
     api.syncSuggested().then(setSuggested).catch(() => {});
@@ -92,7 +92,7 @@ export default function Launcher() {
       .uiPrefs()
       .then((p) => {
         setAfterPlay(p.after_play);
-        setAutoPanel(p.auto_panel ?? true);
+        setAutoPanel(autoPanelMode(p));
         setMissingSide(p.missing_side);
         setChampsOn(p.champions === true);
         setReminders(p.reminders ?? { on: true, at: [0, 45], sub_at: 70 });
@@ -665,9 +665,13 @@ export default function Launcher() {
                   <b>{t("settings.autoPanel")}</b>
                   <p>{t("settings.autoPanelText")}</p>
                 </div>
-                <button className={`ln-btn small ${autoPanel ? "" : "ghost"}`} aria-pressed={autoPanel} onClick={() => api.setAutoPanel(!autoPanel).then((p) => setAutoPanel(p.auto_panel ?? !autoPanel)).catch(() => {})}>
-                  {autoPanel ? t("settings.on") : t("settings.off")}
-                </button>
+                <div className="ln-seg" role="group" aria-label={t("settings.autoPanel")}>
+                  {(["first", "always", "off"] as const).map((m) => (
+                    <button key={m} className={`ln-btn small ${autoPanel === m ? "" : "ghost"}`} aria-pressed={autoPanel === m} onClick={() => api.setAutoPanelMode(m).then((p) => setAutoPanel(autoPanelMode(p))).catch(() => {})}>
+                      {t(m === "first" ? "settings.autoPanel.first" : m === "always" ? "settings.autoPanel.always" : "settings.off")}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div className="ln-row">
                 <div>

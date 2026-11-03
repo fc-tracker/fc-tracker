@@ -5,7 +5,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { api, IS_WEB } from "./api";
+import { api, autoPanelMode, IS_WEB, type AutoPanelMode } from "./api";
 import { LOCALE_NAMES, t, useLocale, type Locale, type MessageKey } from "./i18n";
 import { THEMES, type Theme } from "./theme";
 import { SupportButton } from "./Support";
@@ -40,6 +40,11 @@ export default function OverlayMenu(props: {
   const btn = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ top: 0, right: 0 });
+  // the side panel's "opens by itself" as a quick setting (also in the launcher's Settings)
+  const [panelMode, setPanelMode] = useState<AutoPanelMode>("first");
+  useEffect(() => {
+    if (open && !IS_WEB) api.uiPrefs().then((p) => setPanelMode(autoPanelMode(p))).catch(() => {});
+  }, [open]);
 
   const toggle = () => {
     const r = btn.current?.getBoundingClientRect();
@@ -153,6 +158,25 @@ export default function OverlayMenu(props: {
                     >
                       <span className={`mode-icon mode-${m}`} aria-hidden="true" />
                       {t(`menu.mode.${m}` as MessageKey)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!IS_WEB && (
+              <div className="me-group" role="group" aria-label={t("settings.autoPanel")}>
+                <span className="me-label">{t("settings.autoPanel")}</span>
+                <div className="me-row">
+                  {(["first", "always", "off"] as const).map((m) => (
+                    <button
+                      key={m}
+                      role="menuitemradio"
+                      aria-checked={panelMode === m}
+                      className={`me-chip ${panelMode === m ? "on" : ""}`}
+                      onClick={() => api.setAutoPanelMode(m).then((p) => setPanelMode(autoPanelMode(p))).catch(() => {})}
+                    >
+                      {t(m === "first" ? "settings.autoPanel.first" : m === "always" ? "settings.autoPanel.always" : "settings.off")}
                     </button>
                   ))}
                 </div>

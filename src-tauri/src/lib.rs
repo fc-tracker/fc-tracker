@@ -1,4 +1,5 @@
 mod account;
+mod auto_panel;
 mod bridge;
 mod champions;
 mod clock;
@@ -63,6 +64,8 @@ struct AppState {
     missing_before_match: AtomicBool,
     /// The side panel is open because the app opened it (`auto_panel`) – the app may close it again.
     missing_auto: AtomicBool,
+    /// Where the side panel's "opens by itself" stands (auto_panel.rs).
+    panel_auto: Mutex<auto_panel::State>,
     /// The side panel shows two tabs for its set; the first double-tap switched tab already.
     /// Where the user is in FC 27 (see session.rs).
     session: Mutex<session::GameSession>,
@@ -303,7 +306,7 @@ fn side_switch_watch(app: AppHandle) {
 /// The side panel by itself (Settings → "Opens by itself", on by default): `open` where it helps,
 /// closed again only when it was the app that opened it – a panel the user opened stays.
 pub(crate) fn auto_panel(app: &AppHandle, open: bool) {
-    if !app.state::<AppState>().ui.lock().unwrap().auto_panel {
+    if app.state::<AppState>().ui.lock().unwrap().panel_mode() == "off" {
         return;
     }
     let app2 = app.clone();
@@ -324,23 +327,50 @@ pub(crate) fn auto_panel(app: &AppHandle, open: bool) {
     });
 }
 
+/// A menu screen for the side panel's "opens by itself" (auto_panel.rs decides).
+pub(crate) fn panel_screen(app: &AppHandle, screen: auto_panel::Screen) {
+    let state = app.state::<AppState>();
+    let mode = state.ui.lock().unwrap().panel_mode().to_string();
+    let action = state.panel_auto.lock().unwrap().screen(&mode, screen);
+    match action {
+        auto_panel::Action::Open => auto_panel(app, true),
+        auto_panel::Action::Close => auto_panel(app, false),
+        auto_panel::Action::Nothing => {}
+    }
+}
+
 #[tauri::command]
 fn set_auto_panel(app: AppHandle, on: bool) -> ui::UiPrefs {
+    set_auto_panel_mode(app, if on { "first".into() } else { "off".into() }).unwrap_or_default()
+}
+
+/// Settings → Side panel opens by itself, and the overlay menu's quick setting.
+#[tauri::command]
+fn set_auto_panel_mode(app: AppHandle, mode: String) -> Result<ui::UiPrefs, String> {
+    if !auto_panel::MODES.contains(&mode.as_str()) {
+        return Err("invalid_mode".into());
+    }
     let prefs = {
         let state = app.state::<AppState>();
         let mut p = state.ui.lock().unwrap();
-        p.auto_panel = on;
+        p.auto_panel = mode != "off";
+        p.auto_panel_mode = Some(mode);
         p.clone()
     };
     save_ui(&app);
-    prefs
+    let _ = app.emit("ui-prefs", &prefs);
+    Ok(prefs)
 }
 
 /// The missing-players list never takes focus or clicks, so the game keeps mouse and controller.
 fn toggle_missing(app: &AppHandle) {
     let Some(win) = app.get_webview_window(MISSING) else { return };
-    // the user's own toggle: the app no longer closes it by itself
+    // the user's own toggle: the app no longer closes it by itself – and a panel closed on the
+    // Squad screen stays closed until the user leaves (auto_panel.rs)
     app.state::<AppState>().missing_auto.store(false, Ordering::SeqCst);
+    if ui::is_shown(&win) {
+        app.state::<AppState>().panel_auto.lock().unwrap().user_closed();
+    }
     // Double-tap View / Create opens and closes – nothing else (user 2026-10-17: a double-tap that
     // sometimes switched the tab instead was confusing). The tab follows what the app knows.
     if ui::is_shown(&win) {
@@ -1556,6 +1586,7 @@ pub fn run() {
                 data_dir: data_dir.clone(),
                 missing_before_match: AtomicBool::new(false),
                 missing_auto: AtomicBool::new(false),
+                panel_auto: Mutex::new(auto_panel::State::default()),
                 session: Mutex::new(if game::is_running() { session::GameSession::Unknown } else { session::GameSession::Closed }),
                 notice_until: Mutex::new(None),
                 played_ut: AtomicBool::new(false),
@@ -1774,6 +1805,7 @@ pub fn run() {
             open_diagnostics,
             set_after_play,
             set_auto_panel,
+            set_auto_panel_mode,
             overlay_focus,
             champions_data,
             squads_plan,

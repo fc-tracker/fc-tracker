@@ -345,6 +345,10 @@ const DEMO_SPEED: TrackingInfo = (() => {
 
 export type AfterPlay = "remind" | "auto" | "off";
 
+export type AutoPanelMode = "off" | "first" | "always";
+/** The mode a ui.json without `auto_panel_mode` stands for (auto_panel false → off). */
+export const autoPanelMode = (p: UiPrefs): AutoPanelMode => p.auto_panel_mode ?? (p.auto_panel === false ? "off" : "first");
+
 export interface UiPrefs {
   mode: OverlayMode;
   missing_side: "left" | "right";
@@ -352,6 +356,8 @@ export interface UiPrefs {
   after_play: AfterPlay;
   /** The side panel opens by itself (Squad screen, kit selection). */
   auto_panel?: boolean;
+  /** When it does: never, the first time on the Squad screen (not again within the Club area), every time. */
+  auto_panel_mode?: AutoPanelMode;
   /** Champions tracker (beta) on / off. */
   champions?: boolean;
   /** Settings → Squads. */
@@ -485,6 +491,8 @@ const appApi = {
   openSite: (path: string) => (browserDev ? Promise.resolve() : invoke<void>("open_site", { path })),
   setAutoPanel: (on: boolean) =>
     browserDev ? Promise.resolve<UiPrefs>({ mode: "panel", missing_side: "left", after_play: "remind", auto_panel: on }) : invoke<UiPrefs>("set_auto_panel", { on }),
+  setAutoPanelMode: (mode: AutoPanelMode) =>
+    browserDev ? Promise.resolve<UiPrefs>({ mode: "panel", missing_side: "left", after_play: "remind", auto_panel: mode !== "off", auto_panel_mode: mode }) : invoke<UiPrefs>("set_auto_panel_mode", { mode }),
   setAfterPlay: (mode: AfterPlay) =>
     browserDev ? Promise.resolve<UiPrefs>({ mode: "panel", missing_side: "left", after_play: mode }) : invoke<UiPrefs>("set_after_play", { mode }),
   syncSuggested: () => (browserDev ? Promise.resolve(new URLSearchParams(location.search).has("suggest")) : invoke<boolean>("sync_suggested")),

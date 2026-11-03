@@ -708,6 +708,11 @@ export function Pitch({ e, compact = false, bench = [] }: { e: SquadSource; comp
                   <span>{s.pos}</span>
                 </span>
                 <span className="sq-name">{s.generic ? t("squads.slot.eg", { name: s.name }) : s.name || "?"}</span>
+                {/* FC-Tracker's meta rating for the slot (the card's in-game strength there) */}
+                <span className="sq-meta" title={t("squads.detail.rating")} aria-label={`${t("squads.detail.rating")} ${s.strength.toFixed(1)}`}>
+                  <span className="sq-gem" aria-hidden="true" />
+                  {s.strength.toFixed(1)}
+                </span>
                 {!compact && !s.generic && <Bio s={s} />}
                 <span className="sq-chem-dots" aria-label={t("squads.cardChem", { chem: s.chem })}>
                   {[0, 1, 2].map((d) => (

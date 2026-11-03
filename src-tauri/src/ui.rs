@@ -42,6 +42,20 @@ pub struct UiPrefs {
     /// match) and closes again when it opened itself (user 2026-11-02: double-tapping View is clumsy).
     #[serde(default = "yes")]
     pub auto_panel: bool,
+    /// "off" | "first" | "always" (auto_panel.rs); unset = from `auto_panel` (false → "off", else "first").
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auto_panel_mode: Option<String>,
+}
+
+impl UiPrefs {
+    /// When the side panel opens by itself (auto_panel.rs).
+    pub fn panel_mode(&self) -> &str {
+        match self.auto_panel_mode.as_deref() {
+            Some(m) if crate::auto_panel::MODES.contains(&m) => m,
+            _ if !self.auto_panel => "off",
+            _ => "first",
+        }
+    }
 }
 
 fn yes() -> bool {
@@ -58,7 +72,7 @@ fn default_side() -> String {
 
 impl Default for UiPrefs {
     fn default() -> Self {
-        Self { mode: "panel".into(), panel: None, missing_side: default_side(), after_play: remind(), game_exe: None, tracking: Default::default(), champions: false, squads: Default::default(), reminders: Default::default(), auto_panel: true }
+        Self { mode: "panel".into(), panel: None, missing_side: default_side(), after_play: remind(), game_exe: None, tracking: Default::default(), champions: false, squads: Default::default(), reminders: Default::default(), auto_panel: true, auto_panel_mode: None }
     }
 }
 

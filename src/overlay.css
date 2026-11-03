@@ -1736,3 +1736,20 @@ button.sq-card.must { box-shadow: inset 0 0 0 1px var(--accent); }
 @media (prefers-reduced-motion: reduce) {
   .sq-fold, .sq-fold-mark { transition: none; }
 }
+
+/* the meta rating on a pitch card (mint gem before the score, the app's score language) */
+.sq-card .sq-meta { display: flex; align-items: center; min-width: 0; font: 700 12px/1 var(--font-display); letter-spacing: 0.02em; color: var(--accent-2); }
+.sq-card .sq-meta .sq-gem { width: 6px; height: 6px; margin-right: 4px; flex: none; }
+
+/* the side panel's Match page never scrolls sideways (user 2026-11-03): its grid column was "auto",
+   so one long unbreakable line (an event name, a nowrap squad line) widened the whole page */
+.sq-quick, .ml-frame { grid-template-columns: minmax(0, 1fr); }
+.sq-quick { overflow-x: hidden; overflow-wrap: break-word; }
+.sq-quick .sq-card { overflow-wrap: normal; }
+.sq-quick .sq-card-top { white-space: nowrap; min-width: 0; }
+.sq-quick .sq-card-top > span:last-child { overflow: hidden; text-overflow: clip; }
+.sq-quick > *, .sq-quick .sq-brief, .sq-quick .sq-squad, .sq-quick .sq-pitch { min-width: 0; max-width: 100%; }
+.sq-quick .sq-squad-head > * { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.sq-quick .sq-line { flex-wrap: wrap; }
+.sq-quick .sq-squad { grid-template-columns: minmax(0, 1fr); }
+.sq-quick .sq-squad-head { min-width: 0; }

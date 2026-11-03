@@ -1075,6 +1075,8 @@ struct Pick {
 const CHEM_VALUE: [f64; 4] = [0.0, 1.4, 2.1, 2.6];
 /// Each point the squad is short of the chemistry target (Settings): a nudge, not a wall.
 const CHEM_SHORT: f64 = 0.4;
+/// The same with "chemistry first" on: a point of chemistry ≈ 1.5 rating points of one card.
+const CHEM_SHORT_FIRST: f64 = 1.5;
 
 /// A card in a slot it has no chemistry in: 0 chemistry, it adds to nobody's, and it plays worse –
 /// worth it only for a live requirement (a met one weighs 2e6), never for a bonus one or strength.
@@ -1150,13 +1152,10 @@ impl Ctx<'_> {
         }
         // "has to include" comes before everything
         let must = slots.iter().flatten().filter(|i| self.must.contains(i)).count() as f64 * 1.0e12;
-        // "chemistry first" = a playable squad, but objectives still count: a met requirement
-        // (2e6) is worth about five chemistry points (user 2026-10-31: squads must not lock up)
-        must + if self.prefs.chem_first {
-            -short * 4.0e5 + reqs * 1.0e6 + power
-        } else {
-            reqs * 1.0e6 - short * CHEM_SHORT + power
-        }
+        // "chemistry first" weighs each missing chemistry point more, but never above the cards
+        // themselves (user 2026-11-03: with it on – 4e5 a point – Bethune, Miley and Thiaw stayed for
+        // their links while Lavelle, Rice and Debinha sat out; "the BEST players on the pitch, always")
+        must + reqs * 1.0e6 + power - short * if self.prefs.chem_first { CHEM_SHORT_FIRST } else { CHEM_SHORT }
     }
 
     fn used(slots: &[Option<usize>], p: usize, players: &[Player]) -> bool {
@@ -1269,11 +1268,75 @@ impl Ctx<'_> {
                     }
                 }
             }
+            if !improved && search {
+                // two slots at once (user 2026-11-03: Musiala alone does Bundesliga and Germany –
+                // one change at a time never got there, a weak card carrying a requirement stayed)
+                if let Some((next, s)) = self.pair_move(f, pool, &slots, score) {
+                    slots = next;
+                    score = s;
+                    improved = true;
+                }
+            }
             if !improved {
                 break;
             }
         }
         Pick { slots, score }
+    }
+
+    /// The best change of two slots together: for each pair, the strongest cards and the ones that
+    /// meet the most requirements in each slot. None when nothing beats `score`.
+    fn pair_move(&self, f: &Formation, pool: &[Vec<usize>], slots: &[Option<usize>], score: f64) -> Option<(Vec<Option<usize>>, f64)> {
+        let short: Vec<Vec<usize>> = (0..11)
+            .map(|k| {
+                let pos = &f.slots[k];
+                let mut by_power: Vec<usize> = pool[k].clone();
+                by_power.sort_by(|&a, &b| strength(&self.players[b], pos).total_cmp(&strength(&self.players[a], pos)));
+                let mut by_reqs: Vec<usize> = pool[k].clone();
+                by_reqs.sort_by(|&a, &b| (self.meets[b].len() as f64 * 10.0 + strength(&self.players[b], pos)).total_cmp(&(self.meets[a].len() as f64 * 10.0 + strength(&self.players[a], pos))));
+                let mut c: Vec<usize> = by_power.into_iter().take(4).collect();
+                for p in by_reqs.into_iter().take(4) {
+                    if !c.contains(&p) {
+                        c.push(p);
+                    }
+                }
+                c
+            })
+            .collect();
+        let mut best: Option<(Vec<Option<usize>>, f64)> = None;
+        let must_at = |k: usize| slots[k].is_some_and(|p| self.must.contains(&p));
+        for k in 0..11 {
+            if must_at(k) {
+                continue;
+            }
+            for j in k + 1..11 {
+                if must_at(j) {
+                    continue;
+                }
+                for &p in &short[k] {
+                    for &q in &short[j] {
+                        if p == q || self.players[p].person() == self.players[q].person() {
+                            continue;
+                        }
+                        let (pp, qp) = (self.players[p].person(), self.players[q].person());
+                        if slots.iter().enumerate().any(|(i, s)| i != k && i != j && s.is_some_and(|x| self.players[x].person() == pp || self.players[x].person() == qp)) {
+                            continue;
+                        }
+                        if slots[k] == Some(p) && slots[j] == Some(q) {
+                            continue;
+                        }
+                        let mut next = slots.to_vec();
+                        next[k] = Some(p);
+                        next[j] = Some(q);
+                        let s = self.score(f, &next);
+                        if s > best.as_ref().map_or(score + 1e-6, |b| b.1) {
+                            best = Some((next, s));
+                        }
+                    }
+                }
+            }
+        }
+        best
     }
 }
 
@@ -2704,7 +2767,7 @@ impl<'a> Planner<'a> {
         }
         let (_, keep) = goal_weights(self.prefs);
         // between plan stages only what has to change changes (a kept card ≈ 1.25 chemistry points)
-        let keep = if keep_from.is_some() { 5.0e5 } else { keep };
+        let keep = if keep_from.is_some() { 1.0 } else { keep };
         let cands = self.candidates(reqs, weights);
         let mut players: Vec<Player> = self.club.iter().filter(|p| self.allowed(p)).cloned().collect();
         let mut cost = vec![0.0; players.len()];
@@ -4311,12 +4374,10 @@ mod tests {
         for k in 0..4 {
             priced(&mut input, 600 + k, 600);
         }
-        // high chemistry: the main squad won't take three lone Mexicans …
+        // chemistry never outweighs an objective (2026-11-03): the main squad takes the three
+        // Mexicans itself, or a one-match squad does – either way the objective is planned
         let v = plan(&input, &SquadPrefs { chem_first: true, ..SquadPrefs::default() });
-        let q = v.combos.iter().find(|c| c.quick.is_some()).expect("a one-match squad");
-        assert_eq!(q.quick, Some(1));
-        // … the one-match squad does, with the cards to buy named
-        assert!(q.items.iter().any(|x| x.objective == 21 && x.counts));
+        let q = v.combos.iter().find(|c| c.items.iter().any(|x| x.objective == 21 && x.counts)).expect("the Mexican objective planned");
         assert_eq!(q.squad.as_ref().unwrap().slots.iter().filter(|x| x.nation == 83).count(), 3);
     }
 
