@@ -1104,6 +1104,9 @@ fn squads_input(store: &store::Store) -> squads::Input {
                 let extra = squads::evo_players(&hub.body, &club, &snap.gallery, &attrs);
                 club.extend(extra);
             }
+            // packed / bought since the last sync: the user's already, never a buy
+            let arrived = squads::arrived_players(&snap.acquired, snap.synced_at, &club, &snap.gallery, &attrs);
+            club.extend(arrived);
             club
         },
         catalog: snap.gallery.values().filter_map(|c| squads::catalog_player(c, &attrs)).collect(),

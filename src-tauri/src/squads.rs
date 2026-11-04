@@ -3893,6 +3893,21 @@ pub fn catalog_player(c: &crate::types::GalleryCard, attrs: &Attributes) -> Opti
     })
 }
 
+/// Cards the app saw arrive in the game (New Items: packed, a reward or bought) after the last club
+/// sync: they are the user's though the club data doesn't have them yet – never a buy (2026-11-03:
+/// Paradela TOTW 80, his as first owner, was planned as a buy for 11,321). Keyed by the card id
+/// (no club item id has it). The next sync is the truth again: it reads the club, Unassigned and
+/// the Transfer List, and these drop out (they arrived before it).
+pub fn arrived_players(acquired: &BTreeMap<u64, crate::types::Acquired>, synced_at: Option<u64>, club: &[Player], catalog: &BTreeMap<u64, crate::types::GalleryCard>, attrs: &Attributes) -> Vec<Player> {
+    let have: BTreeSet<u64> = club.iter().map(|p| p.def_id).collect();
+    acquired
+        .iter()
+        .filter(|(def, a)| matches!(a.source.as_str(), "pack" | "bought") && a.at > synced_at.unwrap_or(0) && !have.contains(def))
+        .filter_map(|(def, _)| catalog.get(def).and_then(|c| catalog_player(c, attrs)))
+        .map(|p| Player { owned: true, ..p })
+        .collect()
+}
+
 /// Item ids of the active squad (`/usermassinfo` → `squad.players[].itemData.id`).
 /// The active squad's manager: (league, nation).
 pub fn active_manager(usermassinfo: &Value) -> Option<(u64, u64)> {
@@ -4212,6 +4227,49 @@ mod tests {
         let s = &v.combos[0];
         assert!(s.squad.as_ref().unwrap().slots.iter().all(|x| x.nation != 23));
         assert!(!s.items[0].counts && !s.reqs[0].met);
+    }
+
+    #[test]
+    fn a_card_packed_or_bought_since_the_last_sync_is_owned_never_a_buy() {
+        // 2026-11-03: Paradela (TOTW 80, packed – his as first owner) was planned as a buy for 11,321:
+        // the club data was read before he arrived
+        let base = || {
+            let mut input = scenario(json!({ "groups": [ev(1, "Phantom", &[(11, "Win 5 matches while having min. 1 Hungarian player in your starting XI in any FUT game mode.", 0, 5)])] }));
+            input.catalog = vec![Player { owned: false, ..pl(500, "Szalai", 76, &["CB"], 10, 77, 23) }];
+            priced(&mut input, 500, 900);
+            input
+        };
+        let input = base();
+        let gallery: BTreeMap<u64, crate::types::GalleryCard> = [(500, crate::types::GalleryCard { def_id: 500, name: Some("Szalai".into()), rating: Some(76), position: Some("CB".into()), positions: vec!["CB".into()], league: Some(10), team: Some(77), nation: Some(23), collected: true, ..Default::default() })].into();
+        let synced = input.now_ms - 3_600_000;
+        let arrived = |source: &str, at: u64, club: &[Player]| {
+            let acquired: BTreeMap<u64, crate::types::Acquired> = [(500, crate::types::Acquired { source: source.into(), at })].into();
+            arrived_players(&acquired, Some(synced), club, &gallery, &Attributes::default())
+        };
+        let hungarian = |input: &Input| {
+            let v = plan(input, &SquadPrefs::default());
+            let sq = v.combos[0].squad.clone().unwrap();
+            (sq.slots.iter().find(|x| x.nation == 23).map(|x| x.owned), sq.buys)
+        };
+        // packed after the sync (New Items read in the game): his – he plays, nothing to buy
+        for source in ["pack", "bought"] {
+            let mut with = base();
+            let extra = arrived(source, synced + 60_000, &with.club);
+            assert_eq!(extra.len(), 1, "{source}");
+            assert!(extra[0].owned && extra[0].def_id == 500 && extra[0].key == 500);
+            with.club.extend(extra);
+            assert_eq!(hungarian(&with), (Some(true), 0), "{source}");
+        }
+        // arrived before the last sync: the sync is the truth (sold or used in an SBC since) – a buy
+        assert!(arrived("pack", synced - 60_000, &input.club).is_empty());
+        assert_eq!(hungarian(&input), (Some(false), 1));
+        // only New Items counts as arrived (a sync's own record adds nothing)
+        assert!(arrived("sync", synced + 60_000, &input.club).is_empty());
+        // already in the club data: not twice
+        let mut synced_club = input.club.clone();
+        synced_club.push(Player { owned: true, ..pl(9_000_500, "Szalai", 76, &["CB"], 10, 77, 23) });
+        synced_club.last_mut().unwrap().def_id = 500;
+        assert!(arrived("pack", synced + 60_000, &synced_club).is_empty());
     }
 
     #[test]

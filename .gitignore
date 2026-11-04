@@ -30,3 +30,14 @@ virustotal.key
 .env.*
 src/devValue.json
 server/target/
+
+# design mockups: the user's real club data stays local
+design/_shared/data.js
+design/_shared/plan.json
+design/a-kickoff-light/assets/
+design/_shared/specials.txt
+design/_shared/rarities.json
+design/*/img/
+design/*/screens/
+design/*/extra.js
+design/*/value.js
