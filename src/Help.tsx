@@ -1,14 +1,17 @@
 import { useRef, useState, type KeyboardEvent } from "react";
+import { api } from "./api";
 import ControlStage, { CONTROLS, type ControlId } from "./ControlDemo";
 import { t, type MessageKey } from "./i18n";
 import { DpadGlyph, PadButton, PlayStationLogo, XboxLogo, usePadLayout, type PadLayout } from "./padGlyphs";
+import { Btn, Panel } from "./ui";
 
 type Topic = "controls";
 
 /**
  * Help (launcher), category "Controls" – laid out like the game's own settings: the controls on
  * the left (buttons of the user's controller, detected or picked), and on the right a looping
- * example of the selected one with its description and keyboard keys.
+ * example of the selected one with its description and keyboard keys. On top: the overlay itself
+ * (how it opens in FC 27, or open it from here).
  */
 export default function Help({ topic = "controls" }: { topic?: Topic }) {
   const { layout, choice, controller, setChoice } = usePadLayout();
@@ -29,11 +32,22 @@ export default function Help({ topic = "controls" }: { topic?: Topic }) {
 
   return (
     <section className="ln-page ln-help">
-      <h1>{t("nav.help")}</h1>
+      <h1 className="h1">{t("nav.help")}</h1>
+
+      <Panel className="help-overlay" tier="hero">
+        <div>
+          <span className="h3">{t("lh.help.overlay")}</span>
+          <p className="t-14 muted">{t("lh.help.overlayText")}</p>
+        </div>
+        <Btn kind="primary" onClick={() => void api.openOverlay().catch(() => {})}>
+          {t("lh.help.openOverlay")}
+        </Btn>
+      </Panel>
+
       <div className="help-bar">
-        <nav className="help-tabs" aria-label={t("nav.help")}>
-          <span className={topic === "controls" ? "on" : ""}>{t("help.cat.controls")}</span>
-        </nav>
+        <span className="seg ring is-on" aria-current={topic === "controls" ? "page" : undefined}>
+          <span>{t("help.cat.controls")}</span>
+        </span>
         <p className="help-detected">
           {controller ? t("help.detected", { name: controller.name }) : t("help.noController")}
           {choice !== "auto" && (
@@ -43,47 +57,53 @@ export default function Help({ topic = "controls" }: { topic?: Topic }) {
           )}
         </p>
         <div className="help-switch" role="group" aria-label={t("help.layout")}>
-          <button className={layout === "playstation" ? "on" : ""} aria-pressed={layout === "playstation"} onClick={() => pick("playstation")}>
-            <PlayStationLogo /> PlayStation
+          <button className={`seg ring ${layout === "playstation" ? "is-on" : ""}`} aria-pressed={layout === "playstation"} onClick={() => pick("playstation")}>
+            <span>
+              <PlayStationLogo /> PlayStation
+            </span>
           </button>
-          <button className={layout === "xbox" ? "on" : ""} aria-pressed={layout === "xbox"} onClick={() => pick("xbox")}>
-            <XboxLogo /> Xbox
+          <button className={`seg ring ${layout === "xbox" ? "is-on" : ""}`} aria-pressed={layout === "xbox"} onClick={() => pick("xbox")}>
+            <span>
+              <XboxLogo /> Xbox
+            </span>
           </button>
         </div>
       </div>
 
       <div className="help-main">
-        <div className="help-list" role="listbox" aria-label={t("help.cat.controls")} ref={list} onKeyDown={onKey}>
-          {(["show", "overlay"] as const).map((g) => (
-            <div key={g} className="help-group" role="group" aria-label={t(`help.group.${g}`)}>
-              <p className="help-group-title">{t(`help.group.${g}`)}</p>
-              {CONTROLS.filter((c) => c.group === g).map((c) => (
-                <button
-                  key={c.id}
-                  data-id={c.id}
-                  role="option"
-                  aria-selected={c.id === sel}
-                  tabIndex={c.id === sel ? 0 : -1}
-                  className={`help-item ${c.id === sel ? "on" : ""}`}
-                  onClick={() => setSel(c.id)}
-                  onFocus={() => setSel(c.id)}
-                >
-                  <span className="help-item-name">{t(`help.c.${c.id}.title` as MessageKey)}</span>
-                  <span className="help-item-pad">
-                    {c.gesture && <small>{t(`help.${c.gesture}`)}</small>}
-                    {c.id === "move" ? <DpadGlyph size={24} /> : c.buttons.map((b) => <PadButton key={b} id={b} layout={layout} size={22} />)}
-                  </span>
-                </button>
-              ))}
-            </div>
-          ))}
-          <p className="ln-hint help-note">{t("help.matchNote")}</p>
-        </div>
+        <Panel className="help-list">
+          <div role="listbox" aria-label={t("help.cat.controls")} ref={list} onKeyDown={onKey} className="help-list-in">
+            {(["show", "overlay"] as const).map((g) => (
+              <div key={g} className="help-group" role="group" aria-label={t(`help.group.${g}`)}>
+                <p className="eyebrow help-group-title">{t(`help.group.${g}`)}</p>
+                {CONTROLS.filter((c) => c.group === g).map((c) => (
+                  <button
+                    key={c.id}
+                    data-id={c.id}
+                    role="option"
+                    aria-selected={c.id === sel}
+                    tabIndex={c.id === sel ? 0 : -1}
+                    className={`lrow help-item ${c.id === sel ? "is-sel" : ""}`}
+                    onClick={() => setSel(c.id)}
+                    onFocus={() => setSel(c.id)}
+                  >
+                    <span className="help-item-name">{t(`help.c.${c.id}.title` as MessageKey)}</span>
+                    <span className="help-item-pad">
+                      {c.gesture && <small>{t(`help.${c.gesture}`)}</small>}
+                      {c.id === "move" ? <DpadGlyph size={24} /> : c.buttons.map((b) => <PadButton key={b} id={b} layout={layout} size={26} />)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ))}
+            <p className="help-note">{t("help.matchNote")}</p>
+          </div>
+        </Panel>
 
-        <article className="help-preview" aria-live="polite">
+        <Panel className="help-preview" tier="hero" aria-live="polite">
           <header className="help-preview-head" key={sel}>
-            <p className="help-eyebrow">{t(`help.group.${current.group}`)}</p>
-            <h2 className="help-title">
+            <p className="eyebrow accent">{t(`help.group.${current.group}`)}</p>
+            <h2 className="h2 help-title">
               {t(`help.c.${sel}.title` as MessageKey)
                 .split(" ")
                 .map((w, k) => (
@@ -101,7 +121,7 @@ export default function Help({ topic = "controls" }: { topic?: Topic }) {
             <span>{t("help.keyboard")}</span>
             {current.keys.length ? current.keys.map((k) => <kbd key={k}>{k}</kbd>) : <kbd>{t("help.wheel")}</kbd>}
           </p>
-        </article>
+        </Panel>
       </div>
     </section>
   );

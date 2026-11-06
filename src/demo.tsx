@@ -2,13 +2,6 @@
 // drawn stand-in for the game screen. Built with `npm run build:demo`; never part of the app.
 import React from "react";
 import ReactDOM from "react-dom/client";
-import "@fontsource/barlow-condensed/500.css";
-import "@fontsource/barlow-condensed/600.css";
-import "@fontsource/barlow-condensed/700.css";
-import "@fontsource/manrope/400.css";
-import "@fontsource/manrope/600.css";
-import "@fontsource/manrope/700.css";
-import "@fontsource/manrope/800.css";
 import { LOCALES, setLocale, type Locale } from "./i18n";
 import DemoPad from "./DemoPad";
 import Overlay from "./Overlay";

@@ -98,6 +98,9 @@ fn nav(button: Button) -> Option<&'static str> {
         Button::East => "back",
         // ▢ / X: card info. Not △ / Y – that is "Optimize" on the in-game set page.
         Button::West => "info",
+        // △ / Y: the match brief – used only on the overlay's Objectives screen (mockup 06); elsewhere the overlay
+        // ignores it (on the in-game set page △ is EA's "Optimize")
+        Button::North => "brief",
         _ => return None,
     })
 }
@@ -291,5 +294,6 @@ mod section_tests {
         assert_eq!(nav(Button::RightTrigger2), Some("next_section"));
         assert_eq!(nav(Button::LeftTrigger), Some("prev_category"));
         assert_eq!(nav(Button::RightTrigger), Some("next_category"));
+        assert_eq!(nav(Button::North), Some("brief"));
     }
 }

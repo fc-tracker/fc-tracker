@@ -152,6 +152,9 @@ pub struct SetObs {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct GalleryCard {
     pub def_id: u64,
+    /// EA's own art guid for this card (`guidAssetId`): a special's action shot ("dynamic image").
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub art: Option<String>,
     pub score: u64,
     /// EA's "ever owned" flag – stays true after selling.
     pub collected: bool,

@@ -1,16 +1,19 @@
-/* Shared design tokens and the four themes – used by the overlay windows and the launcher. */
+/* Brand v2 tokens (brand.css: light | dark | glass) + the v1 token names the surfaces still read while they
+   move over to v2 (BRAND-MIGRATION.md). Used by the overlay windows, the launcher, /web and the dashboard.
+   New UI uses the v2 tokens (brand.css) only; the "v1 names" block below goes when the last surface has moved. */
+@import "./brand.css";
+
 
 :root {
-  --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
-  --font-body: "Manrope", "Segoe UI", sans-serif;
+  /* v1 names → the v2 faces (Barlow Condensed and Manrope are gone) */
+  --font-display: var(--f-display);
+  --font-body: var(--f-body);
   --cut: 14px;                 /* size of the angular corner cut */
-  --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --dur: 260ms;
-  /* each theme's accent, for the theme picker's swatches (shown whatever theme is on) */
-  --swatch-midnight: #8d6bff;
-  --swatch-pitch: #5df08f;
-  --swatch-gold: #f2c94c;
-  --swatch-glass: #ffffff;
+  /* the theme picker's swatches (shown whatever theme is on): each theme's page colour */
+  --swatch-light: #F3F1EC;
+  --swatch-dark: #1A1619;
+  --swatch-glass: rgba(255, 255, 255, .35);
 
   /* grade colours (shared by all themes, like the game) */
   --grade-d: #e2733a;
@@ -70,68 +73,53 @@
   --rar-special-a: #6d4cff; --rar-special-b: #2a1a7a; --rar-special-ink: #ffffff; --rar-special-hi: #9a7cff;
 }
 
-/* Midnight – FC27 navy with violet glow (default) */
-:root[data-theme="midnight"] {
-  --bg: rgba(9, 13, 30, 0.94);
-  --bg-2: rgba(20, 27, 56, 0.9);
-  --menu: #141b38;         /* opaque: native dropdown lists can't show through */
-  --surface: rgba(31, 40, 78, 0.72);
-  --surface-hi: rgba(48, 60, 112, 0.85);
-  --line: rgba(140, 160, 255, 0.16);
-  --text: #eef1ff;
-  --muted: #8f9ac4;
-  --accent: #8d6bff;
-  --accent-2: #3fe0b8;
-  --on-accent: #ffffff;
-  --glow: radial-gradient(1200px 500px at 85% -10%, rgba(141, 107, 255, 0.28), transparent 60%),
-    radial-gradient(800px 400px at -10% 110%, rgba(63, 224, 184, 0.12), transparent 60%);
-}
-
-/* Pitch – the green of the in-game club/gallery screens */
-:root[data-theme="pitch"] {
-  --bg: rgba(6, 22, 14, 0.94);
-  --bg-2: rgba(10, 36, 22, 0.9);
-  --menu: #0a2416;         /* opaque: native dropdown lists can't show through */
-  --surface: rgba(18, 56, 34, 0.7);
-  --surface-hi: rgba(28, 82, 50, 0.85);
-  --line: rgba(160, 255, 200, 0.14);
-  --text: #effff4;
-  --muted: #8fb79e;
-  --accent: #5df08f;
-  --accent-2: #f2d35b;
-  --on-accent: #04210f;
-  --glow: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.025) 0 80px, transparent 80px 160px),
-    radial-gradient(900px 500px at 80% -20%, rgba(93, 240, 143, 0.18), transparent 60%);
-}
-
-/* Gold – dark with Ultimate Team gold */
-:root[data-theme="gold"] {
-  --bg: rgba(14, 12, 8, 0.95);
-  --bg-2: rgba(28, 24, 14, 0.92);
-  --menu: #1c180e;         /* opaque: native dropdown lists can't show through */
-  --surface: rgba(44, 37, 20, 0.72);
-  --surface-hi: rgba(70, 58, 28, 0.85);
-  --line: rgba(242, 205, 110, 0.18);
-  --text: #fff8e6;
-  --muted: #b8a67a;
-  --accent: #f2c94c;
-  --accent-2: #3fe0b8;
-  --on-accent: #1d1500;
-  --glow: radial-gradient(1000px 500px at 90% -20%, rgba(242, 201, 76, 0.22), transparent 60%);
-}
-
-/* Glass – minimal, light-on-blur */
-:root[data-theme="glass"] {
-  --bg: rgba(18, 20, 26, 0.72);
-  --bg-2: rgba(255, 255, 255, 0.06);
-  --menu: #1b1e26;         /* opaque: native dropdown lists can't show through */
-  --surface: rgba(255, 255, 255, 0.07);
-  --surface-hi: rgba(255, 255, 255, 0.14);
-  --line: rgba(255, 255, 255, 0.12);
-  --text: #ffffff;
-  --muted: #a7adbd;
-  --accent: #ffffff;
-  --accent-2: #3fe0b8;
-  --on-accent: #0d0f14;
+/* ── v1 token names on the v2 themes (compatibility while surfaces migrate) ── */
+:root, :root[data-theme] {
+  --bg-2: var(--surface-2);
+  --surface-hi: var(--surface-hero);
+  --muted: var(--text-2);
+  --accent-2: var(--done);
   --glow: none;
+  --menu: #1A1619;          /* opaque: native dropdown lists can't show through */
+}
+:root[data-theme="light"] { --menu: #FFFFFF; }
+
+/* The overlay stage (over the live game). Light and dark cover the game like the mockups' stages; glass lets FC 27
+   show through the transparent window. WebView2 can't blur what is behind its window (backdrop-filter only sees the
+   page), so in the app glass dims the game with a scrim instead of the mockup's blur 5. */
+:root, :root[data-theme="glass"] { --ov-stage: rgba(13, 12, 16, .5); }
+:root[data-theme="dark"] { --ov-stage: var(--bg); }
+:root[data-theme="light"] { --ov-stage: var(--bg); }
+
+/* In the app the panels' backdrop is the transparent window: a backdrop-filter has nothing to blur there (WebView2
+   can't see the game) and only costs GPU – off. In a browser (/web, preview) it blurs the page behind. */
+html[data-host="app"] { --blur: none; }
+
+/* ── tokens for fixed art and the overlay's glass over the live game (the only place their values live) ── */
+:root, :root[data-theme] {
+  /* the launcher's drawn game screen and controller (always dark – it is the game) */
+  --sketch-ink: #FFFFFF;
+  --sketch-text: #F2F1F4;
+  --sketch-shade: #08070A;
+  --sketch-panel: #1A1619;
+  --sketch-key: #2A2428;
+  --sketch-key-idle: #211C20;
+  --sketch-well: #110D10;
+  --sketch-cap: #2E282C;
+  /* text on an amber fill, a track inside a solid tag, a keycap on the red primary */
+  --on-warn: #15120F;
+  --tag-track: rgba(255, 255, 255, .22);
+  --key-on-accent: rgba(0, 0, 0, .24);
+  /* the card's foot tag on the pitch */
+  --slot-tag: var(--surface-dense);
+  --slot-tag-fg: var(--text);
+}
+:root[data-theme="light"] { --slot-tag: rgba(19, 18, 23, .78); --slot-tag-fg: #FFFFFF; }
+:root, :root[data-theme="glass"] {
+  --slot-tag: rgba(8, 7, 11, .72);
+  --text-halo: 0 1px 2px rgba(0, 0, 0, .45);
+  --ov-chrome: rgba(14, 12, 18, .34);
+  --ov-menu: rgba(14, 12, 18, .9);
+  --ov-side: rgba(14, 12, 18, .82);
+  --ov-toast: rgba(14, 12, 18, .86);
 }

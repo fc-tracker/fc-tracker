@@ -1,0 +1,97 @@
+/* The forced-update popup, its strip, and the update lower-thirds (UpdateRequired.tsx).
+   design/d-draft-2/12-installer-update: "Update required" panel, "is ready" / "Updated to" lower-thirds.
+   Brand v2 tokens only (src/brand.css); cut corners top-left + bottom-right. */
+
+.fu-scrim,
+.fu-strip,
+.fu-l3 {
+  --fu-cut: polygon(var(--c) 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%, 0 var(--c));
+  font-family: var(--f-body);
+}
+
+.fu-scrim { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 24px; background: var(--scrim, color-mix(in srgb, var(--bg) 78%, transparent)); }
+.fu-scrim.in-overlay { position: absolute; }
+
+/* the panel: src/ui's hero panel (xl cut, ring, the red folded corner); dense enough to read over anything */
+.fu-panel { width: min(860px, 100%); display: grid; grid-template-columns: auto 1fr; gap: 22px; align-items: start; padding: 28px 30px; color: var(--text); }
+:root[data-theme="glass"] .fu-panel, [data-theme="glass"] .fu-panel { background-color: color-mix(in srgb, var(--bg) 88%, transparent); }
+.fu-ic { --c: var(--cut-m); width: 56px; height: 56px; display: grid; place-items: center; background: var(--accent); color: var(--on-accent); clip-path: var(--fu-cut); }
+.fu-ic svg { width: 26px; height: 26px; }
+.fu-body { display: grid; gap: 12px; min-width: 0; }
+.fu-body h2 { margin: 0; font: 800 40px/.86 var(--f-display); font-stretch: 75%; letter-spacing: -.015em; text-transform: uppercase; color: var(--text); }
+.fu-text { margin: 0; font-size: 15px; line-height: 1.45; color: var(--text-2); }
+
+/* the waiting line: a toast with a quiet edge and a moving bar */
+.fu-status {
+  --c: var(--cut-m);
+  position: relative; margin: 0; display: flex; align-items: center; gap: 16px; min-height: 44px; padding: 10px 16px 10px 20px;
+  background: var(--surface-2); color: var(--text); font-size: 14px; clip-path: var(--fu-cut);
+}
+.fu-status::before { content: ""; position: absolute; left: 8px; top: 10px; bottom: 10px; width: 2px; background: var(--text-3); }
+.fu-status.error { color: var(--warn-text, var(--amber)); }
+.fu-status.error::before { background: var(--warn, var(--amber)); }
+.fu-status > span { flex: 1; min-width: 0; }
+
+.fu-bar { --c: var(--cut-xs); position: relative; flex: none; display: block; width: 120px; height: 4px; overflow: hidden; background: var(--track, var(--line)); clip-path: var(--fu-cut); }
+.fu-bar > i { position: absolute; inset: 0 auto 0 0; background: var(--text-2); transition: width var(--t-slow) var(--ease-out); }
+.fu-bar.loading::after { content: ""; position: absolute; top: 0; bottom: 0; width: 40%; background: var(--text-2); animation: fu-slide 1.2s var(--ease) infinite; }
+@keyframes fu-slide { from { left: -40%; } to { left: 100%; } }
+
+.fu-actions { display: flex; gap: 8px; margin-top: 6px; }
+.fu-actions .btn { border: 0; cursor: pointer; font-family: var(--f-body); }
+/* keyboard / controller focus = the game cursor (frame.css .is-focus): red corner brackets on the button's own cut + a 2 px
+   lift; on the red primary the brackets are white (on-accent), like every primary button – never a light outline */
+.fu-actions .btn:focus-visible { outline: none; --fc: var(--accent); transform: translateY(-2px);
+  background-image:
+    linear-gradient(135deg, transparent 50%, var(--fc) 50%, var(--fc) calc(50% + 2.5px), transparent calc(50% + 2.5px)),
+    linear-gradient(315deg, transparent 50%, var(--fc) 50%, var(--fc) calc(50% + 2.5px), transparent calc(50% + 2.5px)),
+    linear-gradient(var(--fc), var(--fc)), linear-gradient(var(--fc), var(--fc)), linear-gradient(var(--fc), var(--fc)), linear-gradient(var(--fc), var(--fc));
+  background-size: var(--cut) var(--cut), var(--cut) var(--cut), 14px 2px, 2px 14px, 14px 2px, 2px 14px;
+  background-position: 0 0, 100% 100%, 100% 0, 100% 0, 0 100%, 0 100%; background-repeat: no-repeat; }
+.fu-actions .btn-primary:focus-visible { --fc: var(--on-accent); }
+
+/* folded into the launcher (the user said "when FC 27 closes"): one slim line, no "Later" */
+.fu-strip {
+  --c: var(--cut-m);
+  position: fixed; left: 50%; bottom: 76px; transform: translateX(-50%); z-index: 900; display: flex; align-items: center; gap: 14px;
+  width: min(640px, calc(100% - 32px)); min-height: 48px; padding: 0 16px 0 0; background: var(--surface-hero, var(--surface)); color: var(--text);
+  font-size: 14px; clip-path: var(--fu-cut); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+}
+.fu-strip-tag { align-self: stretch; width: 48px; display: grid; place-items: center; background: var(--ink); color: var(--on-ink); }
+.fu-strip-tag svg { width: 20px; height: 20px; }
+.fu-strip-text { flex: 1; min-width: 0; }
+
+/* lower-thirds: tag + title + sub (+ timer line) – 08 / 12 */
+.fu-l3-dock { position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 900; pointer-events: none; width: min(620px, calc(100% - 32px)); }
+/* in the launcher the notice sits on the footer strip, bottom-right – never over the tiles */
+.fu-l3-dock.launcher { position: fixed; left: auto; right: 24px; bottom: 8px; transform: none; width: min(520px, calc(100% - 48px)); }
+.fu-l3-dock.launcher .fu-l3 { min-height: 56px; grid-template-columns: 64px 1fr; }
+.fu-l3-dock.launcher .fu-l3-body { padding: 8px 16px; }
+.fu-l3-dock.launcher .fu-l3-title { font-size: 20px; }
+.fu-l3-dock.launcher .fu-l3-sub { font-size: 13px; }
+.fu-l3 { --c: var(--cut-m); display: grid; grid-template-columns: 96px 1fr; min-height: 80px; animation: fu-in var(--t-slow) var(--ease-out) both; }
+.fu-l3-tag { display: grid; place-items: center; clip-path: polygon(var(--c) 0, 100% 0, 100% 100%, 0 100%, 0 var(--c)); }
+.fu-l3-tag.ink { background: var(--ink); color: var(--on-ink); }
+.fu-l3-tag.done { background: var(--mint); color: var(--ink); }
+.fu-l3-tag svg { width: 24px; height: 24px; }
+.fu-l3-body {
+  position: relative; display: grid; align-content: center; gap: 4px; padding: 12px 20px; background: var(--surface-hero, var(--surface));
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+  animation: fu-in var(--t-slow) 60ms var(--ease-out) both;
+}
+.fu-l3-title { font: 800 26px/.9 var(--f-display); font-stretch: 75%; letter-spacing: -.01em; text-transform: uppercase; color: var(--text); }
+.fu-l3-sub { font-size: 14px; color: var(--text-2); animation: fu-in var(--t-slow) 120ms var(--ease-out) both; }
+.fu-l3-time { position: absolute; left: 0; bottom: 0; height: 2px; width: 100%; background: var(--mint); transform-origin: left; animation: fu-time linear both; }
+@keyframes fu-in { from { opacity: 0; transform: translateY(6px); } }
+@keyframes fu-time { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+
+@media (max-width: 560px) {
+  .fu-panel { grid-template-columns: 1fr; }
+  .fu-body h2 { font-size: 32px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fu-l3, .fu-l3-body, .fu-l3-sub { animation: none; }
+  .fu-bar.loading::after { animation: none; left: 30%; }
+  .fu-l3-time { animation: none; }
+}
+.fu-attested { margin: 4px 0 0; gap: 10px; align-items: center; }

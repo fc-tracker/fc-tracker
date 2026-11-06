@@ -68,7 +68,7 @@ export default function WebUpdate() {
           <h2>{t("update.web.requiredTitle")}</h2>
           <p>{t("update.web.requiredText")}</p>
           <p className="upd-wait">{t("update.web.countdown", { seconds: Math.max(0, left) })}</p>
-          <button className="wb-btn" onClick={() => location.reload()}>
+          <button className="btn btn-primary btn-s wb-btn" onClick={() => location.reload()}>
             {t("update.web.reload")}
           </button>
         </div>
@@ -81,7 +81,7 @@ export default function WebUpdate() {
       <span className="upd-mark" aria-hidden="true" />
       <p>{newer ? t("update.web.available") : t("update.ext.updating", { version: v?.extension_required ?? "" })}</p>
       {newer && (
-        <button className="wb-btn" onClick={() => location.reload()}>
+        <button className="btn btn-primary btn-s wb-btn" onClick={() => location.reload()}>
           {t("update.web.reload")}
         </button>
       )}

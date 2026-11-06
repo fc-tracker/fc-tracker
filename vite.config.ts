@@ -15,7 +15,7 @@ export default defineConfig(async ({ mode }) => ({
 
   // `npm run build:web`: the browser version (fc-tracker.com/web) – the overlay fed by screen reading in the tab.
   ...(mode === "web"
-    ? { base: "/web/", build: { outDir: "site/public/web", emptyOutDir: true, rollupOptions: { input: ["web.html", "dashboard.html"] } } }
+    ? { base: "/web/", build: { outDir: "site/public/web", emptyOutDir: true, rollupOptions: { input: ["web.html", "dashboard.html", "share.html"] } } }
     : {}),
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
@@ -34,6 +34,9 @@ export default defineConfig(async ({ mode }) => ({
           port: 1421,
         }
       : undefined,
+    // dev: EA's card art through our own address, as on Vercel (site/vercel.json /ea-img) – the dashboard's Creator
+    // reads its picture back, and EA's CDN sends no CORS headers
+    proxy: { "/ea-img": { target: "https://www.ea.com", changeOrigin: true, rewrite: (p: string) => p.replace(/^\/ea-img\//, "/ea-sports-fc/ultimate-team/web-app/") } },
     watch: {
       // 3. tell Vite to ignore watching `src-tauri`
       ignored: ["**/src-tauri/**"],

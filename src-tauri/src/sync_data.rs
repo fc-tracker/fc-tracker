@@ -27,6 +27,7 @@ pub(crate) fn parse_gallery_card(v: &Value) -> Option<GalleryCard> {
         team_name: v.get("teamName").and_then(Value::as_str).map(str::to_string),
         holo: v.get("holo").and_then(Value::as_bool).unwrap_or(false),
         face: Vec::new(),
+        art: v.get("guidAssetId").and_then(Value::as_str).filter(|s| !s.is_empty()).map(str::to_string),
     })
 }
 
@@ -62,6 +63,7 @@ pub(crate) fn parse_raw_concept_card(v: &Value) -> Option<GalleryCard> {
             .map(|a| a.iter().filter_map(Value::as_u64).map(|x| x.min(99) as u8).collect::<Vec<_>>())
             .filter(|a| a.len() == 6)
             .unwrap_or_default(),
+        art: v.get("guidAssetId").and_then(Value::as_str).filter(|s| !s.is_empty()).map(str::to_string),
     })
 }
 
@@ -91,6 +93,7 @@ impl GalleryCard {
         if self.face.is_empty() {
             self.face = old.face.clone();
         }
+        self.art = self.art.take().or_else(|| old.art.clone());
         self
     }
 }
@@ -329,6 +332,22 @@ pub(crate) fn account_platform(url: &str, body: &Value) -> Option<&'static str> 
         }
     }
     url.split(|c: char| !c.is_ascii_alphanumeric()).find_map(from_sku)
+}
+
+#[cfg(test)]
+mod art_tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn a_special_keeps_eas_art_guid() {
+        let v = json!({ "resourceId": 183277, "rating": 89, "rareflag": 72, "guidAssetId": "fb5ce569-d655-4ed9-8e22-24f828ea33d4" });
+        let c = parse_raw_concept_card(&v).unwrap();
+        assert_eq!(c.art.as_deref(), Some("fb5ce569-d655-4ed9-8e22-24f828ea33d4"));
+        // a later read without it keeps the guid
+        let later = parse_raw_concept_card(&json!({ "resourceId": 183277, "rating": 89 })).unwrap().merged_with(&c);
+        assert!(later.art.is_some());
+    }
 }
 
 #[cfg(test)]

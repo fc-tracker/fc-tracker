@@ -1,54 +1,109 @@
 <!doctype html>
-<html>
+<html class="fct" data-theme="glass">
   <head>
     <meta charset="UTF-8" />
+    <link rel="stylesheet" href="fonts.css" />
+    <link rel="stylesheet" href="brand.css" />
     <style>
-      body { margin: 0; width: 280px; background: #0f1420; color: #e8ecf5; font: 13px "Segoe UI", sans-serif; }
-      main { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
-      h1 { font-size: 16px; margin: 0; }
-      p { margin: 0; color: #8b95ad; }
-      section { display: flex; flex-direction: column; gap: 10px; }
-      input { font: 600 22px "Segoe UI", sans-serif; letter-spacing: 0.3em; text-align: center; padding: 8px;
-              background: #1f2840; color: #e8ecf5; border: 1px solid #1f2840; border-radius: 8px; }
-      input:focus { outline: none; border-color: #f5c542; }
-      button { font: inherit; font-weight: 600; padding: 9px; border-radius: 8px; border: 0; cursor: pointer;
-               background: #f5c542; color: #1a1a1a; }
-      button.secondary { background: #1f2840; color: #e8ecf5; font-weight: 400; }
-      .status { display: flex; align-items: center; gap: 8px; color: #e8ecf5; }
-      .dot { width: 8px; height: 8px; border-radius: 50%; background: #8b95ad; }
-      .dot.on { background: #3ccf8e; }
-      .error { color: #ff6b6b; }
-      .update { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 8px; background: #1a2238; }
-      .update.new { box-shadow: inset 3px 0 0 #8d6bff; }
-      .update b { color: #e8ecf5; font-weight: 600; }
-      button.update-btn { background: #8d6bff; color: #fff; }
-      .muted { color: #8b95ad; font-size: 12px; }
-      [hidden] { display: none !important; }
+      /* layout only – every colour, font and shape comes from brand.css */
+      html, body { margin: 0; background: var(--bg); }
+      body { width: 340px; }
+      html.tab body { margin: 40px auto; }
+      main { padding: var(--s-4); display: flex; flex-direction: column; gap: var(--s-3); }
+      header { display: flex; align-items: center; gap: var(--s-2); }
+      header img { width: 24px; height: 24px; }
+      header .brand { flex: 1; }
+      #version { text-transform: none; letter-spacing: .02em; }
+      .hero { padding: var(--s-4); display: flex; flex-direction: column; gap: var(--s-2); }
+      .hero .state { display: flex; align-items: center; gap: var(--s-2); }
+      .hero .title { margin-top: 2px; }
+      .hero .line { display: flex; align-items: baseline; gap: var(--s-2); }
+      .card { padding: var(--s-4); display: flex; flex-direction: column; gap: var(--s-3); }
+      .card .head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); }
+      .row { display: flex; gap: var(--s-2); }
+      /* two buttons share the card width exactly; a long label (da/de) wraps instead of overflowing */
+      .row > .btn { flex: 1 1 0; min-width: 0; height: auto; min-height: 40px; padding: 6px var(--s-3); white-space: normal; text-align: center; line-height: 1.1; }
+      .stack { display: flex; flex-direction: column; gap: var(--s-2); }
+      .who { font-weight: 700; word-break: break-all; }
+      .error { color: var(--warn-text); font-weight: 600; min-height: 0; }
+      .error:empty { display: none; }
+      .update { display: flex; align-items: center; gap: var(--s-3); }
+      .update p { flex: 1; }
+      footer { display: flex; justify-content: space-between; align-items: center; }
     </style>
   </head>
   <body>
     <main>
-      <h1>FC-Tracker <small id="version" style="color:#8b95ad;font-weight:400;font-size:11px"></small></h1>
-      <div class="status"><span id="dot" class="dot"></span><span id="status" data-i18n="checking">Checking …</span></div>
+      <header>
+        <img src="icons/48.png" alt="" />
+        <span class="brand">FC-Tracker</span>
+        <span id="version" class="chip num"></span>
+      </header>
 
-      <section id="pair" hidden>
-        <p data-i18n="enterCode"></p>
-        <input id="code" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="off" />
-        <button id="pairBtn" data-i18n="connect"></button>
+      <!-- the hero: who gets the club sync right now -->
+      <section class="panel ring hero" aria-live="polite">
+        <div class="state"><i id="dot" class="dot"></i><span id="eyebrow" class="eyebrow" data-i18n="popClubSync"></span></div>
+        <h1 id="title" class="title" data-i18n="checking"></h1>
+        <p id="sub" class="muted"></p>
+        <p id="lastSync" class="small" hidden></p>
+        <div id="busy" class="busy" hidden></div>
       </section>
 
-      <p id="lastSync" class="muted" hidden></p>
-      <button id="openAppBtn" data-i18n="openApp" hidden></button>
-      <button id="openWebBtn" class="secondary" data-i18n="openWeb"></button>
-
-      <section id="update" class="update">
-        <p id="updateText" class="muted"></p>
-        <button id="updateBtn" class="secondary"></button>
-        <p id="updateResult" class="muted" hidden></p>
+      <!-- the app on this PC is running but not connected: its 6-digit code -->
+      <section id="pair" class="panel ring card" hidden>
+        <div class="head"><span class="eyebrow" data-i18n="popApp"></span></div>
+        <p class="muted" data-i18n="enterCode"></p>
+        <label class="field ring code"><input id="code" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="off" aria-label="code" /></label>
+        <button id="pairBtn" class="btn btn-primary" data-i18n="connect"></button>
       </section>
 
-      <button id="unpairBtn" class="secondary" data-i18n="disconnect" hidden></button>
-      <p id="error" class="error"></p>
+      <!-- the account: inherited from the app, or this extension's own e-mail-code sign-in -->
+      <section id="acct" class="panel ring card" hidden>
+        <div class="head"><span class="eyebrow" data-i18n="popAccount"></span><span id="acctChip" class="chip" hidden></span></div>
+
+        <div id="acctApp" class="stack" hidden>
+          <p id="acctAppText" class="muted"></p>
+        </div>
+
+        <div id="acctIn" class="stack" hidden>
+          <p class="muted"><span data-i18n="accountSignedInAs"></span> <span id="acctEmail" class="who"></span></p>
+          <p id="acctPushed" class="small" hidden></p>
+          <div class="row"><button id="signOutBtn" class="btn btn-quiet btn-s" data-i18n="signOut"></button></div>
+        </div>
+
+        <form id="acctEmailStep" class="stack" hidden>
+          <p class="muted" data-i18n="signInWhy"></p>
+          <label class="field ring"><input id="email" type="email" autocomplete="email" data-i18n-placeholder="emailPlaceholder" /></label>
+          <button id="sendBtn" type="submit" class="btn" data-i18n="sendCode"></button>
+        </form>
+
+        <form id="acctCodeStep" class="stack" hidden>
+          <p class="muted" id="codeSent"></p>
+          <label class="field ring code"><input id="acctCode" inputmode="numeric" maxlength="7" placeholder="000000" autocomplete="one-time-code" /></label>
+          <button id="verifyBtn" type="submit" class="btn" data-i18n="verifyCode"></button>
+          <div class="row"><button id="otherEmailBtn" type="button" class="btn btn-quiet btn-s" data-i18n="otherEmail"></button></div>
+        </form>
+      </section>
+
+      <p id="error" class="error" role="alert"></p>
+
+      <div class="row">
+        <button id="openAppBtn" class="btn btn-secondary ring" data-i18n="openApp" hidden></button>
+        <button id="openWebBtn" class="btn btn-secondary ring" data-i18n="openWeb"></button>
+      </div>
+
+      <section id="update" class="panel m ring card">
+        <div class="update">
+          <p id="updateText" class="small"></p>
+          <button id="updateBtn" class="btn btn-secondary btn-s ring"></button>
+        </div>
+        <p id="updateResult" class="small" hidden></p>
+      </section>
+
+      <footer>
+        <span></span>
+        <button id="unpairBtn" class="btn btn-quiet btn-s" data-i18n="disconnect" hidden></button>
+      </footer>
     </main>
     <script src="i18n.js"></script>
     <script src="popup.js"></script>

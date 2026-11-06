@@ -41,6 +41,13 @@ export interface SquadPrefs {
   chem_mode?: string;
   /** Club cards taken out of every squad ("Change" / "Leave out"). */
   exclude?: number[];
+  /** "Change players" (user 2026-11-04): each card no longer stands at that position – FC-Tracker re-solves, the
+   *  card is replaced or moves, the rest adapts. Never a "has to include" (squads.rs SwapOut). */
+  swaps?: SwapOut[];
+  /** The exact player picked for one position (user 2026-11-05): it plays there only; the rest re-solves (squads.rs pins). */
+  pins?: SwapOut[];
+  /** Reroll: 0 = the best squad, n = the n-th best formation's (squads.rs). */
+  reroll?: number;
   /** A squad locked in for the coming challenges: these cards, this formation, until unlocked. */
   locked?: LockedSquad | null;
 }
@@ -176,6 +183,10 @@ export interface SlotView {
   skill_moves: number;
   /** A "has to include" card. */
   must: boolean;
+  /** First owner, proven (EA's mark on the card). */
+  first_owner?: boolean;
+  /** EA's art guid: a special's action shot. */
+  art?: string | null;
   /** Not in the club yet (a "has to include" card to get) and its price. */
   owned: boolean;
   price: number | null;
@@ -187,6 +198,11 @@ export interface SlotView {
   generic: boolean;
   /** In an active evolution (its name). */
   evo?: string | null;
+  /** Face stats PAC SHO PAS DRI DEF PHY, the card's EA rarity, club and own positions (its art – older plans: missing). */
+  face?: number[] | null;
+  rareflag?: number | null;
+  club?: number | null;
+  positions?: string[];
 }
 
 export interface SquadView {
@@ -280,17 +296,31 @@ export interface RushPick {
   generic: boolean;
   /** His evolution a match here moves on. */
   evo: string | null;
+  /** The card itself (EA's art). Older plans: missing. */
+  def_id?: number;
+  rareflag?: number;
+  league?: number;
+  club?: number;
+  positions?: string[];
+  face?: number[] | null;
+  first_owner?: boolean;
+  art?: string | null;
 }
 
 export interface MatchBrief {
   before: { kind: "squad" | "ready" | "buy" | "use" | "bench" | "rush" | "rush_buy" | "rules" | "cap" | "unread"; text: string; count: number | null }[];
   players: { name: string; pos: string; bench: boolean; tasks: BriefTask[] }[];
   anyone: BriefTask[];
+  /** Tasks with a requirement on the doer: one line each, who can do it inside (most suitable first). */
+  reqs?: BriefTask[];
 }
 
 export interface BriefTask {
   text: string;
   left: number;
+  /** The requirement the doer must meet (index into the session's reqs). */
+  req?: number;
+  who?: { name: string; pos: string; bench: boolean }[];
 }
 
 /** A club card on the bench: subbed on late, it counts for these objectives. */
@@ -377,6 +407,11 @@ export interface SquadsView {
   club: ClubEntry[];
 }
 
+export interface SwapOut {
+  key: number;
+  pos: string;
+}
+
 export interface ClubEntry {
   key: number;
   name: string;
@@ -390,9 +425,17 @@ export interface ClubEntry {
   price: number | null;
   /** FC-Tracker's meta rating per position the card can play. */
   meta?: Record<string, number>;
+  /** The card itself (FUT card art). */
+  def_id?: number;
+  rareflag?: number;
+  club?: number;
+  league?: number;
+  face?: number[] | null;
+  /** EA's art guid: a special's action shot. */
+  art?: string | null;
 }
 
-export const defaultSquadPrefs: SquadPrefs = { chem_target: 33, chem_first: false, hide_loans: true, budget: null, must: [], must_cards: [], done_marks: [], primary: null, place: null, goal: "progress", max_buys: 3, formation: null, track: true, played: 0, played_at: 0, skip: [], keep: [], facts: {}, formations: [], chem_mode: "balanced", exclude: [], locked: null };
+export const defaultSquadPrefs: SquadPrefs = { chem_target: 33, chem_first: false, hide_loans: true, budget: null, must: [], must_cards: [], done_marks: [], primary: null, place: null, goal: "progress", max_buys: 3, formation: null, track: true, played: 0, played_at: 0, skip: [], keep: [], facts: {}, formations: [], chem_mode: "balanced", exclude: [], swaps: [], locked: null };
 
 export const emptySquads: SquadsView = { events: [], combos: [], apart: [], places: [], primary: null, needs_sync: true, names_missing: true, club_players: 0, coins: null, read_at: null, prefs: defaultSquadPrefs, club: [] };
 
@@ -400,7 +443,15 @@ export const emptySquads: SquadsView = { events: [], combos: [], apart: [], plac
 const LINES: string[][] = [["LW", "ST", "RW"], ["LM", "CAM", "RM"], ["CM"], ["CDM"], ["LB", "CB", "RB"], ["GK"]];
 
 export function pitchRows(slots: SlotView[]): SlotView[][] {
-  return LINES.map((line) =>
+  // where the wide midfielders stand is the formation's (user 2026-11-05: 4-4-1-1 (2) is 4 · 4 · CAM · ST): with two
+  // central midfielders they make one line with them (4-4-2, 4-4-1-1, 4-1-4-1); with three centre backs and two CDMs
+  // with them (3-5-2); otherwise on the CAM line (4-2-3-1)
+  const n = (p: string) => slots.filter((x) => x.pos === p).length;
+  const wideWith = n("CM") >= 2 ? "CM" : n("CDM") === 2 && n("CB") === 3 ? "CDM" : "CAM";
+  const lines = LINES.map((line) => (wideWith === "CAM" ? line : line.filter((p) => p !== "LM" && p !== "RM"))).map((line) =>
+    line.includes(wideWith) && wideWith !== "CAM" ? ["LM", ...line, "RM"] : line,
+  );
+  return lines.map((line) =>
     slots
       .filter((s) => line.includes(s.pos))
       .sort((a, b) => line.indexOf(a.pos) - line.indexOf(b.pos)),

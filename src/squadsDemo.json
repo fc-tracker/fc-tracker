@@ -94,7 +94,7 @@
             "def_id": 271918,
             "rating": 81,
             "chem": 3,
-            "strength": 81.0,
+            "strength": 81,
             "loan": false,
             "counts_for": [],
             "accel": null,
@@ -112,7 +112,20 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 64,
+            "positions": [
+              "GK"
+            ],
+            "face": [
+              82,
+              76,
+              84,
+              84,
+              39,
+              78
+            ]
           },
           {
             "pos": "RB",
@@ -138,7 +151,21 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 115995,
+            "positions": [
+              "RB",
+              "RM"
+            ],
+            "face": [
+              84,
+              68,
+              79,
+              84,
+              82,
+              70
+            ]
           },
           {
             "pos": "CB",
@@ -164,7 +191,22 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 72,
+            "club": 114605,
+            "positions": [
+              "CB",
+              "CDM",
+              "CM"
+            ],
+            "face": [
+              77,
+              72,
+              78,
+              81,
+              87,
+              87
+            ]
           },
           {
             "pos": "CB",
@@ -190,7 +232,20 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 160,
+            "club": 112658,
+            "positions": [
+              "CB"
+            ],
+            "face": [
+              77,
+              44,
+              60,
+              63,
+              86,
+              83
+            ]
           },
           {
             "pos": "LB",
@@ -216,7 +271,21 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 9,
+            "positions": [
+              "LB",
+              "LM"
+            ],
+            "face": [
+              84,
+              59,
+              75,
+              78,
+              76,
+              79
+            ]
           },
           {
             "pos": "RM",
@@ -224,7 +293,7 @@
             "def_id": 239345,
             "rating": 84,
             "chem": 3,
-            "strength": 83.0,
+            "strength": 83,
             "loan": false,
             "counts_for": [],
             "accel": null,
@@ -242,7 +311,23 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 115995,
+            "positions": [
+              "RM",
+              "CM",
+              "CAM",
+              "RW"
+            ],
+            "face": [
+              77,
+              76,
+              80,
+              87,
+              46,
+              58
+            ]
           },
           {
             "pos": "CM",
@@ -268,7 +353,21 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 116309,
+            "positions": [
+              "CDM",
+              "CM"
+            ],
+            "face": [
+              84,
+              77,
+              80,
+              82,
+              73,
+              62
+            ]
           },
           {
             "pos": "CM",
@@ -294,7 +393,21 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 115995,
+            "positions": [
+              "CDM",
+              "CM"
+            ],
+            "face": [
+              60,
+              62,
+              77,
+              74,
+              85,
+              84
+            ]
           },
           {
             "pos": "LM",
@@ -320,7 +433,22 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 21,
+            "positions": [
+              "LM",
+              "CAM",
+              "LW"
+            ],
+            "face": [
+              79,
+              81,
+              79,
+              90,
+              62,
+              65
+            ]
           },
           {
             "pos": "CAM",
@@ -328,7 +456,7 @@
             "def_id": 226893,
             "rating": 87,
             "chem": 3,
-            "strength": 88.0,
+            "strength": 88,
             "loan": false,
             "counts_for": [],
             "accel": null,
@@ -346,7 +474,21 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 116309,
+            "positions": [
+              "CAM",
+              "ST"
+            ],
+            "face": [
+              85,
+              79,
+              85,
+              89,
+              46,
+              57
+            ]
           },
           {
             "pos": "ST",
@@ -372,7 +514,23 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 3,
+            "club": 64,
+            "positions": [
+              "RM",
+              "CAM",
+              "RW",
+              "ST"
+            ],
+            "face": [
+              80,
+              84,
+              86,
+              85,
+              50,
+              70
+            ]
           }
         ],
         "strength": 83.3,
@@ -611,7 +769,7 @@
             "def_id": 271918,
             "rating": 81,
             "chem": 3,
-            "strength": 81.0,
+            "strength": 81,
             "loan": false,
             "counts_for": [],
             "accel": null,
@@ -629,7 +787,20 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 64,
+            "positions": [
+              "GK"
+            ],
+            "face": [
+              82,
+              76,
+              84,
+              84,
+              39,
+              78
+            ]
           },
           {
             "pos": "RB",
@@ -657,7 +828,21 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 115995,
+            "positions": [
+              "RB",
+              "RM"
+            ],
+            "face": [
+              84,
+              68,
+              79,
+              84,
+              82,
+              70
+            ]
           },
           {
             "pos": "CB",
@@ -683,7 +868,22 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 72,
+            "club": 114605,
+            "positions": [
+              "CB",
+              "CDM",
+              "CM"
+            ],
+            "face": [
+              77,
+              72,
+              78,
+              81,
+              87,
+              87
+            ]
           },
           {
             "pos": "CB",
@@ -709,7 +909,20 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 160,
+            "club": 112658,
+            "positions": [
+              "CB"
+            ],
+            "face": [
+              77,
+              44,
+              60,
+              63,
+              86,
+              83
+            ]
           },
           {
             "pos": "LB",
@@ -735,7 +948,21 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 9,
+            "positions": [
+              "LB",
+              "LM"
+            ],
+            "face": [
+              84,
+              59,
+              75,
+              78,
+              76,
+              79
+            ]
           },
           {
             "pos": "RM",
@@ -743,7 +970,7 @@
             "def_id": 239345,
             "rating": 84,
             "chem": 3,
-            "strength": 83.0,
+            "strength": 83,
             "loan": false,
             "counts_for": [
               0
@@ -763,7 +990,23 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 115995,
+            "positions": [
+              "RM",
+              "CM",
+              "CAM",
+              "RW"
+            ],
+            "face": [
+              77,
+              76,
+              80,
+              87,
+              46,
+              58
+            ]
           },
           {
             "pos": "CM",
@@ -789,7 +1032,21 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 116309,
+            "positions": [
+              "CDM",
+              "CM"
+            ],
+            "face": [
+              84,
+              77,
+              80,
+              82,
+              73,
+              62
+            ]
           },
           {
             "pos": "CM",
@@ -817,7 +1074,21 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 115995,
+            "positions": [
+              "CDM",
+              "CM"
+            ],
+            "face": [
+              60,
+              62,
+              77,
+              74,
+              85,
+              84
+            ]
           },
           {
             "pos": "LM",
@@ -845,7 +1116,22 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 21,
+            "positions": [
+              "LM",
+              "CAM",
+              "LW"
+            ],
+            "face": [
+              79,
+              81,
+              79,
+              90,
+              62,
+              65
+            ]
           },
           {
             "pos": "CAM",
@@ -853,7 +1139,7 @@
             "def_id": 226893,
             "rating": 87,
             "chem": 3,
-            "strength": 88.0,
+            "strength": 88,
             "loan": false,
             "counts_for": [],
             "accel": null,
@@ -871,7 +1157,21 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 116309,
+            "positions": [
+              "CAM",
+              "ST"
+            ],
+            "face": [
+              85,
+              79,
+              85,
+              89,
+              46,
+              57
+            ]
           },
           {
             "pos": "ST",
@@ -897,7 +1197,23 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 3,
+            "club": 64,
+            "positions": [
+              "RM",
+              "CAM",
+              "RW",
+              "ST"
+            ],
+            "face": [
+              80,
+              84,
+              86,
+              85,
+              50,
+              70
+            ]
           }
         ],
         "strength": 83.3,
@@ -1202,7 +1518,7 @@
             "def_id": 271918,
             "rating": 81,
             "chem": 3,
-            "strength": 81.0,
+            "strength": 81,
             "loan": false,
             "counts_for": [],
             "accel": null,
@@ -1220,7 +1536,20 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 64,
+            "positions": [
+              "GK"
+            ],
+            "face": [
+              82,
+              76,
+              84,
+              84,
+              39,
+              78
+            ]
           },
           {
             "pos": "RB",
@@ -1246,7 +1575,21 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 115995,
+            "positions": [
+              "RB",
+              "RM"
+            ],
+            "face": [
+              84,
+              68,
+              79,
+              84,
+              82,
+              70
+            ]
           },
           {
             "pos": "CB",
@@ -1272,7 +1615,22 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 72,
+            "club": 114605,
+            "positions": [
+              "CB",
+              "CDM",
+              "CM"
+            ],
+            "face": [
+              77,
+              72,
+              78,
+              81,
+              87,
+              87
+            ]
           },
           {
             "pos": "CB",
@@ -1298,7 +1656,20 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 160,
+            "club": 112658,
+            "positions": [
+              "CB"
+            ],
+            "face": [
+              77,
+              44,
+              60,
+              63,
+              86,
+              83
+            ]
           },
           {
             "pos": "LB",
@@ -1326,7 +1697,21 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 9,
+            "positions": [
+              "LB",
+              "LM"
+            ],
+            "face": [
+              84,
+              59,
+              75,
+              78,
+              76,
+              79
+            ]
           },
           {
             "pos": "RM",
@@ -1334,7 +1719,7 @@
             "def_id": 239345,
             "rating": 84,
             "chem": 3,
-            "strength": 83.0,
+            "strength": 83,
             "loan": false,
             "counts_for": [
               2
@@ -1354,7 +1739,23 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 115995,
+            "positions": [
+              "RM",
+              "CM",
+              "CAM",
+              "RW"
+            ],
+            "face": [
+              77,
+              76,
+              80,
+              87,
+              46,
+              58
+            ]
           },
           {
             "pos": "CM",
@@ -1382,7 +1783,21 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 116309,
+            "positions": [
+              "CDM",
+              "CM"
+            ],
+            "face": [
+              84,
+              77,
+              80,
+              82,
+              73,
+              62
+            ]
           },
           {
             "pos": "CM",
@@ -1410,7 +1825,21 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 115995,
+            "positions": [
+              "CDM",
+              "CM"
+            ],
+            "face": [
+              60,
+              62,
+              77,
+              74,
+              85,
+              84
+            ]
           },
           {
             "pos": "LM",
@@ -1438,7 +1867,22 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 21,
+            "positions": [
+              "LM",
+              "CAM",
+              "LW"
+            ],
+            "face": [
+              79,
+              81,
+              79,
+              90,
+              62,
+              65
+            ]
           },
           {
             "pos": "CAM",
@@ -1446,7 +1890,7 @@
             "def_id": 226893,
             "rating": 87,
             "chem": 3,
-            "strength": 88.0,
+            "strength": 88,
             "loan": false,
             "counts_for": [
               2
@@ -1466,7 +1910,21 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 116309,
+            "positions": [
+              "CAM",
+              "ST"
+            ],
+            "face": [
+              85,
+              79,
+              85,
+              89,
+              46,
+              57
+            ]
           },
           {
             "pos": "ST",
@@ -1492,7 +1950,23 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 3,
+            "club": 64,
+            "positions": [
+              "RM",
+              "CAM",
+              "RW",
+              "ST"
+            ],
+            "face": [
+              80,
+              84,
+              86,
+              85,
+              50,
+              70
+            ]
           }
         ],
         "strength": 83.3,
@@ -1739,7 +2213,7 @@
             "def_id": 271918,
             "rating": 81,
             "chem": 3,
-            "strength": 81.0,
+            "strength": 81,
             "loan": false,
             "counts_for": [],
             "accel": null,
@@ -1757,7 +2231,20 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 64,
+            "positions": [
+              "GK"
+            ],
+            "face": [
+              82,
+              76,
+              84,
+              84,
+              39,
+              78
+            ]
           },
           {
             "pos": "RB",
@@ -1783,7 +2270,21 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 115995,
+            "positions": [
+              "RB",
+              "RM"
+            ],
+            "face": [
+              84,
+              68,
+              79,
+              84,
+              82,
+              70
+            ]
           },
           {
             "pos": "CB",
@@ -1809,7 +2310,22 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 72,
+            "club": 114605,
+            "positions": [
+              "CB",
+              "CDM",
+              "CM"
+            ],
+            "face": [
+              77,
+              72,
+              78,
+              81,
+              87,
+              87
+            ]
           },
           {
             "pos": "CB",
@@ -1835,7 +2351,20 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 160,
+            "club": 112658,
+            "positions": [
+              "CB"
+            ],
+            "face": [
+              77,
+              44,
+              60,
+              63,
+              86,
+              83
+            ]
           },
           {
             "pos": "LB",
@@ -1861,7 +2390,21 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 9,
+            "positions": [
+              "LB",
+              "LM"
+            ],
+            "face": [
+              84,
+              59,
+              75,
+              78,
+              76,
+              79
+            ]
           },
           {
             "pos": "RM",
@@ -1869,7 +2412,7 @@
             "def_id": 239345,
             "rating": 84,
             "chem": 3,
-            "strength": 83.0,
+            "strength": 83,
             "loan": false,
             "counts_for": [],
             "accel": null,
@@ -1887,7 +2430,23 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 115995,
+            "positions": [
+              "RM",
+              "CM",
+              "CAM",
+              "RW"
+            ],
+            "face": [
+              77,
+              76,
+              80,
+              87,
+              46,
+              58
+            ]
           },
           {
             "pos": "CM",
@@ -1913,7 +2472,21 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 116309,
+            "positions": [
+              "CDM",
+              "CM"
+            ],
+            "face": [
+              84,
+              77,
+              80,
+              82,
+              73,
+              62
+            ]
           },
           {
             "pos": "CM",
@@ -1939,7 +2512,21 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 115995,
+            "positions": [
+              "CDM",
+              "CM"
+            ],
+            "face": [
+              60,
+              62,
+              77,
+              74,
+              85,
+              84
+            ]
           },
           {
             "pos": "LM",
@@ -1965,7 +2552,22 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 21,
+            "positions": [
+              "LM",
+              "CAM",
+              "LW"
+            ],
+            "face": [
+              79,
+              81,
+              79,
+              90,
+              62,
+              65
+            ]
           },
           {
             "pos": "CAM",
@@ -1973,7 +2575,7 @@
             "def_id": 226893,
             "rating": 87,
             "chem": 3,
-            "strength": 88.0,
+            "strength": 88,
             "loan": false,
             "counts_for": [],
             "accel": null,
@@ -1991,7 +2593,21 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 116309,
+            "positions": [
+              "CAM",
+              "ST"
+            ],
+            "face": [
+              85,
+              79,
+              85,
+              89,
+              46,
+              57
+            ]
           },
           {
             "pos": "ST",
@@ -2017,7 +2633,23 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 3,
+            "club": 64,
+            "positions": [
+              "RM",
+              "CAM",
+              "RW",
+              "ST"
+            ],
+            "face": [
+              80,
+              84,
+              86,
+              85,
+              50,
+              70
+            ]
           }
         ],
         "strength": 83.3,
@@ -2113,7 +2745,7 @@
             "def_id": 271918,
             "rating": 81,
             "chem": 3,
-            "strength": 81.0,
+            "strength": 81,
             "loan": false,
             "counts_for": [],
             "accel": null,
@@ -2131,7 +2763,20 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 64,
+            "positions": [
+              "GK"
+            ],
+            "face": [
+              82,
+              76,
+              84,
+              84,
+              39,
+              78
+            ]
           },
           {
             "pos": "RB",
@@ -2157,7 +2802,21 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 115995,
+            "positions": [
+              "RB",
+              "RM"
+            ],
+            "face": [
+              84,
+              68,
+              79,
+              84,
+              82,
+              70
+            ]
           },
           {
             "pos": "CB",
@@ -2183,7 +2842,22 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 72,
+            "club": 114605,
+            "positions": [
+              "CB",
+              "CDM",
+              "CM"
+            ],
+            "face": [
+              77,
+              72,
+              78,
+              81,
+              87,
+              87
+            ]
           },
           {
             "pos": "CB",
@@ -2209,7 +2883,20 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 160,
+            "club": 112658,
+            "positions": [
+              "CB"
+            ],
+            "face": [
+              77,
+              44,
+              60,
+              63,
+              86,
+              83
+            ]
           },
           {
             "pos": "LB",
@@ -2235,7 +2922,21 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 9,
+            "positions": [
+              "LB",
+              "LM"
+            ],
+            "face": [
+              84,
+              59,
+              75,
+              78,
+              76,
+              79
+            ]
           },
           {
             "pos": "RM",
@@ -2243,7 +2944,7 @@
             "def_id": 239345,
             "rating": 84,
             "chem": 3,
-            "strength": 83.0,
+            "strength": 83,
             "loan": false,
             "counts_for": [],
             "accel": null,
@@ -2261,7 +2962,23 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 115995,
+            "positions": [
+              "RM",
+              "CM",
+              "CAM",
+              "RW"
+            ],
+            "face": [
+              77,
+              76,
+              80,
+              87,
+              46,
+              58
+            ]
           },
           {
             "pos": "CM",
@@ -2287,7 +3004,21 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 116309,
+            "positions": [
+              "CDM",
+              "CM"
+            ],
+            "face": [
+              84,
+              77,
+              80,
+              82,
+              73,
+              62
+            ]
           },
           {
             "pos": "CM",
@@ -2313,7 +3044,21 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 115995,
+            "positions": [
+              "CDM",
+              "CM"
+            ],
+            "face": [
+              60,
+              62,
+              77,
+              74,
+              85,
+              84
+            ]
           },
           {
             "pos": "LM",
@@ -2341,7 +3086,22 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 21,
+            "positions": [
+              "LM",
+              "CAM",
+              "LW"
+            ],
+            "face": [
+              79,
+              81,
+              79,
+              90,
+              62,
+              65
+            ]
           },
           {
             "pos": "CAM",
@@ -2349,7 +3109,7 @@
             "def_id": 226893,
             "rating": 87,
             "chem": 3,
-            "strength": 88.0,
+            "strength": 88,
             "loan": false,
             "counts_for": [],
             "accel": null,
@@ -2367,7 +3127,21 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 116309,
+            "positions": [
+              "CAM",
+              "ST"
+            ],
+            "face": [
+              85,
+              79,
+              85,
+              89,
+              46,
+              57
+            ]
           },
           {
             "pos": "ST",
@@ -2393,7 +3167,23 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 3,
+            "club": 64,
+            "positions": [
+              "RM",
+              "CAM",
+              "RW",
+              "ST"
+            ],
+            "face": [
+              80,
+              84,
+              86,
+              85,
+              50,
+              70
+            ]
           }
         ],
         "strength": 83.3,
@@ -4970,7 +5760,7 @@
               "pos": "GK",
               "price": 920,
               "source": null,
-              "strength": 83.0,
+              "strength": 83,
               "nation": 95,
               "nation_name": "United States"
             },
@@ -5019,7 +5809,7 @@
           "scorer": false,
           "counts": false,
           "bonus": false,
-          "matches": 10.0
+          "matches": 10
         },
         {
           "event": 128,
@@ -5049,7 +5839,7 @@
           "scorer": false,
           "counts": false,
           "bonus": false,
-          "matches": 5.0
+          "matches": 5
         },
         {
           "event": 128,
@@ -5109,7 +5899,7 @@
           "scorer": false,
           "counts": true,
           "bonus": false,
-          "matches": 1.0
+          "matches": 1
         },
         {
           "event": 169,
@@ -5139,7 +5929,7 @@
           "scorer": false,
           "counts": true,
           "bonus": false,
-          "matches": 10.0
+          "matches": 10
         },
         {
           "event": 162,
@@ -5259,7 +6049,7 @@
           "scorer": false,
           "counts": true,
           "bonus": false,
-          "matches": 3.0
+          "matches": 3
         },
         {
           "event": 176,
@@ -5289,7 +6079,7 @@
           "scorer": false,
           "counts": false,
           "bonus": false,
-          "matches": 1.0
+          "matches": 1
         },
         {
           "event": 181,
@@ -5334,7 +6124,7 @@
           "scorer": false,
           "counts": true,
           "bonus": false,
-          "matches": 5.0
+          "matches": 5
         },
         {
           "event": 98,
@@ -5349,7 +6139,7 @@
           "scorer": false,
           "counts": false,
           "bonus": true,
-          "matches": 3.0
+          "matches": 3
         },
         {
           "event": 59,
@@ -5409,7 +6199,7 @@
           "scorer": false,
           "counts": true,
           "bonus": true,
-          "matches": 100.0
+          "matches": 100
         },
         {
           "event": 58,
@@ -5498,7 +6288,7 @@
             "def_id": 271918,
             "rating": 81,
             "chem": 3,
-            "strength": 81.0,
+            "strength": 81,
             "loan": false,
             "counts_for": [],
             "accel": null,
@@ -5516,7 +6306,20 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 64,
+            "positions": [
+              "GK"
+            ],
+            "face": [
+              82,
+              76,
+              84,
+              84,
+              39,
+              78
+            ]
           },
           {
             "pos": "RB",
@@ -5544,7 +6347,21 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 115995,
+            "positions": [
+              "RB",
+              "RM"
+            ],
+            "face": [
+              84,
+              68,
+              79,
+              84,
+              82,
+              70
+            ]
           },
           {
             "pos": "CB",
@@ -5570,7 +6387,22 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 72,
+            "club": 114605,
+            "positions": [
+              "CB",
+              "CDM",
+              "CM"
+            ],
+            "face": [
+              77,
+              72,
+              78,
+              81,
+              87,
+              87
+            ]
           },
           {
             "pos": "CB",
@@ -5596,7 +6428,20 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 160,
+            "club": 112658,
+            "positions": [
+              "CB"
+            ],
+            "face": [
+              77,
+              44,
+              60,
+              63,
+              86,
+              83
+            ]
           },
           {
             "pos": "LB",
@@ -5624,7 +6469,21 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 9,
+            "positions": [
+              "LB",
+              "LM"
+            ],
+            "face": [
+              84,
+              59,
+              75,
+              78,
+              76,
+              79
+            ]
           },
           {
             "pos": "RM",
@@ -5632,7 +6491,7 @@
             "def_id": 239345,
             "rating": 84,
             "chem": 3,
-            "strength": 83.0,
+            "strength": 83,
             "loan": false,
             "counts_for": [
               5,
@@ -5653,7 +6512,23 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 115995,
+            "positions": [
+              "RM",
+              "CM",
+              "CAM",
+              "RW"
+            ],
+            "face": [
+              77,
+              76,
+              80,
+              87,
+              46,
+              58
+            ]
           },
           {
             "pos": "CM",
@@ -5682,7 +6557,21 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 116309,
+            "positions": [
+              "CDM",
+              "CM"
+            ],
+            "face": [
+              84,
+              77,
+              80,
+              82,
+              73,
+              62
+            ]
           },
           {
             "pos": "CM",
@@ -5711,7 +6600,21 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 115995,
+            "positions": [
+              "CDM",
+              "CM"
+            ],
+            "face": [
+              60,
+              62,
+              77,
+              74,
+              85,
+              84
+            ]
           },
           {
             "pos": "LM",
@@ -5743,7 +6646,22 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 21,
+            "positions": [
+              "LM",
+              "CAM",
+              "LW"
+            ],
+            "face": [
+              79,
+              81,
+              79,
+              90,
+              62,
+              65
+            ]
           },
           {
             "pos": "CAM",
@@ -5751,7 +6669,7 @@
             "def_id": 226893,
             "rating": 87,
             "chem": 3,
-            "strength": 88.0,
+            "strength": 88,
             "loan": false,
             "counts_for": [
               8
@@ -5771,7 +6689,21 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 116309,
+            "positions": [
+              "CAM",
+              "ST"
+            ],
+            "face": [
+              85,
+              79,
+              85,
+              89,
+              46,
+              57
+            ]
           },
           {
             "pos": "ST",
@@ -5797,7 +6729,23 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 3,
+            "club": 64,
+            "positions": [
+              "RM",
+              "CAM",
+              "RW",
+              "ST"
+            ],
+            "face": [
+              80,
+              84,
+              86,
+              85,
+              50,
+              70
+            ]
           }
         ],
         "strength": 83.3,
@@ -5833,7 +6781,7 @@
                 "def_id": 271918,
                 "rating": 81,
                 "chem": 3,
-                "strength": 81.0,
+                "strength": 81,
                 "loan": false,
                 "counts_for": [],
                 "accel": null,
@@ -5851,7 +6799,20 @@
                 "owned": true,
                 "price": null,
                 "out_of_position": false,
-                "generic": false
+                "generic": false,
+                "rareflag": 0,
+                "club": 64,
+                "positions": [
+                  "GK"
+                ],
+                "face": [
+                  82,
+                  76,
+                  84,
+                  84,
+                  39,
+                  78
+                ]
               },
               {
                 "pos": "RB",
@@ -5879,7 +6840,21 @@
                 "owned": true,
                 "price": null,
                 "out_of_position": false,
-                "generic": false
+                "generic": false,
+                "rareflag": 0,
+                "club": 115995,
+                "positions": [
+                  "RB",
+                  "RM"
+                ],
+                "face": [
+                  84,
+                  68,
+                  79,
+                  84,
+                  82,
+                  70
+                ]
               },
               {
                 "pos": "CB",
@@ -5905,7 +6880,22 @@
                 "owned": true,
                 "price": null,
                 "out_of_position": false,
-                "generic": false
+                "generic": false,
+                "rareflag": 72,
+                "club": 114605,
+                "positions": [
+                  "CB",
+                  "CDM",
+                  "CM"
+                ],
+                "face": [
+                  77,
+                  72,
+                  78,
+                  81,
+                  87,
+                  87
+                ]
               },
               {
                 "pos": "CB",
@@ -5931,7 +6921,20 @@
                 "owned": true,
                 "price": null,
                 "out_of_position": false,
-                "generic": false
+                "generic": false,
+                "rareflag": 160,
+                "club": 112658,
+                "positions": [
+                  "CB"
+                ],
+                "face": [
+                  77,
+                  44,
+                  60,
+                  63,
+                  86,
+                  83
+                ]
               },
               {
                 "pos": "LB",
@@ -5959,7 +6962,21 @@
                 "owned": true,
                 "price": null,
                 "out_of_position": false,
-                "generic": false
+                "generic": false,
+                "rareflag": 0,
+                "club": 9,
+                "positions": [
+                  "LB",
+                  "LM"
+                ],
+                "face": [
+                  84,
+                  59,
+                  75,
+                  78,
+                  76,
+                  79
+                ]
               },
               {
                 "pos": "RM",
@@ -5967,7 +6984,7 @@
                 "def_id": 239345,
                 "rating": 84,
                 "chem": 3,
-                "strength": 83.0,
+                "strength": 83,
                 "loan": false,
                 "counts_for": [
                   5,
@@ -5988,7 +7005,23 @@
                 "owned": true,
                 "price": null,
                 "out_of_position": false,
-                "generic": false
+                "generic": false,
+                "rareflag": 0,
+                "club": 115995,
+                "positions": [
+                  "RM",
+                  "CM",
+                  "CAM",
+                  "RW"
+                ],
+                "face": [
+                  77,
+                  76,
+                  80,
+                  87,
+                  46,
+                  58
+                ]
               },
               {
                 "pos": "CM",
@@ -6017,7 +7050,21 @@
                 "owned": true,
                 "price": null,
                 "out_of_position": false,
-                "generic": false
+                "generic": false,
+                "rareflag": 0,
+                "club": 116309,
+                "positions": [
+                  "CDM",
+                  "CM"
+                ],
+                "face": [
+                  84,
+                  77,
+                  80,
+                  82,
+                  73,
+                  62
+                ]
               },
               {
                 "pos": "CM",
@@ -6046,7 +7093,21 @@
                 "owned": true,
                 "price": null,
                 "out_of_position": false,
-                "generic": false
+                "generic": false,
+                "rareflag": 0,
+                "club": 115995,
+                "positions": [
+                  "CDM",
+                  "CM"
+                ],
+                "face": [
+                  60,
+                  62,
+                  77,
+                  74,
+                  85,
+                  84
+                ]
               },
               {
                 "pos": "LM",
@@ -6078,7 +7139,22 @@
                 "owned": true,
                 "price": null,
                 "out_of_position": false,
-                "generic": false
+                "generic": false,
+                "rareflag": 0,
+                "club": 21,
+                "positions": [
+                  "LM",
+                  "CAM",
+                  "LW"
+                ],
+                "face": [
+                  79,
+                  81,
+                  79,
+                  90,
+                  62,
+                  65
+                ]
               },
               {
                 "pos": "CAM",
@@ -6086,7 +7162,7 @@
                 "def_id": 226893,
                 "rating": 87,
                 "chem": 3,
-                "strength": 88.0,
+                "strength": 88,
                 "loan": false,
                 "counts_for": [
                   8
@@ -6106,7 +7182,21 @@
                 "owned": true,
                 "price": null,
                 "out_of_position": false,
-                "generic": false
+                "generic": false,
+                "rareflag": 0,
+                "club": 116309,
+                "positions": [
+                  "CAM",
+                  "ST"
+                ],
+                "face": [
+                  85,
+                  79,
+                  85,
+                  89,
+                  46,
+                  57
+                ]
               },
               {
                 "pos": "ST",
@@ -6132,7 +7222,23 @@
                 "owned": true,
                 "price": null,
                 "out_of_position": false,
-                "generic": false
+                "generic": false,
+                "rareflag": 3,
+                "club": 64,
+                "positions": [
+                  "RM",
+                  "CAM",
+                  "RW",
+                  "ST"
+                ],
+                "face": [
+                  80,
+                  84,
+                  86,
+                  85,
+                  50,
+                  70
+                ]
               }
             ],
             "strength": 83.3,
@@ -6378,7 +7484,7 @@
                 "def_id": 271918,
                 "rating": 81,
                 "chem": 3,
-                "strength": 81.0,
+                "strength": 81,
                 "loan": false,
                 "counts_for": [],
                 "accel": null,
@@ -6396,7 +7502,20 @@
                 "owned": true,
                 "price": null,
                 "out_of_position": false,
-                "generic": false
+                "generic": false,
+                "rareflag": 0,
+                "club": 64,
+                "positions": [
+                  "GK"
+                ],
+                "face": [
+                  82,
+                  76,
+                  84,
+                  84,
+                  39,
+                  78
+                ]
               },
               {
                 "pos": "RB",
@@ -6424,7 +7543,21 @@
                 "owned": true,
                 "price": null,
                 "out_of_position": false,
-                "generic": false
+                "generic": false,
+                "rareflag": 0,
+                "club": 115995,
+                "positions": [
+                  "RB",
+                  "RM"
+                ],
+                "face": [
+                  84,
+                  68,
+                  79,
+                  84,
+                  82,
+                  70
+                ]
               },
               {
                 "pos": "CB",
@@ -6450,7 +7583,20 @@
                 "owned": true,
                 "price": null,
                 "out_of_position": false,
-                "generic": false
+                "generic": false,
+                "rareflag": 160,
+                "club": 112658,
+                "positions": [
+                  "CB"
+                ],
+                "face": [
+                  77,
+                  44,
+                  60,
+                  63,
+                  86,
+                  83
+                ]
               },
               {
                 "pos": "CB",
@@ -6476,7 +7622,22 @@
                 "owned": true,
                 "price": null,
                 "out_of_position": false,
-                "generic": false
+                "generic": false,
+                "rareflag": 72,
+                "club": 114605,
+                "positions": [
+                  "CB",
+                  "CDM",
+                  "CM"
+                ],
+                "face": [
+                  77,
+                  72,
+                  78,
+                  81,
+                  87,
+                  87
+                ]
               },
               {
                 "pos": "LB",
@@ -6504,7 +7665,21 @@
                 "owned": true,
                 "price": null,
                 "out_of_position": false,
-                "generic": false
+                "generic": false,
+                "rareflag": 0,
+                "club": 9,
+                "positions": [
+                  "LB",
+                  "LM"
+                ],
+                "face": [
+                  84,
+                  59,
+                  75,
+                  78,
+                  76,
+                  79
+                ]
               },
               {
                 "pos": "RM",
@@ -6530,7 +7705,23 @@
                 "owned": true,
                 "price": null,
                 "out_of_position": false,
-                "generic": false
+                "generic": false,
+                "rareflag": 3,
+                "club": 64,
+                "positions": [
+                  "RM",
+                  "CAM",
+                  "RW",
+                  "ST"
+                ],
+                "face": [
+                  80,
+                  84,
+                  86,
+                  85,
+                  50,
+                  70
+                ]
               },
               {
                 "pos": "CM",
@@ -6559,7 +7750,23 @@
                 "owned": true,
                 "price": null,
                 "out_of_position": false,
-                "generic": false
+                "generic": false,
+                "rareflag": 0,
+                "club": 115995,
+                "positions": [
+                  "RM",
+                  "CM",
+                  "CAM",
+                  "RW"
+                ],
+                "face": [
+                  77,
+                  76,
+                  80,
+                  87,
+                  46,
+                  58
+                ]
               },
               {
                 "pos": "CM",
@@ -6588,7 +7795,21 @@
                 "owned": true,
                 "price": null,
                 "out_of_position": false,
-                "generic": false
+                "generic": false,
+                "rareflag": 0,
+                "club": 116309,
+                "positions": [
+                  "CDM",
+                  "CM"
+                ],
+                "face": [
+                  84,
+                  77,
+                  80,
+                  82,
+                  73,
+                  62
+                ]
               },
               {
                 "pos": "LM",
@@ -6619,7 +7840,22 @@
                 "owned": true,
                 "price": null,
                 "out_of_position": false,
-                "generic": false
+                "generic": false,
+                "rareflag": 0,
+                "club": 21,
+                "positions": [
+                  "LM",
+                  "CAM",
+                  "LW"
+                ],
+                "face": [
+                  79,
+                  81,
+                  79,
+                  90,
+                  62,
+                  65
+                ]
               },
               {
                 "pos": "CAM",
@@ -6627,7 +7863,7 @@
                 "def_id": 226893,
                 "rating": 87,
                 "chem": 3,
-                "strength": 88.0,
+                "strength": 88,
                 "loan": false,
                 "counts_for": [
                   7
@@ -6647,7 +7883,21 @@
                 "owned": true,
                 "price": null,
                 "out_of_position": false,
-                "generic": false
+                "generic": false,
+                "rareflag": 0,
+                "club": 116309,
+                "positions": [
+                  "CAM",
+                  "ST"
+                ],
+                "face": [
+                  85,
+                  79,
+                  85,
+                  89,
+                  46,
+                  57
+                ]
               },
               {
                 "pos": "ST",
@@ -6676,7 +7926,21 @@
                 "owned": true,
                 "price": null,
                 "out_of_position": false,
-                "generic": false
+                "generic": false,
+                "rareflag": 72,
+                "club": 114605,
+                "positions": [
+                  "ST",
+                  "LW"
+                ],
+                "face": [
+                  78,
+                  84,
+                  75,
+                  81,
+                  63,
+                  88
+                ]
               }
             ],
             "strength": 83.6,
@@ -6899,7 +8163,7 @@
                 "def_id": 271918,
                 "rating": 81,
                 "chem": 3,
-                "strength": 81.0,
+                "strength": 81,
                 "loan": false,
                 "counts_for": [],
                 "accel": null,
@@ -6917,7 +8181,20 @@
                 "owned": true,
                 "price": null,
                 "out_of_position": false,
-                "generic": false
+                "generic": false,
+                "rareflag": 0,
+                "club": 64,
+                "positions": [
+                  "GK"
+                ],
+                "face": [
+                  82,
+                  76,
+                  84,
+                  84,
+                  39,
+                  78
+                ]
               },
               {
                 "pos": "RB",
@@ -6943,7 +8220,21 @@
                 "owned": true,
                 "price": null,
                 "out_of_position": false,
-                "generic": false
+                "generic": false,
+                "rareflag": 0,
+                "club": 115995,
+                "positions": [
+                  "RB",
+                  "RM"
+                ],
+                "face": [
+                  84,
+                  68,
+                  79,
+                  84,
+                  82,
+                  70
+                ]
               },
               {
                 "pos": "CB",
@@ -6969,7 +8260,20 @@
                 "owned": true,
                 "price": null,
                 "out_of_position": false,
-                "generic": false
+                "generic": false,
+                "rareflag": 160,
+                "club": 112658,
+                "positions": [
+                  "CB"
+                ],
+                "face": [
+                  77,
+                  44,
+                  60,
+                  63,
+                  86,
+                  83
+                ]
               },
               {
                 "pos": "CB",
@@ -6995,7 +8299,22 @@
                 "owned": true,
                 "price": null,
                 "out_of_position": false,
-                "generic": false
+                "generic": false,
+                "rareflag": 72,
+                "club": 114605,
+                "positions": [
+                  "CB",
+                  "CDM",
+                  "CM"
+                ],
+                "face": [
+                  77,
+                  72,
+                  78,
+                  81,
+                  87,
+                  87
+                ]
               },
               {
                 "pos": "LB",
@@ -7003,7 +8322,7 @@
                 "def_id": 269701,
                 "rating": 81,
                 "chem": 3,
-                "strength": 80.0,
+                "strength": 80,
                 "loan": false,
                 "counts_for": [],
                 "accel": null,
@@ -7021,7 +8340,21 @@
                 "owned": true,
                 "price": null,
                 "out_of_position": false,
-                "generic": false
+                "generic": false,
+                "rareflag": 0,
+                "club": 21,
+                "positions": [
+                  "LB",
+                  "LM"
+                ],
+                "face": [
+                  90,
+                  60,
+                  76,
+                  83,
+                  73,
+                  59
+                ]
               },
               {
                 "pos": "RM",
@@ -7047,7 +8380,23 @@
                 "owned": true,
                 "price": null,
                 "out_of_position": false,
-                "generic": false
+                "generic": false,
+                "rareflag": 3,
+                "club": 64,
+                "positions": [
+                  "RM",
+                  "CAM",
+                  "RW",
+                  "ST"
+                ],
+                "face": [
+                  80,
+                  84,
+                  86,
+                  85,
+                  50,
+                  70
+                ]
               },
               {
                 "pos": "CM",
@@ -7073,7 +8422,21 @@
                 "owned": true,
                 "price": null,
                 "out_of_position": false,
-                "generic": false
+                "generic": false,
+                "rareflag": 0,
+                "club": 116309,
+                "positions": [
+                  "CDM",
+                  "CM"
+                ],
+                "face": [
+                  84,
+                  77,
+                  80,
+                  82,
+                  73,
+                  62
+                ]
               },
               {
                 "pos": "CM",
@@ -7099,7 +8462,23 @@
                 "owned": true,
                 "price": null,
                 "out_of_position": false,
-                "generic": false
+                "generic": false,
+                "rareflag": 0,
+                "club": 115995,
+                "positions": [
+                  "RM",
+                  "CM",
+                  "CAM",
+                  "RW"
+                ],
+                "face": [
+                  77,
+                  76,
+                  80,
+                  87,
+                  46,
+                  58
+                ]
               },
               {
                 "pos": "LM",
@@ -7125,7 +8504,22 @@
                 "owned": true,
                 "price": null,
                 "out_of_position": false,
-                "generic": false
+                "generic": false,
+                "rareflag": 0,
+                "club": 21,
+                "positions": [
+                  "LM",
+                  "CAM",
+                  "LW"
+                ],
+                "face": [
+                  79,
+                  81,
+                  79,
+                  90,
+                  62,
+                  65
+                ]
               },
               {
                 "pos": "CAM",
@@ -7133,7 +8527,7 @@
                 "def_id": 226893,
                 "rating": 87,
                 "chem": 3,
-                "strength": 88.0,
+                "strength": 88,
                 "loan": false,
                 "counts_for": [],
                 "accel": null,
@@ -7151,7 +8545,21 @@
                 "owned": true,
                 "price": null,
                 "out_of_position": false,
-                "generic": false
+                "generic": false,
+                "rareflag": 0,
+                "club": 116309,
+                "positions": [
+                  "CAM",
+                  "ST"
+                ],
+                "face": [
+                  85,
+                  79,
+                  85,
+                  89,
+                  46,
+                  57
+                ]
               },
               {
                 "pos": "ST",
@@ -7177,7 +8585,21 @@
                 "owned": true,
                 "price": null,
                 "out_of_position": false,
-                "generic": false
+                "generic": false,
+                "rareflag": 72,
+                "club": 114605,
+                "positions": [
+                  "ST",
+                  "LW"
+                ],
+                "face": [
+                  78,
+                  84,
+                  75,
+                  81,
+                  63,
+                  88
+                ]
               }
             ],
             "strength": 83.6,
@@ -7354,7 +8776,7 @@
               "pos": "GK",
               "price": 920,
               "source": null,
-              "strength": 83.0,
+              "strength": 83,
               "nation": 95,
               "nation_name": "United States"
             },
@@ -7433,7 +8855,7 @@
           "scorer": false,
           "counts": true,
           "bonus": false,
-          "matches": 14.0
+          "matches": 14
         },
         {
           "event": 154,
@@ -7448,7 +8870,7 @@
           "scorer": false,
           "counts": true,
           "bonus": false,
-          "matches": 4.0
+          "matches": 4
         }
       ],
       "squad": {
@@ -7462,7 +8884,7 @@
             "def_id": 271918,
             "rating": 81,
             "chem": 3,
-            "strength": 81.0,
+            "strength": 81,
             "loan": false,
             "counts_for": [],
             "accel": null,
@@ -7480,7 +8902,20 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 64,
+            "positions": [
+              "GK"
+            ],
+            "face": [
+              82,
+              76,
+              84,
+              84,
+              39,
+              78
+            ]
           },
           {
             "pos": "RB",
@@ -7506,7 +8941,22 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 240,
+            "positions": [
+              "RB",
+              "RM",
+              "CM"
+            ],
+            "face": [
+              91,
+              79,
+              80,
+              82,
+              79,
+              83
+            ]
           },
           {
             "pos": "CB",
@@ -7532,7 +8982,20 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 160,
+            "club": 112658,
+            "positions": [
+              "CB"
+            ],
+            "face": [
+              77,
+              44,
+              60,
+              63,
+              86,
+              83
+            ]
           },
           {
             "pos": "CB",
@@ -7558,7 +9021,20 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 103,
+            "club": 246,
+            "positions": [
+              "CB"
+            ],
+            "face": [
+              90,
+              66,
+              70,
+              73,
+              80,
+              79
+            ]
           },
           {
             "pos": "LB",
@@ -7584,7 +9060,21 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 150,
+            "club": 246,
+            "positions": [
+              "CB",
+              "LB"
+            ],
+            "face": [
+              87,
+              65,
+              71,
+              76,
+              84,
+              86
+            ]
           },
           {
             "pos": "RM",
@@ -7610,7 +9100,25 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 116325,
+            "positions": [
+              "CDM",
+              "RM",
+              "CM",
+              "CAM",
+              "RW",
+              "ST"
+            ],
+            "face": [
+              85,
+              80,
+              81,
+              86,
+              47,
+              60
+            ]
           },
           {
             "pos": "CM",
@@ -7638,7 +9146,21 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 240,
+            "positions": [
+              "CDM",
+              "CM"
+            ],
+            "face": [
+              74,
+              67,
+              75,
+              77,
+              79,
+              78
+            ]
           },
           {
             "pos": "CM",
@@ -7664,7 +9186,25 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 3,
+            "club": 116325,
+            "positions": [
+              "LB",
+              "CM",
+              "LM",
+              "CAM",
+              "ST",
+              "LW"
+            ],
+            "face": [
+              88,
+              75,
+              80,
+              82,
+              82,
+              76
+            ]
           },
           {
             "pos": "LM",
@@ -7690,7 +9230,22 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 241,
+            "positions": [
+              "CM",
+              "LM",
+              "CAM"
+            ],
+            "face": [
+              81,
+              84,
+              80,
+              84,
+              63,
+              72
+            ]
           },
           {
             "pos": "CAM",
@@ -7716,7 +9271,22 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 71,
+            "club": 448,
+            "positions": [
+              "CDM",
+              "CM",
+              "CAM"
+            ],
+            "face": [
+              80,
+              81,
+              84,
+              84,
+              76,
+              85
+            ]
           },
           {
             "pos": "ST",
@@ -7742,7 +9312,23 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 3,
+            "club": 64,
+            "positions": [
+              "RM",
+              "CAM",
+              "RW",
+              "ST"
+            ],
+            "face": [
+              80,
+              84,
+              86,
+              85,
+              50,
+              70
+            ]
           }
         ],
         "strength": 83.1,
@@ -7962,7 +9548,7 @@
           "scorer": false,
           "counts": true,
           "bonus": false,
-          "matches": 10.0
+          "matches": 10
         },
         {
           "event": 98,
@@ -7977,7 +9563,7 @@
           "scorer": false,
           "counts": true,
           "bonus": true,
-          "matches": 3.0
+          "matches": 3
         },
         {
           "event": 50,
@@ -7992,7 +9578,7 @@
           "scorer": false,
           "counts": true,
           "bonus": true,
-          "matches": 9.0
+          "matches": 9
         },
         {
           "event": 50,
@@ -8007,7 +9593,7 @@
           "scorer": false,
           "counts": true,
           "bonus": true,
-          "matches": 4.0
+          "matches": 4
         }
       ],
       "squad": null,
@@ -8148,7 +9734,7 @@
           "scorer": false,
           "counts": true,
           "bonus": false,
-          "matches": 1.0
+          "matches": 1
         }
       ],
       "squad": {
@@ -8162,7 +9748,7 @@
             "def_id": 271918,
             "rating": 81,
             "chem": 3,
-            "strength": 81.0,
+            "strength": 81,
             "loan": false,
             "counts_for": [],
             "accel": null,
@@ -8180,7 +9766,20 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 64,
+            "positions": [
+              "GK"
+            ],
+            "face": [
+              82,
+              76,
+              84,
+              84,
+              39,
+              78
+            ]
           },
           {
             "pos": "RB",
@@ -8206,7 +9805,22 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 240,
+            "positions": [
+              "RB",
+              "RM",
+              "CM"
+            ],
+            "face": [
+              91,
+              79,
+              80,
+              82,
+              79,
+              83
+            ]
           },
           {
             "pos": "CB",
@@ -8232,7 +9846,20 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 160,
+            "club": 112658,
+            "positions": [
+              "CB"
+            ],
+            "face": [
+              77,
+              44,
+              60,
+              63,
+              86,
+              83
+            ]
           },
           {
             "pos": "CB",
@@ -8258,7 +9885,22 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 72,
+            "club": 114605,
+            "positions": [
+              "CB",
+              "CDM",
+              "CM"
+            ],
+            "face": [
+              77,
+              72,
+              78,
+              81,
+              87,
+              87
+            ]
           },
           {
             "pos": "LB",
@@ -8284,7 +9926,23 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 19,
+            "club": 241,
+            "positions": [
+              "RB",
+              "LB",
+              "RM",
+              "LM"
+            ],
+            "face": [
+              85,
+              74,
+              85,
+              86,
+              79,
+              77
+            ]
           },
           {
             "pos": "RM",
@@ -8310,7 +9968,25 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 116325,
+            "positions": [
+              "CDM",
+              "RM",
+              "CM",
+              "CAM",
+              "RW",
+              "ST"
+            ],
+            "face": [
+              85,
+              80,
+              81,
+              86,
+              47,
+              60
+            ]
           },
           {
             "pos": "CM",
@@ -8336,7 +10012,21 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 240,
+            "positions": [
+              "CDM",
+              "CM"
+            ],
+            "face": [
+              74,
+              67,
+              75,
+              77,
+              79,
+              78
+            ]
           },
           {
             "pos": "LM",
@@ -8362,7 +10052,22 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 241,
+            "positions": [
+              "CM",
+              "LM",
+              "CAM"
+            ],
+            "face": [
+              81,
+              84,
+              80,
+              84,
+              63,
+              72
+            ]
           },
           {
             "pos": "CAM",
@@ -8388,7 +10093,22 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 71,
+            "club": 448,
+            "positions": [
+              "CDM",
+              "CM",
+              "CAM"
+            ],
+            "face": [
+              80,
+              81,
+              84,
+              84,
+              76,
+              85
+            ]
           },
           {
             "pos": "CAM",
@@ -8414,7 +10134,23 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 3,
+            "club": 64,
+            "positions": [
+              "RM",
+              "CAM",
+              "RW",
+              "ST"
+            ],
+            "face": [
+              80,
+              84,
+              86,
+              85,
+              50,
+              70
+            ]
           },
           {
             "pos": "ST",
@@ -8440,7 +10176,25 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 3,
+            "club": 116325,
+            "positions": [
+              "LB",
+              "CM",
+              "LM",
+              "CAM",
+              "ST",
+              "LW"
+            ],
+            "face": [
+              88,
+              75,
+              80,
+              82,
+              82,
+              76
+            ]
           }
         ],
         "strength": 83.5,
@@ -8579,7 +10333,7 @@
           "scorer": false,
           "counts": true,
           "bonus": false,
-          "matches": 1.0
+          "matches": 1
         },
         {
           "event": 53,
@@ -8623,7 +10377,7 @@
             "def_id": 271918,
             "rating": 81,
             "chem": 3,
-            "strength": 81.0,
+            "strength": 81,
             "loan": false,
             "counts_for": [],
             "accel": null,
@@ -8641,7 +10395,20 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 64,
+            "positions": [
+              "GK"
+            ],
+            "face": [
+              82,
+              76,
+              84,
+              84,
+              39,
+              78
+            ]
           },
           {
             "pos": "RB",
@@ -8667,7 +10434,22 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 240,
+            "positions": [
+              "RB",
+              "RM",
+              "CM"
+            ],
+            "face": [
+              91,
+              79,
+              80,
+              82,
+              79,
+              83
+            ]
           },
           {
             "pos": "CB",
@@ -8693,7 +10475,20 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 160,
+            "club": 112658,
+            "positions": [
+              "CB"
+            ],
+            "face": [
+              77,
+              44,
+              60,
+              63,
+              86,
+              83
+            ]
           },
           {
             "pos": "CB",
@@ -8719,7 +10514,22 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 72,
+            "club": 114605,
+            "positions": [
+              "CB",
+              "CDM",
+              "CM"
+            ],
+            "face": [
+              77,
+              72,
+              78,
+              81,
+              87,
+              87
+            ]
           },
           {
             "pos": "LB",
@@ -8745,7 +10555,23 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 19,
+            "club": 241,
+            "positions": [
+              "RB",
+              "LB",
+              "RM",
+              "LM"
+            ],
+            "face": [
+              85,
+              74,
+              85,
+              86,
+              79,
+              77
+            ]
           },
           {
             "pos": "RM",
@@ -8771,7 +10597,25 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 116325,
+            "positions": [
+              "CDM",
+              "RM",
+              "CM",
+              "CAM",
+              "RW",
+              "ST"
+            ],
+            "face": [
+              85,
+              80,
+              81,
+              86,
+              47,
+              60
+            ]
           },
           {
             "pos": "CM",
@@ -8797,7 +10641,21 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 240,
+            "positions": [
+              "CDM",
+              "CM"
+            ],
+            "face": [
+              74,
+              67,
+              75,
+              77,
+              79,
+              78
+            ]
           },
           {
             "pos": "LM",
@@ -8823,7 +10681,22 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 0,
+            "club": 241,
+            "positions": [
+              "CM",
+              "LM",
+              "CAM"
+            ],
+            "face": [
+              81,
+              84,
+              80,
+              84,
+              63,
+              72
+            ]
           },
           {
             "pos": "CAM",
@@ -8849,7 +10722,22 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 71,
+            "club": 448,
+            "positions": [
+              "CDM",
+              "CM",
+              "CAM"
+            ],
+            "face": [
+              80,
+              81,
+              84,
+              84,
+              76,
+              85
+            ]
           },
           {
             "pos": "CAM",
@@ -8875,7 +10763,23 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 3,
+            "club": 64,
+            "positions": [
+              "RM",
+              "CAM",
+              "RW",
+              "ST"
+            ],
+            "face": [
+              80,
+              84,
+              86,
+              85,
+              50,
+              70
+            ]
           },
           {
             "pos": "ST",
@@ -8901,7 +10805,25 @@
             "owned": true,
             "price": null,
             "out_of_position": false,
-            "generic": false
+            "generic": false,
+            "rareflag": 3,
+            "club": 116325,
+            "positions": [
+              "LB",
+              "CM",
+              "LM",
+              "CAM",
+              "ST",
+              "LW"
+            ],
+            "face": [
+              88,
+              75,
+              80,
+              82,
+              82,
+              76
+            ]
           }
         ],
         "strength": 83.5,
@@ -9007,7 +10929,18 @@
       "nation_name": "Belgium",
       "loan": true,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 183277,
+      "rareflag": 72,
+      "club": 114605,
+      "face": [
+        91,
+        84,
+        85,
+        93,
+        37,
+        69
+      ]
     },
     {
       "key": 954792546786,
@@ -9021,7 +10954,18 @@
       "nation_name": "Portugal",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 272834,
+      "rareflag": 0,
+      "club": 73,
+      "face": [
+        72,
+        75,
+        84,
+        87,
+        86,
+        82
+      ]
     },
     {
       "key": 952592112811,
@@ -9035,7 +10979,18 @@
       "nation_name": "England",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 234378,
+      "rareflag": 0,
+      "club": 1,
+      "face": [
+        72,
+        75,
+        86,
+        81,
+        85,
+        84
+      ]
     },
     {
       "key": 951362162718,
@@ -9049,7 +11004,18 @@
       "nation_name": "Italy",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 224232,
+      "rareflag": 0,
+      "club": 131682,
+      "face": [
+        77,
+        78,
+        84,
+        86,
+        81,
+        72
+      ]
     },
     {
       "key": 953678131072,
@@ -9063,7 +11029,18 @@
       "nation_name": "Brazil",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 226893,
+      "rareflag": 0,
+      "club": 116309,
+      "face": [
+        85,
+        79,
+        85,
+        89,
+        46,
+        57
+      ]
     },
     {
       "key": 953950600655,
@@ -9078,7 +11055,18 @@
       "nation_name": "Brazil",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 67156254,
+      "rareflag": 72,
+      "club": 114605,
+      "face": [
+        77,
+        72,
+        78,
+        81,
+        87,
+        87
+      ]
     },
     {
       "key": 954897787693,
@@ -9093,7 +11081,18 @@
       "nation_name": "Germany",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 256790,
+      "rareflag": 0,
+      "club": 21,
+      "face": [
+        79,
+        81,
+        79,
+        90,
+        62,
+        65
+      ]
     },
     {
       "key": 946562007024,
@@ -9107,7 +11106,18 @@
       "nation_name": "England",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50585891,
+      "rareflag": 150,
+      "club": 10,
+      "face": [
+        70,
+        73,
+        85,
+        84,
+        83,
+        80
+      ]
     },
     {
       "key": 951367631706,
@@ -9122,7 +11132,18 @@
       "nation_name": "France",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 265674,
+      "rareflag": 0,
+      "club": 116033,
+      "face": [
+        88,
+        73,
+        85,
+        82,
+        79,
+        81
+      ]
     },
     {
       "key": 951336841769,
@@ -9135,7 +11156,18 @@
       "nation_name": "Spain",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 239231,
+      "rareflag": 0,
+      "club": 243,
+      "face": [
+        75,
+        64,
+        79,
+        78,
+        84,
+        78
+      ]
     },
     {
       "key": 951362162730,
@@ -9150,7 +11182,18 @@
       "nation_name": "Spain",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 226271,
+      "rareflag": 0,
+      "club": 73,
+      "face": [
+        60,
+        77,
+        83,
+        82,
+        77,
+        73
+      ]
     },
     {
       "key": 953927775384,
@@ -9165,7 +11208,18 @@
       "nation_name": "Argentina",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50578738,
+      "rareflag": 0,
+      "club": 10,
+      "face": [
+        68,
+        78,
+        86,
+        83,
+        74,
+        76
+      ]
     },
     {
       "key": 950301835243,
@@ -9179,7 +11233,18 @@
       "nation_name": "Croatia",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 181783,
+      "rareflag": 72,
+      "club": 114605,
+      "face": [
+        78,
+        84,
+        75,
+        81,
+        63,
+        88
+      ]
     },
     {
       "key": 954892819934,
@@ -9197,7 +11262,18 @@
       "nation_name": "Germany",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50603487,
+      "rareflag": 151,
+      "club": 116002,
+      "face": [
+        88,
+        83,
+        86,
+        87,
+        60,
+        75
+      ]
     },
     {
       "key": 950318324357,
@@ -9213,7 +11289,18 @@
       "nation_name": "Germany",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50596595,
+      "rareflag": 150,
+      "club": 132176,
+      "face": [
+        91,
+        83,
+        75,
+        85,
+        56,
+        84
+      ]
     },
     {
       "key": 944134703855,
@@ -9231,7 +11318,18 @@
       "nation_name": "Netherlands",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50599178,
+      "rareflag": 3,
+      "club": 116325,
+      "face": [
+        88,
+        75,
+        80,
+        82,
+        82,
+        76
+      ]
     },
     {
       "key": 954939875868,
@@ -9245,7 +11343,18 @@
       "nation_name": "Belgium",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 192985,
+      "rareflag": 0,
+      "club": 48,
+      "face": [
+        59,
+        82,
+        89,
+        84,
+        66,
+        67
+      ]
     },
     {
       "key": 950068649886,
@@ -9259,7 +11368,18 @@
       "nation_name": "Argentina",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 211110,
+      "rareflag": 0,
+      "club": 52,
+      "face": [
+        77,
+        84,
+        85,
+        86,
+        42,
+        62
+      ]
     },
     {
       "key": 950290693318,
@@ -9275,7 +11395,18 @@
       "nation_name": "Spain",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 245037,
+      "rareflag": 0,
+      "club": 241,
+      "face": [
+        79,
+        58,
+        77,
+        76,
+        86,
+        82
+      ]
     },
     {
       "key": 954801119350,
@@ -9290,7 +11421,18 @@
       "nation_name": "Spain",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 277179,
+      "rareflag": 0,
+      "club": 241,
+      "face": [
+        81,
+        84,
+        80,
+        84,
+        63,
+        72
+      ]
     },
     {
       "key": 951362162724,
@@ -9305,7 +11447,18 @@
       "nation_name": "Spain",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 226161,
+      "rareflag": 0,
+      "club": 240,
+      "face": [
+        91,
+        79,
+        80,
+        82,
+        79,
+        83
+      ]
     },
     {
       "key": 952483361404,
@@ -9320,7 +11473,18 @@
       "nation_name": "Spain",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50406911,
+      "rareflag": 71,
+      "club": 448,
+      "face": [
+        80,
+        81,
+        84,
+        84,
+        76,
+        85
+      ]
     },
     {
       "key": 944097727761,
@@ -9333,7 +11497,18 @@
       "nation_name": "Portugal",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 67229397,
+      "rareflag": 160,
+      "club": 112658,
+      "face": [
+        77,
+        44,
+        60,
+        63,
+        86,
+        83
+      ]
     },
     {
       "key": 953922736081,
@@ -9346,7 +11521,18 @@
       "nation_name": "France",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 228093,
+      "rareflag": 0,
+      "club": 131682,
+      "face": [
+        86,
+        83,
+        75,
+        81,
+        50,
+        81
+      ]
     },
     {
       "key": 942006191061,
@@ -9359,7 +11545,18 @@
       "nation_name": "Spain",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 230869,
+      "rareflag": 0,
+      "club": 448,
+      "face": [
+        84,
+        81,
+        76,
+        85,
+        49,
+        82
+      ]
     },
     {
       "key": 953922406263,
@@ -9373,7 +11570,18 @@
       "nation_name": "Germany",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 261740,
+      "rareflag": 0,
+      "club": 116033,
+      "face": [
+        91,
+        75,
+        79,
+        83,
+        56,
+        74
+      ]
     },
     {
       "key": 951336742773,
@@ -9387,7 +11595,18 @@
       "nation_name": "Germany",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50596673,
+      "rareflag": 150,
+      "club": 116009,
+      "face": [
+        82,
+        84,
+        75,
+        82,
+        53,
+        80
+      ]
     },
     {
       "key": 950069928555,
@@ -9405,7 +11624,18 @@
       "nation_name": "Mexico",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50524813,
+      "rareflag": 87,
+      "club": 1032,
+      "face": [
+        82,
+        75,
+        83,
+        86,
+        77,
+        73
+      ]
     },
     {
       "key": 950080604164,
@@ -9421,7 +11651,18 @@
       "nation_name": "Germany",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 239345,
+      "rareflag": 0,
+      "club": 115995,
+      "face": [
+        77,
+        76,
+        80,
+        87,
+        46,
+        58
+      ]
     },
     {
       "key": 951362162717,
@@ -9437,7 +11678,18 @@
       "nation_name": "Spain",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 244260,
+      "rareflag": 0,
+      "club": 241,
+      "face": [
+        74,
+        79,
+        82,
+        85,
+        51,
+        59
+      ]
     },
     {
       "key": 951362162723,
@@ -9453,7 +11705,18 @@
       "nation_name": "England",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 235794,
+      "rareflag": 0,
+      "club": 1,
+      "face": [
+        74,
+        80,
+        82,
+        87,
+        57,
+        68
+      ]
     },
     {
       "key": 950395590054,
@@ -9466,7 +11729,18 @@
       "nation_name": "Italy",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 210676,
+      "rareflag": 0,
+      "club": 347,
+      "face": [
+        80,
+        79,
+        78,
+        85,
+        27,
+        84
+      ]
     },
     {
       "key": 945696773928,
@@ -9481,7 +11755,18 @@
       "nation_name": "Spain",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 272094,
+      "rareflag": 0,
+      "club": 116327,
+      "face": [
+        83,
+        76,
+        81,
+        83,
+        60,
+        77
+      ]
     },
     {
       "key": 951681889914,
@@ -9496,7 +11781,18 @@
       "nation_name": "France",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 237197,
+      "rareflag": 0,
+      "club": 132176,
+      "face": [
+        89,
+        72,
+        80,
+        82,
+        82,
+        78
+      ]
     },
     {
       "key": 951357722226,
@@ -9509,7 +11805,18 @@
       "nation_name": "Canada",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 247513,
+      "rareflag": 0,
+      "club": 115995,
+      "face": [
+        57,
+        38,
+        54,
+        55,
+        86,
+        80
+      ]
     },
     {
       "key": 950558447152,
@@ -9522,7 +11829,18 @@
       "nation_name": "Portugal",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50588551,
+      "rareflag": 22,
+      "club": 131681,
+      "face": [
+        82,
+        85,
+        70,
+        82,
+        55,
+        83
+      ]
     },
     {
       "key": 954938112836,
@@ -9536,7 +11854,18 @@
       "nation_name": "Germany",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 247788,
+      "rareflag": 0,
+      "club": 115995,
+      "face": [
+        84,
+        68,
+        79,
+        84,
+        82,
+        70
+      ]
     },
     {
       "key": 950091690629,
@@ -9551,7 +11880,18 @@
       "nation_name": "England",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 238074,
+      "rareflag": 0,
+      "club": 5,
+      "face": [
+        76,
+        71,
+        83,
+        78,
+        83,
+        82
+      ]
     },
     {
       "key": 951363721180,
@@ -9567,7 +11907,18 @@
       "nation_name": "Portugal",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 84096594,
+      "rareflag": 19,
+      "club": 241,
+      "face": [
+        85,
+        74,
+        85,
+        86,
+        79,
+        77
+      ]
     },
     {
       "key": 954410925196,
@@ -9581,7 +11932,18 @@
       "nation_name": "France",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 236987,
+      "rareflag": 0,
+      "club": 2,
+      "face": [
+        64,
+        56,
+        78,
+        78,
+        83,
+        78
+      ]
     },
     {
       "key": 944136579512,
@@ -9594,7 +11956,18 @@
       "nation_name": "France",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 237678,
+      "rareflag": 0,
+      "club": 243,
+      "face": [
+        77,
+        34,
+        65,
+        68,
+        84,
+        85
+      ]
     },
     {
       "key": 951681889913,
@@ -9607,7 +11980,18 @@
       "nation_name": "England",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 227678,
+      "rareflag": 0,
+      "club": 1,
+      "face": [
+        71,
+        55,
+        72,
+        75,
+        86,
+        80
+      ]
     },
     {
       "key": 952483441315,
@@ -9620,7 +12004,18 @@
       "nation_name": "Spain",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 212218,
+      "rareflag": 0,
+      "club": 448,
+      "face": [
+        53,
+        52,
+        76,
+        70,
+        85,
+        79
+      ]
     },
     {
       "key": 954889197929,
@@ -9633,7 +12028,18 @@
       "nation_name": "Poland",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 188545,
+      "rareflag": 0,
+      "club": 693,
+      "face": [
+        67,
+        85,
+        79,
+        80,
+        44,
+        80
+      ]
     },
     {
       "key": 954889302845,
@@ -9647,7 +12053,18 @@
       "nation_name": "Italy",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 222077,
+      "rareflag": 0,
+      "club": 45,
+      "face": [
+        56,
+        70,
+        81,
+        75,
+        81,
+        76
+      ]
     },
     {
       "key": 954804557046,
@@ -9662,7 +12079,18 @@
       "nation_name": "France",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 258706,
+      "rareflag": 0,
+      "club": 116010,
+      "face": [
+        87,
+        82,
+        79,
+        84,
+        41,
+        69
+      ]
     },
     {
       "key": 950558752409,
@@ -9675,7 +12103,18 @@
       "nation_name": "Italy",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 229582,
+      "rareflag": 0,
+      "club": 52,
+      "face": [
+        69,
+        50,
+        61,
+        66,
+        85,
+        82
+      ]
     },
     {
       "key": 954940038738,
@@ -9690,7 +12129,18 @@
       "nation_name": "Brazil",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 226890,
+      "rareflag": 0,
+      "club": 116307,
+      "face": [
+        69,
+        84,
+        83,
+        87,
+        44,
+        67
+      ]
     },
     {
       "key": 953989785418,
@@ -9707,7 +12157,18 @@
       "nation_name": "Republic of Ireland",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 155885,
+      "rareflag": 9,
+      "club": 132794,
+      "face": [
+        89,
+        75,
+        82,
+        86,
+        42,
+        65
+      ]
     },
     {
       "key": 951099282969,
@@ -9721,7 +12182,18 @@
       "nation_name": "Spain",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50597808,
+      "rareflag": 150,
+      "club": 246,
+      "face": [
+        87,
+        65,
+        71,
+        76,
+        84,
+        86
+      ]
     },
     {
       "key": 942162464500,
@@ -9735,7 +12207,18 @@
       "nation_name": "Argentina",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 277846,
+      "rareflag": 0,
+      "club": 1745,
+      "face": [
+        81,
+        78,
+        79,
+        84,
+        54,
+        68
+      ]
     },
     {
       "key": 950558752410,
@@ -9749,7 +12232,18 @@
       "nation_name": "Germany",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 248717,
+      "rareflag": 0,
+      "club": 115995,
+      "face": [
+        60,
+        62,
+        77,
+        74,
+        85,
+        84
+      ]
     },
     {
       "key": 950541012665,
@@ -9762,7 +12256,18 @@
       "nation_name": "Spain",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 230142,
+      "rareflag": 0,
+      "club": 457,
+      "face": [
+        71,
+        86,
+        81,
+        84,
+        45,
+        74
+      ]
     },
     {
       "key": 951681755744,
@@ -9775,7 +12280,18 @@
       "nation_name": "France",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 227316,
+      "rareflag": 0,
+      "club": 116033,
+      "face": [
+        48,
+        62,
+        70,
+        69,
+        86,
+        84
+      ]
     },
     {
       "key": 943312809150,
@@ -9793,7 +12309,18 @@
       "nation_name": "Brazil",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 243812,
+      "rareflag": 0,
+      "club": 243,
+      "face": [
+        87,
+        77,
+        79,
+        87,
+        33,
+        63
+      ]
     },
     {
       "key": 951116953392,
@@ -9808,7 +12335,18 @@
       "nation_name": "Germany",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50596683,
+      "rareflag": 150,
+      "club": 116326,
+      "face": [
+        83,
+        72,
+        79,
+        85,
+        78,
+        72
+      ]
     },
     {
       "key": 951336742772,
@@ -9822,7 +12360,18 @@
       "nation_name": "England",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50575350,
+      "rareflag": 150,
+      "club": 131682,
+      "face": [
+        91,
+        58,
+        76,
+        83,
+        81,
+        79
+      ]
     },
     {
       "key": 954888932960,
@@ -9835,7 +12384,18 @@
       "nation_name": "Netherlands",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50558501,
+      "rareflag": 103,
+      "club": 246,
+      "face": [
+        90,
+        66,
+        70,
+        73,
+        80,
+        79
+      ]
     },
     {
       "key": 953935375205,
@@ -9851,7 +12411,18 @@
       "nation_name": "France",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50536618,
+      "rareflag": 3,
+      "club": 64,
+      "face": [
+        80,
+        84,
+        86,
+        85,
+        50,
+        70
+      ]
     },
     {
       "key": 954897930223,
@@ -9868,7 +12439,18 @@
       "nation_name": "Netherlands",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 251805,
+      "rareflag": 0,
+      "club": 1,
+      "face": [
+        76,
+        48,
+        76,
+        78,
+        83,
+        78
+      ]
     },
     {
       "key": 950541075498,
@@ -9883,7 +12465,18 @@
       "nation_name": "England",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 263011,
+      "rareflag": 0,
+      "club": 116012,
+      "face": [
+        81,
+        81,
+        81,
+        84,
+        52,
+        64
+      ]
     },
     {
       "key": 951116953391,
@@ -9897,7 +12490,18 @@
       "nation_name": "Greece",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50588596,
+      "rareflag": 150,
+      "club": 1,
+      "face": [
+        84,
+        82,
+        81,
+        85,
+        41,
+        74
+      ]
     },
     {
       "key": 949776462082,
@@ -9915,7 +12519,18 @@
       "nation_name": "Spain",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 271446,
+      "rareflag": 0,
+      "club": 116325,
+      "face": [
+        85,
+        80,
+        81,
+        86,
+        47,
+        60
+      ]
     },
     {
       "key": 950283183694,
@@ -9928,7 +12543,18 @@
       "nation_name": "Croatia",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50606840,
+      "rareflag": 150,
+      "club": 1808,
+      "face": [
+        61,
+        66,
+        65,
+        68,
+        86,
+        85
+      ]
     },
     {
       "key": 951362162714,
@@ -9941,7 +12567,18 @@
       "nation_name": "Japan",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 245824,
+      "rareflag": 0,
+      "club": 116017,
+      "face": [
+        84,
+        85,
+        80,
+        83,
+        19,
+        81
+      ]
     },
     {
       "key": 945698229184,
@@ -9957,7 +12594,18 @@
       "nation_name": "Türkiye",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 277954,
+      "rareflag": 0,
+      "club": 45,
+      "face": [
+        85,
+        81,
+        79,
+        85,
+        59,
+        70
+      ]
     },
     {
       "key": 951681889908,
@@ -9971,7 +12619,18 @@
       "nation_name": "Spain",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 248148,
+      "rareflag": 0,
+      "club": 1,
+      "face": [
+        65,
+        71,
+        82,
+        80,
+        80,
+        75
+      ]
     },
     {
       "key": 949775704840,
@@ -9984,7 +12643,18 @@
       "nation_name": "Brazil",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 240130,
+      "rareflag": 0,
+      "club": 243,
+      "face": [
+        79,
+        54,
+        71,
+        72,
+        85,
+        82
+      ]
     },
     {
       "key": 943283319652,
@@ -10000,7 +12670,18 @@
       "nation_name": "France",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 265905,
+      "rareflag": 0,
+      "club": 116033,
+      "face": [
+        90,
+        79,
+        72,
+        86,
+        45,
+        69
+      ]
     },
     {
       "key": 954928121361,
@@ -10014,7 +12695,18 @@
       "nation_name": "Netherlands",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 233096,
+      "rareflag": 0,
+      "club": 243,
+      "face": [
+        82,
+        70,
+        74,
+        79,
+        78,
+        87
+      ]
     },
     {
       "key": 945571188444,
@@ -10030,7 +12722,18 @@
       "nation_name": "Spain",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 272163,
+      "rareflag": 0,
+      "club": 131125,
+      "face": [
+        89,
+        77,
+        80,
+        84,
+        65,
+        77
+      ]
     },
     {
       "key": 954792546784,
@@ -10047,7 +12750,18 @@
       "nation_name": "Spain",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 264240,
+      "rareflag": 0,
+      "club": 241,
+      "face": [
+        76,
+        66,
+        78,
+        85,
+        68,
+        70
+      ]
     },
     {
       "key": 953923481048,
@@ -10060,7 +12774,18 @@
       "nation_name": "Germany",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 207862,
+      "rareflag": 0,
+      "club": 25,
+      "face": [
+        55,
+        58,
+        71,
+        66,
+        86,
+        77
+      ]
     },
     {
       "key": 954896217501,
@@ -10076,7 +12801,18 @@
       "nation_name": "England",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 246147,
+      "rareflag": 0,
+      "club": 326,
+      "face": [
+        83,
+        85,
+        78,
+        84,
+        37,
+        63
+      ]
     },
     {
       "key": 954415685426,
@@ -10092,7 +12828,18 @@
       "nation_name": "Iceland",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 266384,
+      "rareflag": 0,
+      "club": 116311,
+      "face": [
+        92,
+        76,
+        77,
+        83,
+        46,
+        72
+      ]
     },
     {
       "key": 954410925198,
@@ -10106,7 +12853,18 @@
       "nation_name": "United States",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 267336,
+      "rareflag": 0,
+      "club": 116309,
+      "face": [
+        84,
+        77,
+        80,
+        82,
+        73,
+        62
+      ]
     },
     {
       "key": 950318324356,
@@ -10119,7 +12877,18 @@
       "nation_name": "France",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50575715,
+      "rareflag": 150,
+      "club": 5,
+      "face": [
+        86,
+        46,
+        63,
+        69,
+        84,
+        83
+      ]
     },
     {
       "key": 954792546782,
@@ -10133,7 +12902,18 @@
       "nation_name": "Slovakia",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 216435,
+      "rareflag": 0,
+      "club": 48,
+      "face": [
+        68,
+        69,
+        81,
+        82,
+        75,
+        62
+      ]
     },
     {
       "key": 948296960677,
@@ -10146,7 +12926,18 @@
       "nation_name": "Netherlands",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 231447,
+      "rareflag": 0,
+      "club": 52,
+      "face": [
+        86,
+        83,
+        73,
+        85,
+        38,
+        68
+      ]
     },
     {
       "key": 945571074692,
@@ -10160,7 +12951,18 @@
       "nation_name": "Portugal",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 253124,
+      "rareflag": 0,
+      "club": 10,
+      "face": [
+        87,
+        70,
+        80,
+        79,
+        78,
+        75
+      ]
     },
     {
       "key": 954005374063,
@@ -10178,7 +12980,18 @@
       "nation_name": "Scotland",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 210881,
+      "rareflag": 0,
+      "club": 2,
+      "face": [
+        69,
+        80,
+        81,
+        82,
+        78,
+        84
+      ]
     },
     {
       "key": 950312262373,
@@ -10195,7 +13008,18 @@
       "nation_name": "Netherlands",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50596100,
+      "rareflag": 87,
+      "club": 1913,
+      "face": [
+        88,
+        82,
+        80,
+        83,
+        60,
+        74
+      ]
     },
     {
       "key": 953923001177,
@@ -10208,7 +13032,18 @@
       "nation_name": "Ivory Coast",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 236403,
+      "rareflag": 0,
+      "club": 52,
+      "face": [
+        74,
+        53,
+        69,
+        70,
+        83,
+        84
+      ]
     },
     {
       "key": 954410925194,
@@ -10223,7 +13058,18 @@
       "nation_name": "England",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 277427,
+      "rareflag": 0,
+      "club": 10,
+      "face": [
+        83,
+        70,
+        78,
+        79,
+        81,
+        81
+      ]
     },
     {
       "key": 953922736080,
@@ -10237,7 +13083,18 @@
       "nation_name": "Spain",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 272449,
+      "rareflag": 0,
+      "club": 240,
+      "face": [
+        80,
+        71,
+        78,
+        83,
+        75,
+        78
+      ]
     },
     {
       "key": 953927785140,
@@ -10251,7 +13108,18 @@
       "nation_name": "Argentina",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50563169,
+      "rareflag": 0,
+      "club": 94,
+      "face": [
+        62,
+        76,
+        79,
+        82,
+        81,
+        71
+      ]
     },
     {
       "key": 954803247314,
@@ -10264,7 +13132,18 @@
       "nation_name": "France",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 264895,
+      "rareflag": 0,
+      "club": 116014,
+      "face": [
+        82,
+        80,
+        78,
+        85,
+        47,
+        83
+      ]
     },
     {
       "key": 954897787695,
@@ -10278,7 +13157,18 @@
       "nation_name": "Colombia",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 272115,
+      "rareflag": 0,
+      "club": 116304,
+      "face": [
+        75,
+        77,
+        82,
+        83,
+        69,
+        77
+      ]
     },
     {
       "key": 954803356410,
@@ -10294,7 +13184,18 @@
       "nation_name": "Portugal",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 244778,
+      "rareflag": 0,
+      "club": 112387,
+      "face": [
+        80,
+        81,
+        80,
+        84,
+        40,
+        72
+      ]
     },
     {
       "key": 954897787697,
@@ -10310,7 +13211,18 @@
       "nation_name": "Spain",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 257279,
+      "rareflag": 0,
+      "club": 240,
+      "face": [
+        78,
+        75,
+        83,
+        82,
+        66,
+        68
+      ]
     },
     {
       "key": 954795743773,
@@ -10328,7 +13240,18 @@
       "nation_name": "Germany",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 251852,
+      "rareflag": 0,
+      "club": 241,
+      "face": [
+        95,
+        80,
+        72,
+        82,
+        36,
+        69
+      ]
     },
     {
       "key": 954801260157,
@@ -10346,7 +13269,18 @@
       "nation_name": "Portugal",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 261843,
+      "rareflag": 0,
+      "club": 116326,
+      "face": [
+        80,
+        67,
+        79,
+        80,
+        65,
+        74
+      ]
     },
     {
       "key": 954804467155,
@@ -10359,7 +13293,18 @@
       "nation_name": "Croatia",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 188335,
+      "rareflag": 0,
+      "club": 479,
+      "face": [
+        65,
+        83,
+        63,
+        74,
+        36,
+        81
+      ]
     },
     {
       "key": 954897930222,
@@ -10373,7 +13318,18 @@
       "nation_name": "Japan",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 275906,
+      "rareflag": 0,
+      "club": 116017,
+      "face": [
+        79,
+        75,
+        80,
+        82,
+        23,
+        56
+      ]
     },
     {
       "key": 951357722223,
@@ -10386,7 +13342,18 @@
       "nation_name": "Hungary",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 185122,
+      "rareflag": 0,
+      "club": 483,
+      "face": [
+        81,
+        81,
+        71,
+        81,
+        43,
+        85
+      ]
     },
     {
       "key": 950318682251,
@@ -10402,7 +13369,18 @@
       "nation_name": "Brazil",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 274780,
+      "rareflag": 0,
+      "club": 116327,
+      "face": [
+        86,
+        81,
+        75,
+        82,
+        43,
+        74
+      ]
     },
     {
       "key": 954939947228,
@@ -10416,7 +13394,18 @@
       "nation_name": "Norway",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 239761,
+      "rareflag": 0,
+      "club": 116009,
+      "face": [
+        70,
+        80,
+        82,
+        82,
+        72,
+        66
+      ]
     },
     {
       "key": 954960365908,
@@ -10434,7 +13423,18 @@
       "nation_name": "Kosovo",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 265058,
+      "rareflag": 0,
+      "club": 115997,
+      "face": [
+        85,
+        78,
+        79,
+        82,
+        56,
+        64
+      ]
     },
     {
       "key": 954803292548,
@@ -10447,7 +13447,18 @@
       "nation_name": "Spain",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 227776,
+      "rareflag": 0,
+      "club": 116312,
+      "face": [
+        81,
+        78,
+        74,
+        81,
+        56,
+        80
+      ]
     },
     {
       "key": 952483936138,
@@ -10461,7 +13472,18 @@
       "nation_name": "France",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 243854,
+      "rareflag": 0,
+      "club": 112139,
+      "face": [
+        78,
+        43,
+        66,
+        70,
+        83,
+        83
+      ]
     },
     {
       "key": 954889302840,
@@ -10474,7 +13496,18 @@
       "nation_name": "England",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 203574,
+      "rareflag": 0,
+      "club": 131682,
+      "face": [
+        54,
+        58,
+        74,
+        74,
+        83,
+        71
+      ]
     },
     {
       "key": 954889197930,
@@ -10487,7 +13520,18 @@
       "nation_name": "Burkina Faso",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 247263,
+      "rareflag": 0,
+      "club": 32,
+      "face": [
+        74,
+        58,
+        73,
+        72,
+        82,
+        80
+      ]
     },
     {
       "key": 953923001178,
@@ -10501,7 +13545,18 @@
       "nation_name": "England",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 259240,
+      "rareflag": 0,
+      "club": 1799,
+      "face": [
+        54,
+        63,
+        85,
+        80,
+        77,
+        69
+      ]
     },
     {
       "key": 954792546783,
@@ -10514,7 +13569,18 @@
       "nation_name": "Netherlands",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 198176,
+      "rareflag": 0,
+      "club": 1884,
+      "face": [
+        66,
+        42,
+        67,
+        69,
+        85,
+        75
+      ]
     },
     {
       "key": 954803247313,
@@ -10529,7 +13595,18 @@
       "nation_name": "Spain",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 72149,
+      "rareflag": 0,
+      "club": 116336,
+      "face": [
+        87,
+        76,
+        73,
+        83,
+        41,
+        67
+      ]
     },
     {
       "key": 951357722225,
@@ -10545,7 +13622,18 @@
       "nation_name": "France",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 264862,
+      "rareflag": 0,
+      "club": 73,
+      "face": [
+        74,
+        72,
+        80,
+        84,
+        48,
+        62
+      ]
     },
     {
       "key": 951362162721,
@@ -10559,7 +13647,18 @@
       "nation_name": "Brazil",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 255475,
+      "rareflag": 0,
+      "club": 449,
+      "face": [
+        85,
+        81,
+        79,
+        82,
+        48,
+        71
+      ]
     },
     {
       "key": 952483936134,
@@ -10574,7 +13673,18 @@
       "nation_name": "Uruguay",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 254817,
+      "rareflag": 0,
+      "club": 237,
+      "face": [
+        85,
+        69,
+        76,
+        81,
+        71,
+        75
+      ]
     },
     {
       "key": 953838725178,
@@ -10590,7 +13700,18 @@
       "nation_name": "Norway",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 231913,
+      "rareflag": 0,
+      "club": 234,
+      "face": [
+        75,
+        72,
+        78,
+        80,
+        77,
+        82
+      ]
     },
     {
       "key": 954410925190,
@@ -10608,7 +13729,18 @@
       "nation_name": "Morocco",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 231410,
+      "rareflag": 0,
+      "club": 243,
+      "face": [
+        80,
+        73,
+        78,
+        84,
+        33,
+        63
+      ]
     },
     {
       "key": 951362162713,
@@ -10622,7 +13754,18 @@
       "nation_name": "Germany",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 269701,
+      "rareflag": 0,
+      "club": 21,
+      "face": [
+        90,
+        60,
+        76,
+        83,
+        73,
+        59
+      ]
     },
     {
       "key": 954964988370,
@@ -10653,7 +13796,18 @@
       "nation_name": "Canada",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 227387,
+      "rareflag": 0,
+      "club": 116302,
+      "face": [
+        83,
+        74,
+        78,
+        82,
+        69,
+        56
+      ]
     },
     {
       "key": 954889215617,
@@ -10668,7 +13822,18 @@
       "nation_name": "Netherlands",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 253149,
+      "rareflag": 0,
+      "club": 9,
+      "face": [
+        94,
+        62,
+        74,
+        82,
+        72,
+        62
+      ]
     },
     {
       "key": 951362162726,
@@ -10682,7 +13847,18 @@
       "nation_name": "Brazil",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 239482,
+      "rareflag": 0,
+      "club": 112387,
+      "face": [
+        91,
+        77,
+        76,
+        82,
+        45,
+        70
+      ]
     },
     {
       "key": 951681755745,
@@ -10695,7 +13871,18 @@
       "nation_name": "Slovakia",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 263139,
+      "rareflag": 0,
+      "club": 66,
+      "face": [
+        78,
+        76,
+        83,
+        82,
+        24,
+        82
+      ]
     },
     {
       "key": 951681889911,
@@ -10710,7 +13897,18 @@
       "nation_name": "France",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 220814,
+      "rareflag": 0,
+      "club": 73,
+      "face": [
+        71,
+        52,
+        72,
+        71,
+        82,
+        75
+      ]
     },
     {
       "key": 954960457611,
@@ -10740,7 +13938,18 @@
       "nation_name": "Sweden",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 226979,
+      "rareflag": 0,
+      "club": 115997,
+      "face": [
+        63,
+        48,
+        65,
+        63,
+        83,
+        78
+      ]
     },
     {
       "key": 954795743776,
@@ -10753,7 +13962,18 @@
       "nation_name": "Portugal",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 261848,
+      "rareflag": 0,
+      "club": 131720,
+      "face": [
+        80,
+        79,
+        79,
+        81,
+        37,
+        77
+      ]
     },
     {
       "key": 954804467156,
@@ -10767,7 +13987,18 @@
       "nation_name": "Hungary",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 260908,
+      "rareflag": 0,
+      "club": 9,
+      "face": [
+        84,
+        59,
+        75,
+        78,
+        76,
+        79
+      ]
     },
     {
       "key": 952483936132,
@@ -10781,7 +14012,18 @@
       "nation_name": "Spain",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 193747,
+      "rareflag": 0,
+      "club": 240,
+      "face": [
+        50,
+        72,
+        84,
+        77,
+        76,
+        77
+      ]
     },
     {
       "key": 954926007202,
@@ -10812,7 +14054,18 @@
       "nation_name": "Croatia",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 207410,
+      "rareflag": 0,
+      "club": 10,
+      "face": [
+        57,
+        74,
+        80,
+        81,
+        73,
+        68
+      ]
     },
     {
       "key": 954795743765,
@@ -10827,7 +14080,18 @@
       "nation_name": "Croatia",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 216354,
+      "rareflag": 0,
+      "club": 10029,
+      "face": [
+        67,
+        83,
+        78,
+        84,
+        33,
+        72
+      ]
     },
     {
       "key": 952483155575,
@@ -10843,7 +14107,18 @@
       "nation_name": "Sweden",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 247394,
+      "rareflag": 0,
+      "club": 18,
+      "face": [
+        69,
+        79,
+        83,
+        84,
+        63,
+        70
+      ]
     },
     {
       "key": 954801098781,
@@ -10856,7 +14131,18 @@
       "nation_name": "Spain",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 268804,
+      "rareflag": 0,
+      "club": 131681,
+      "face": [
+        85,
+        53,
+        68,
+        75,
+        81,
+        79
+      ]
     },
     {
       "key": 945127076395,
@@ -10872,7 +14158,18 @@
       "nation_name": "England",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50605894,
+      "rareflag": 87,
+      "club": 13,
+      "face": [
+        72,
+        70,
+        81,
+        80,
+        80,
+        73
+      ]
     },
     {
       "key": 951362162715,
@@ -10885,7 +14182,18 @@
       "nation_name": "Germany",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 167495,
+      "rareflag": 0,
+      "club": 21,
+      "face": [
+        80,
+        80,
+        87,
+        78,
+        31,
+        82
+      ]
     },
     {
       "key": 951681755743,
@@ -10899,7 +14207,18 @@
       "nation_name": "Belgium",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 257057,
+      "rareflag": 0,
+      "club": 2,
+      "face": [
+        73,
+        68,
+        74,
+        74,
+        81,
+        82
+      ]
     },
     {
       "key": 954960365907,
@@ -10928,7 +14247,18 @@
       "nation_name": "France",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 271918,
+      "rareflag": 0,
+      "club": 64,
+      "face": [
+        82,
+        76,
+        84,
+        84,
+        39,
+        78
+      ]
     },
     {
       "key": 952483441313,
@@ -10941,7 +14271,18 @@
       "nation_name": "Netherlands",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 263798,
+      "rareflag": 0,
+      "club": 106,
+      "face": [
+        81,
+        79,
+        77,
+        83,
+        54,
+        81
+      ]
     },
     {
       "key": 951099339126,
@@ -10955,7 +14296,18 @@
       "nation_name": "Mali",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 258601,
+      "rareflag": 0,
+      "club": 1925,
+      "face": [
+        80,
+        67,
+        76,
+        81,
+        78,
+        72
+      ]
     },
     {
       "key": 953922790165,
@@ -10970,7 +14322,18 @@
       "nation_name": "Austria",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 257876,
+      "rareflag": 0,
+      "club": 112172,
+      "face": [
+        78,
+        62,
+        77,
+        74,
+        80,
+        79
+      ]
     },
     {
       "key": 949775478170,
@@ -10985,7 +14348,18 @@
       "nation_name": "Chile",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50561297,
+      "rareflag": 87,
+      "club": 481,
+      "face": [
+        81,
+        67,
+        77,
+        78,
+        77,
+        82
+      ]
     },
     {
       "key": 953923481051,
@@ -10998,7 +14372,18 @@
       "nation_name": "Poland",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 186153,
+      "rareflag": 0,
+      "club": 241,
+      "face": [
+        78,
+        79,
+        74,
+        81,
+        36,
+        82
+      ]
     },
     {
       "key": 951362162716,
@@ -11011,7 +14396,18 @@
       "nation_name": "Germany",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 256261,
+      "rareflag": 0,
+      "club": 13,
+      "face": [
+        70,
+        47,
+        70,
+        71,
+        82,
+        80
+      ]
     },
     {
       "key": 954889302843,
@@ -11025,7 +14421,18 @@
       "nation_name": "Mali",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 267660,
+      "rareflag": 0,
+      "club": 132697,
+      "face": [
+        85,
+        78,
+        71,
+        79,
+        42,
+        79
+      ]
     },
     {
       "key": 953847367843,
@@ -11040,7 +14447,18 @@
       "nation_name": "Belgium",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 200155,
+      "rareflag": 0,
+      "club": 231,
+      "face": [
+        36,
+        80,
+        85,
+        78,
+        60,
+        79
+      ]
     },
     {
       "key": 951817229060,
@@ -11053,7 +14471,18 @@
       "nation_name": "Netherlands",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 258498,
+      "rareflag": 0,
+      "club": 1808,
+      "face": [
+        80,
+        77,
+        81,
+        84,
+        50,
+        81
+      ]
     },
     {
       "key": 951681889912,
@@ -11068,7 +14497,18 @@
       "nation_name": "Spain",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 268889,
+      "rareflag": 0,
+      "club": 243,
+      "face": [
+        86,
+        66,
+        77,
+        80,
+        75,
+        81
+      ]
     },
     {
       "key": 953923128403,
@@ -11084,7 +14524,18 @@
       "nation_name": "Spain",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 216447,
+      "rareflag": 0,
+      "club": 480,
+      "face": [
+        88,
+        77,
+        78,
+        79,
+        51,
+        45
+      ]
     },
     {
       "key": 949776064745,
@@ -11098,7 +14549,18 @@
       "nation_name": "Northern Ireland",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50608343,
+      "rareflag": 3,
+      "club": 144,
+      "face": [
+        74,
+        71,
+        80,
+        78,
+        77,
+        83
+      ]
     },
     {
       "key": 954846837902,
@@ -11128,7 +14590,18 @@
       "nation_name": "United States",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 259516,
+      "rareflag": 0,
+      "club": 240,
+      "face": [
+        74,
+        67,
+        75,
+        77,
+        79,
+        78
+      ]
     },
     {
       "key": 946457454064,
@@ -11143,7 +14616,18 @@
       "nation_name": "Argentina",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50610821,
+      "rareflag": 3,
+      "club": 110374,
+      "face": [
+        80,
+        78,
+        79,
+        83,
+        53,
+        70
+      ]
     },
     {
       "key": 944133002286,
@@ -11159,7 +14643,18 @@
       "nation_name": "Argentina",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 67354218,
+      "rareflag": 3,
+      "club": 1878,
+      "face": [
+        78,
+        73,
+        81,
+        81,
+        62,
+        70
+      ]
     },
     {
       "key": 954960452539,
@@ -11777,7 +15272,18 @@
       "nation_name": "Burkina Faso",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 81291,
+      "rareflag": 0,
+      "club": 272,
+      "face": [
+        68,
+        57,
+        63,
+        67,
+        65,
+        70
+      ]
     },
     {
       "key": 954822617693,
@@ -11844,7 +15350,18 @@
       "nation_name": "Denmark",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 251594,
+      "rareflag": 0,
+      "club": 272,
+      "face": [
+        67,
+        47,
+        59,
+        61,
+        61,
+        70
+      ]
     },
     {
       "key": 954812606682,
@@ -11871,7 +15388,18 @@
       "nation_name": "Gambia",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 256855,
+      "rareflag": 0,
+      "club": 272,
+      "face": [
+        72,
+        36,
+        49,
+        59,
+        60,
+        72
+      ]
     },
     {
       "key": 954830063241,
@@ -11884,7 +15412,18 @@
       "nation_name": "Denmark",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 184040,
+      "rareflag": 0,
+      "club": 272,
+      "face": [
+        61,
+        61,
+        60,
+        61,
+        45,
+        62
+      ]
     },
     {
       "key": 954694390108,
@@ -11928,7 +15467,18 @@
       "nation_name": "Denmark",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 79549,
+      "rareflag": 0,
+      "club": 272,
+      "face": [
+        75,
+        51,
+        55,
+        55,
+        51,
+        53
+      ]
     },
     {
       "key": 954382878471,
@@ -11942,7 +15492,18 @@
       "nation_name": "Denmark",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 78631,
+      "rareflag": 0,
+      "club": 272,
+      "face": [
+        67,
+        53,
+        52,
+        57,
+        46,
+        59
+      ]
     },
     {
       "key": 947235067461,
@@ -11957,7 +15518,18 @@
       "nation_name": "Denmark",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 81623,
+      "rareflag": 0,
+      "club": 272,
+      "face": [
+        63,
+        39,
+        52,
+        54,
+        55,
+        54
+      ]
     }
   ]
 }

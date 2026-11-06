@@ -3,13 +3,13 @@
  * user's picture or initial opens it. Everything that isn't a main thing lives here instead of in
  * the bar – profile & account, look (theme), zoom, window layout (app), language, help, support.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { api, IS_WEB } from "./api";
 import { LOCALE_NAMES, t, useLocale, type Locale, type MessageKey } from "./i18n";
 import { THEMES, type Theme } from "./theme";
 import { SupportButton } from "./Support";
-import { useAccount } from "./account";
+import { followAccount, useAccount, openSiteSignedIn } from "./account";
 import { ProfileDialog } from "./AccountSettings";
 
 type Mode = "panel" | "half" | "full";
@@ -32,8 +32,12 @@ export default function OverlayMenu(props: {
   setZoom: (dir: number) => void;
   mode?: Mode;
   changeMode?: (m: Mode) => void;
+  /** M / S (BRAND-MIGRATION rule 10): the header's status (tracking, synced, Missing list) lives here */
+  status?: ReactNode;
 }) {
   const acc = useAccount();
+  // the same account as the launcher (Credential Manager), live – never this window's own guess
+  useEffect(() => void followAccount(), []);
   const [locale, setLocale] = useLocale();
   const [open, setOpen] = useState(false);
   const [profile, setProfile] = useState(false);
@@ -67,7 +71,7 @@ export default function OverlayMenu(props: {
     };
   }, [open]);
 
-  const name = acc.status === "in" ? (acc.user?.display_name ?? acc.user?.email ?? t("settings.account")) : t("menu.signedOut");
+  const name = acc.status === "in" ? (acc.user?.display_name ?? acc.user?.email ?? t("settings.account")) : acc.status === "out" ? t("menu.signedOut") : "";
 
   return (
     <>
@@ -85,9 +89,10 @@ export default function OverlayMenu(props: {
                   {name}
                   {acc.user?.verified && <span className="me-verified" title={t("profile.verified")} aria-label={t("profile.verified")} />}
                 </b>
-                <small>{acc.status === "in" ? acc.user?.email : t("menu.signInHint")}</small>
+                <small>{acc.status === "in" ? acc.user?.email : acc.status === "out" ? t("menu.signInHint") : ""}</small>
               </div>
             </div>
+            {props.status && <div className="me-group me-status">{props.status}</div>}
             <button
               className="me-item primary"
               role="menuitem"
@@ -99,7 +104,18 @@ export default function OverlayMenu(props: {
               {acc.status === "in" ? t("menu.profile") : t("menu.signIn")}
             </button>
             {IS_WEB && acc.status === "in" && !document.documentElement.classList.contains("dash-page") && (
-              <a className="me-item" role="menuitem" href="/dashboard" target="_blank" rel="noopener">
+              <a
+                className="me-item"
+                role="menuitem"
+                href="/dashboard"
+                target="_blank"
+                rel="noopener"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setOpen(false);
+                  void openSiteSignedIn("/dashboard");
+                }}
+              >
                 {t("menu.dashboard")}
               </a>
             )}

@@ -1,0 +1,893 @@
+/* FC-Tracker brand v2 – the shared parts (src/ui). Ported from design/d-draft-2/components.css (minus the
+   Frames, focus and markings live in src/frame.css. React components: src/ui/index.tsx, README.md. */
+
+/* ------------------------------------------------------------------ panels */
+.panel {
+  --cut: var(--cut-l);
+  position: relative;
+  background: var(--surface);
+  -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+}
+.panel.ring, .panel { --ring: var(--line); }
+.panel.xl { --cut: var(--cut-xl); }
+.panel.m { --cut: var(--cut-m); }
+.panel.ink { background: var(--ink); color: var(--on-ink); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.block { background: var(--surface-2); }
+.pad { padding: var(--s-6); }
+.pad-s { padding: var(--s-4); }
+.pad-l { padding: var(--s-7); }
+.hr { height: 1px; background: var(--line); border: 0; margin: 0; }
+.vr { width: 1px; align-self: stretch; background: var(--line); }
+
+
+/* ---------------------------------------------------------------- type */
+.display, .h1, .h2, .h3, .h4, .eyebrow, .tab, .seg, .btn, .chip, .brand, .label {
+  font-family: var(--f-display); font-stretch: var(--display-stretch);
+}
+.display, .h1, .h2 { font-stretch: 75%; font-weight: 800; text-transform: uppercase; letter-spacing: -.015em; }
+.display { font-size: var(--fs-80); line-height: .86; }
+.h1 { font-size: var(--fs-64); line-height: .86; }
+.h2 { font-size: var(--fs-40); line-height: .9; }
+.h3 { font-size: var(--fs-28); font-weight: 700; line-height: 1.05; }
+.h4 { font-size: var(--fs-18); font-weight: 650; line-height: 1.2; }
+.eyebrow { font-size: var(--fs-11); font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); line-height: 1.2; }
+.eyebrow.accent { color: var(--accent-text); }
+.label { font-size: var(--fs-13); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--text-2); }
+.muted { color: var(--text-2); }
+.faint { color: var(--text-3); }
+.t-11 { font-size: var(--fs-11); } .t-12 { font-size: var(--fs-12); } .t-13 { font-size: var(--fs-13); }
+.t-14 { font-size: var(--fs-14); } .t-15 { font-size: var(--fs-15); } .t-16 { font-size: var(--fs-16); }
+.t-18 { font-size: var(--fs-18); } .t-20 { font-size: var(--fs-20); }
+.strong { font-weight: 650; color: var(--text); }
+.accent-text { color: var(--accent-text); } .done-text { color: var(--done-text); } .warn-text { color: var(--warn-text); }
+.nowrap { white-space: nowrap; }
+/* one line with an ellipsis (review OV-5): clipped sideways only – overflow: hidden made it a scroll box that grids and
+   flex rows shrank below its line, slicing the descenders ("Holoaraphics"). Its line keeps its full height. */
+.ellip { white-space: nowrap; overflow-x: clip; overflow-y: visible; text-overflow: ellipsis; min-width: 0; min-height: 1lh; }
+
+/* numbers: Saira at 75 % width, tabular + lining, flat and exact – a scoreboard, not a bubble */
+.num, .n {
+  font-family: var(--f-num); font-stretch: var(--num-stretch);
+  font-variant-numeric: tabular-nums lining-nums; font-feature-settings: "tnum" 1, "lnum" 1;
+  font-weight: 650; letter-spacing: 0;
+}
+.num-xl, .num-l, .num-m, .num-hero { font-family: var(--f-num); font-stretch: var(--num-stretch); font-variant-numeric: tabular-nums lining-nums; font-weight: 700; line-height: .86; letter-spacing: -.01em; }
+.num-hero { font-size: var(--fs-180); line-height: .8; }
+.num-xl { font-size: var(--fs-120); }
+.num-l { font-size: var(--fs-64); }
+.num-m { font-size: var(--fs-40); }
+.unit { font-family: var(--f-body); font-stretch: 100%; font-size: .32em; font-weight: 600; letter-spacing: .02em; color: var(--text-3); margin-left: .2em; }
+/* a score: digits + a short, thin en dash */
+.score { display: inline-flex; align-items: baseline; gap: .04em; font-family: var(--f-num); font-stretch: var(--num-stretch); font-variant-numeric: tabular-nums lining-nums; font-weight: 700; line-height: .82; }
+.score i { font-style: normal; color: transparent; overflow: hidden; display: inline-block; align-self: center; width: .3em; height: max(2px, .035em); line-height: 0; margin: 0 .12em; background: var(--text-3); transform: translateY(-.05em); }
+/* scoreboard digit roll on load: a short vertical roll, hard landing */
+.score > span, .roll { display: inline-block; animation: roll 260ms cubic-bezier(.2, .9, .2, 1) both; }
+.score > span + i + span { animation-delay: 80ms; }
+@keyframes roll { from { transform: translateY(-.45em); opacity: 0; } 70% { opacity: 1; } }
+/* mint gem before scores */
+.gem { display: inline-block; width: .38em; height: .38em; background: var(--done); transform: rotate(45deg); margin-right: .36em; vertical-align: .08em; flex: none; }
+
+
+/* ------------------------------------------------------------ layout */
+.row { display: flex; align-items: center; gap: var(--s-3); }
+.col { display: flex; flex-direction: column; gap: var(--s-3); }
+.between { justify-content: space-between; }
+.wrap { flex-wrap: wrap; }
+.grow { flex: 1; min-width: 0; }
+.grid { display: grid; gap: var(--s-4); }
+.end { align-items: flex-end; }
+.base { align-items: baseline; }
+
+
+/* ------------------------------------------------------------ buttons */
+.btn {
+  --cut: var(--cut-m);
+  position: relative;
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2);
+  height: 44px; padding: 0 var(--s-5);
+  font-weight: 650; font-size: var(--fs-16); letter-spacing: .02em; line-height: 1;
+  white-space: nowrap; cursor: pointer;
+  transition: background var(--t-fast) var(--ease), color var(--t-fast);
+}
+.btn svg { width: 16px; height: 16px; flex: none; }
+.btn-primary { background: var(--accent); color: var(--on-accent); }
+.btn-primary:hover { background: var(--red-press); }
+.btn-secondary { background: var(--surface); color: var(--text); --ring: var(--line-strong); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); }
+.btn-secondary:hover { --plate: var(--fill); }
+.btn-quiet { background: transparent; color: var(--text-2); }
+.btn-quiet:hover { background: var(--fill); color: var(--text); }
+.btn-ink { background: var(--active-bg); color: var(--active-fg); }
+.btn-disabled { background: var(--fill); color: var(--text-3); cursor: not-allowed; }
+.btn-s { height: 32px; padding: 0 var(--s-4); font-size: var(--fs-14); --cut: var(--cut-s); }
+.btn-l { height: 56px; padding: 0 var(--s-7); font-size: var(--fs-18); --cut: var(--cut-m); }
+.btn-xl { height: 56px; padding: 0 var(--s-8); font-size: var(--fs-20); --cut: var(--cut-m); }
+.btn .key b { background: var(--on-fill-key); color: inherit; }
+.btn-primary .key b, .btn-primary .key b.xb { background: rgba(0, 0, 0, .24); color: var(--on-accent); }
+.btn-secondary .key b, .btn-quiet .key b { background: var(--fill); }
+
+/* controller keycaps – PlayStation first, Xbox after */
+.key { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-13); font-weight: 600; color: var(--text-2); white-space: nowrap; line-height: 1; }
+.key b {
+  --cut: var(--cut-xs);
+  display: inline-grid; place-items: center;
+  min-width: 24px; height: 22px; padding: 0 5px;
+  background: var(--fill); color: var(--text);
+  font-family: var(--f-display); font-stretch: var(--display-stretch); font-size: var(--fs-11); font-weight: 700; letter-spacing: .03em;
+}
+.key b.g svg { width: 13px; height: 13px; }
+.key b.xb { color: var(--text-2); }
+.key > span { margin-left: 4px; }
+.key.big b { min-width: 32px; height: 28px; font-size: var(--fs-13); }
+.hints { display: flex; gap: var(--s-5); align-items: center; flex-wrap: wrap; }
+
+/* --------------------------------------------------------------- chips */
+.chip {
+  --cut: var(--cut-s);
+  position: relative;
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 24px; padding: 0 9px;
+  font-size: var(--fs-11); font-weight: 650; letter-spacing: .08em; text-transform: uppercase; line-height: 1;
+  background: var(--fill); color: var(--text-2); white-space: nowrap;
+}
+.chip.l { height: 24px; padding: 0 10px; }
+.chip.accent { background: var(--accent); color: var(--on-accent); }
+.chip.accent-soft { background: var(--fill); color: var(--accent-text); }
+.chip.done { background: var(--done-wash); color: var(--done-text); }
+.chip.warn { background: var(--warn-wash); color: var(--warn-text); }
+.chip.ink { background: var(--active-bg); color: var(--active-fg); }
+.chip.line { background: transparent; --ring: var(--line-strong); }
+.chip .num { font-size: 1.08em; }
+.chip i.d { width: 6px; height: 6px; background: currentColor; transform: rotate(45deg); }
+.dot { width: 8px; height: 8px; display: inline-block; flex: none; transform: rotate(45deg); background: var(--text-3); }
+.dot.done { background: var(--done); } .dot.accent { background: var(--accent); } .dot.warn { background: var(--warn); }
+.dot.live { animation: blink 1.6s steps(2, jump-none) infinite; }
+@keyframes blink { 50% { opacity: .35; } }
+
+/* ---------------------------------------------------- session tabs (segments) */
+/* "1. Rivals 22": one crisp shape – 5 px cut, a 1 px ring, the count after a hairline. */
+.segs-bar { display: flex; gap: 6px; align-items: center; }
+.seg {
+  --cut: var(--cut-s); --ring: var(--line-strong);
+  position: relative;
+  display: inline-flex; align-items: stretch; height: 34px;
+  font-size: var(--fs-15); font-weight: 600; letter-spacing: .01em; line-height: 1;
+  background: var(--surface); color: var(--text-2); white-space: nowrap;
+  -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+}
+.seg > span { display: inline-flex; align-items: center; padding: 0 12px; }
+.seg > b { display: inline-flex; align-items: center; padding: 0 11px; border-left: 1px solid var(--line); font-family: var(--f-num); font-stretch: var(--num-stretch); font-variant-numeric: tabular-nums; font-weight: 700; font-size: var(--fs-16); color: var(--text); }
+.seg:hover { color: var(--text); }
+.seg.is-on { background: var(--active-bg); color: var(--active-fg); --ring: var(--active-ring); }
+.seg.is-on > b { color: var(--active-fg); border-left-color: color-mix(in srgb, var(--active-fg) 24%, transparent); }
+
+
+/* ------------------------------------------------------------ progress */
+.bar { --cut: var(--cut-xs); position: relative; height: 6px; background: var(--track); overflow: hidden; }
+.bar > i { position: absolute; inset: 0 auto 0 0; background: var(--accent); }
+.bar.done > i { background: var(--done); }
+.bar.ink > i { background: var(--text-2); }
+.bar.thick { height: 10px; }
+.bar.thin { height: 4px; --cut: 2px; }
+.bar.loading > i { width: 34% !important; animation: slide 1.3s var(--ease) infinite; }
+@keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
+/* match / step segments: flat blocks, no skew, no glow */
+.ticks { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px; }
+.ticks > i { height: 8px; background: var(--track); }
+.ticks > i.w { background: var(--done); }
+.ticks > i.l { background: var(--text-3); }
+.ticks > i.a { background: var(--accent); }
+
+/* ------------------------------------------------------------ tab bar (L1/R1) */
+.tabbar { display: flex; align-items: center; gap: var(--s-3); }
+.tabbar .tabs { display: flex; gap: 2px; }
+.tab {
+  position: relative;
+  height: 48px; padding: 0 18px;
+  display: inline-flex; align-items: center; gap: 8px;
+  font-weight: 600; font-size: var(--fs-20); letter-spacing: .01em;
+  color: var(--text-3); transition: color var(--t-fast);
+}
+.tab:hover { color: var(--text); }
+.tab .n { font-size: var(--fs-15); color: var(--text-3); font-weight: 650; }
+.tab.is-on { color: var(--tab-on-fg); background: var(--tab-on-bg); clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); }
+.tab.is-on .n { color: color-mix(in srgb, var(--tab-on-fg) 70%, transparent); }
+.tab.is-on::after { content: ""; position: absolute; left: 0; right: 8px; bottom: 0; height: 3px; background: var(--accent); }
+
+/* ------------------------------------------------------------ tiles (FUT 17) */
+.tile {
+  --cut: var(--cut-l); --ring: var(--line);
+  position: relative; overflow: hidden;
+  background: var(--surface);
+  -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+  padding: var(--s-6);
+  display: flex; flex-direction: column; gap: var(--s-2);
+  transition: transform var(--t-med) var(--ease-out), background var(--t-fast);
+  cursor: pointer;
+}
+.tile .tile-title { font-family: var(--f-display); font-stretch: var(--display-stretch); font-size: var(--fs-28); font-weight: 700; line-height: 1.02; }
+.tile .tile-sub { color: var(--text-2); font-size: var(--fs-14); }
+.tile .tile-foot { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); }
+.tile.ink { background: var(--active-bg); color: var(--active-fg); --ring: var(--active-ring); }
+.tile.ink .tile-sub, .tile.ink .muted { color: color-mix(in srgb, var(--active-fg) 70%, transparent); }
+.tile.ink .faint, .tile.ink .eyebrow { color: color-mix(in srgb, var(--active-fg) 50%, transparent); }
+
+/* ------------------------------------------------------------ list rows */
+.list { display: flex; flex-direction: column; }
+.list.gap { gap: 4px; }
+/* a row that is a button looks like any row (no browser chrome) – zero specificity, so every row rule still wins */
+:where(button.lrow) { appearance: none; margin: 0; border: 0; background: none; font: inherit; color: inherit; text-align: left; width: 100%; }
+:where(button.lrow:disabled) { cursor: default; }
+.lrow {
+  --cut: var(--cut-s);
+  position: relative;
+  display: grid; align-items: center; gap: var(--s-4);
+  padding: 10px 14px; min-height: 48px;
+  transition: background var(--t-fast);
+}
+.list.rule > .lrow { border-bottom: 1px solid var(--line); clip-path: none; }
+.list.rule > .lrow:last-child { border-bottom: 0; }
+.lrow:is([data-f], a, button):hover { cursor: pointer; }
+/* selected = neutral fill + a 3 px ink bar. Focus = red corner brackets + lift. Never the same look and never
+   both on one row (§16) – see "frames, markings, fills" at the end: the fill is a plate 4 px inside the row. */
+.lrow.is-sel::before { content: ""; position: absolute; left: 0; top: 6px; bottom: 6px; width: 3px; background: var(--text); }
+
+/* ------------------------------------------------------------ grade diamond D–S */
+.grade { --g: 30px; position: relative; width: var(--g); height: var(--g); display: inline-grid; place-items: center; flex: none; }
+.grade::before { content: ""; position: absolute; inset: 14%; transform: rotate(45deg); border: 1.5px solid var(--text-2); background: transparent; }
+.grade b { position: relative; font-family: var(--f-display); font-stretch: var(--display-stretch); font-weight: 700; font-size: calc(var(--g) * .44); line-height: 1; color: var(--text); }
+.grade.g-S::before { background: var(--active-bg); border-color: var(--active-ring); }
+.grade.g-S b { color: var(--active-fg); }
+.grade.g-A::before { border-color: var(--text); border-width: 2px; }
+.grade.none::before { border-style: dashed; background: transparent; }
+.grade.next::before { border-color: var(--text); border-width: 2px; }
+.grade.next b { color: var(--text); }
+.grade.l { --g: 44px; } .grade.xl { --g: 64px; } .grade.s { --g: 22px; }
+
+/* ------------------------------------------------------------ checks + switches */
+.tick { --cut: 3px; width: 18px; height: 18px; flex: none; display: inline-grid; place-items: center; background: var(--fill); color: var(--text-3); }
+.tick svg { width: 12px; height: 12px; }
+.tick.done { background: var(--done); color: var(--on-ink); }
+[data-theme="light"] .tick.done, :root[data-theme="light"] .tick.done { color: var(--text); }
+/* toggle (§16): a 1 px frame on the cut and a knob 2 px inside it on every side – the knob is the only fill,
+   it never touches the frame. Off = grey knob left in a quiet frame; on = ink knob right in an ink frame. */
+.switch { --cut: 4px; --ring: var(--text-3); /* ≥ 3:1 for a control's edge */ width: 40px; height: 22px; position: relative; background: transparent; flex: none; display: inline-block; }
+.switch::before { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; background: var(--text-3); clip-path: polygon(2px 0, 100% 0, 100% calc(100% - 2px), calc(100% - 2px) 100%, 0 100%, 0 2px); transition: left var(--t-fast) var(--ease); }
+.switch.on { --ring: var(--text); }
+.switch.on::before { left: 21px; background: var(--text); }
+
+/* ------------------------------------------------------------ fields */
+.field { --cut: var(--cut-s); --ring: var(--line-strong); position: relative; display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; background: var(--surface); color: var(--text); }
+.field input { all: unset; flex: 1; min-width: 0; font-family: var(--f-num); font-stretch: var(--num-stretch); font-variant-numeric: tabular-nums; font-weight: 650; font-size: var(--fs-20); }
+/* range: a flat 4 px track with a cut, a red fill, a 14×20 cut-corner thumb in ink */
+input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 20px; background: transparent; cursor: pointer; --p: 50%; }
+input[type="range"]::-webkit-slider-runnable-track { height: 4px; background: linear-gradient(var(--accent), var(--accent)) 0 / var(--p) 100% no-repeat, var(--track); }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 20px; margin-top: -8px; background: var(--text); clip-path: polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px); }
+input[type="range"]:focus-visible { outline: none; }
+input[type="range"].is-focus::-webkit-slider-thumb, input[type="range"]:focus-visible::-webkit-slider-thumb { background: var(--accent); }
+
+
+/* ------------------------------------------------------- notifications */
+/* broadcast lower-third: a solid red tag + a surface strip with a 1 px ring + a timer line */
+.l3 { display: flex; align-items: stretch; width: max-content; max-width: 100%; }
+.l3-tag {
+  display: grid; place-items: center; width: 96px; flex: none; padding: 0 var(--s-2);
+  background: var(--accent); color: var(--on-accent);
+  font-family: var(--f-num); font-stretch: var(--num-stretch); font-variant-numeric: tabular-nums; font-weight: 700; font-size: var(--fs-32); line-height: 1;
+  clip-path: polygon(var(--cut-m) 0, 100% 0, 100% 100%, 0 100%, 0 var(--cut-m));
+}
+.l3-tag.done { background: var(--done); color: var(--text); }
+:root[data-theme="dark"] .l3-tag.done, :root[data-theme="glass"] .l3-tag.done { color: var(--on-ink); }
+.l3-tag.ink { background: var(--neutral); color: var(--on-accent); }
+.l3-tag.warn { background: var(--warn); color: var(--text); }
+.l3-tag svg { width: 26px; height: 26px; }
+.l3-body {
+  --cut: var(--cut-m); --ring: var(--line);
+  position: relative;
+  display: flex; align-items: center; gap: var(--s-5);
+  padding: 14px var(--s-6) 16px var(--s-5);
+  background: var(--surface); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%);
+  min-width: 520px; max-width: 720px;
+}
+.l3-title { font-family: var(--f-display); font-stretch: var(--display-stretch); font-weight: 700; font-size: var(--fs-24); line-height: 1.05; }
+.l3-sub { color: var(--text-2); font-size: var(--fs-14); }
+.l3-time { position: absolute; left: 1px; right: calc(var(--cut-m) + 1px); bottom: 1px; height: 3px; background: var(--track); } /* inside the 1 px frame, clear of the cut */
+.l3-time { height: 2px !important; }
+.l3-time > i { position: absolute; inset: 0 auto 0 0; background: var(--t, var(--accent)); opacity: .7; }
+.l3:has(.l3-tag.done) { --t: var(--done); } .l3:has(.l3-tag.warn) { --t: var(--warn); } .l3:has(.l3-tag.ink) { --t: var(--text-2); }
+.l3.enter { animation: l3in var(--t-slow) var(--ease-out) both; }
+@keyframes l3in { from { transform: translateX(-24px); opacity: 0; } }
+.toast { --cut: var(--cut-m); --ring: var(--line); position: relative; display: flex; align-items: center; gap: var(--s-3); padding: 12px 16px; background: var(--surface); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); }
+.toast .edge { width: 3px; align-self: stretch; background: var(--accent); flex: none; }
+.toast.done .edge { background: var(--done); }
+.toast.warn .edge { background: var(--warn); }
+
+
+/* --------------------------------------------------------- EA cards */
+/* EA's own art: rarity background + portrait (or action shot for specials) + rarity text colours.
+   Everything is sized in container units, so --w alone sizes a card. Shadow follows the PNG's alpha. */
+.fut {
+  --w: 200px;
+  position: relative; width: var(--w); aspect-ratio: 576 / 800; flex: none;
+  container-type: inline-size;
+  color: var(--ink);
+  user-select: none;
+}
+.fut .bg { filter: var(--card-shadow); }
+.fut > * { position: absolute; }
+.fut .bg { inset: 0; width: 100%; height: 100%; }
+/* EA's art grid (576×800): the rating column sits inside the frame's safe area, ~15 % in, ~15 % down */
+.fut .pt.base { left: 27%; top: 9%; width: 64%; aspect-ratio: 1; object-fit: contain; -webkit-mask-image: linear-gradient(#000 72%, transparent); mask-image: linear-gradient(#000 72%, transparent); }
+.fut .pt.action { left: 0; top: 0; width: 100%; height: 100%; object-fit: cover; }
+.fut .rt { left: 16%; top: 14.5%; width: 20%; text-align: center; font-family: var(--f-num); font-stretch: 75%; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 16.5cqw; line-height: .8; letter-spacing: -.02em; }
+.fut .ps { left: 16%; top: 27.5%; width: 20%; text-align: center; font-family: var(--f-display); font-stretch: 87.5%; font-weight: 700; font-size: 6.8cqw; line-height: 1; letter-spacing: .02em; }
+.fut .nm { left: 12%; right: 12%; top: 60.5%; text-align: center; font-family: var(--f-display); font-stretch: 87.5%; font-weight: 700; font-size: 8.6cqw; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fut .nm.long { font-size: 7.2cqw; }
+.fut .st { left: 14%; right: 14%; top: 70%; display: grid; grid-template-columns: repeat(6, 1fr); text-align: center; }
+.fut .st > span { position: static; display: flex; flex-direction: column; align-items: center; line-height: 1; gap: .9cqw; }
+.fut .st small { font-family: var(--f-display); font-stretch: 87.5%; font-size: 3.8cqw; font-weight: 600; letter-spacing: .02em; }
+.fut .st b { font-family: var(--f-num); font-stretch: 75%; font-variant-numeric: tabular-nums; font-size: 7.2cqw; font-weight: 700; }
+.fut .ft { left: 0; right: 0; top: 81.5%; display: flex; justify-content: center; align-items: center; gap: 4cqw; }
+.fut .ft img { position: static; }
+.fut .ft .fl { height: 6.2cqw; width: auto; }
+.fut .ft .bd { height: 8.6cqw; width: auto; }
+.fut .fo { left: 17%; top: 37%; width: 0; height: 0; border-left: 3.4cqw solid transparent; border-right: 3.4cqw solid transparent; border-bottom: 5.6cqw solid var(--mint); }
+/* placeholder (a card whose rarity is not known): EA's own gold outline as a flat silhouette – the same
+   shape as every other card, a darker edge and a surface fill (filters only, no colour on the art) */
+.fut.ph { color: var(--text); }
+/* "to get": a neutral dashed silhouette – it cannot be mistaken for any rarity */
+.fut.ph .ph-svg { filter: none; }
+.fut.ph .ph-svg path { fill: var(--fill); stroke: var(--text-3); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.fut.ph .pt { opacity: .85; }
+.fut.ph .pt { filter: grayscale(.15); }
+.fut.ph .get { left: 50%; bottom: 13%; transform: translateX(-50%); font-family: var(--f-display); font-stretch: 87.5%; font-weight: 700; font-size: 6.5cqw; letter-spacing: .08em; text-transform: uppercase; color: var(--text-2); white-space: nowrap; }
+.fut.mini.ph .get { font-size: 9cqw; bottom: 12%; }
+.fut.ghost { filter: grayscale(1); opacity: .45; }
+/* mini: rating + position, portrait, name */
+.fut.mini .pt.base { left: 26%; top: 12%; width: 68%; -webkit-mask-image: linear-gradient(#000 74%, transparent 92%); mask-image: linear-gradient(#000 74%, transparent 92%); }
+.fut.mini .rt { left: 17%; top: 13.5%; width: 22%; font-size: 20cqw; }
+.fut.mini .ps { left: 17%; top: 29.5%; width: 22%; font-size: 9cqw; font-weight: 700; }
+.fut.mini .nm { left: 13%; right: 13%; top: 66.5%; font-size: 11cqw; }
+.fut.mini .nm.long { font-size: 9cqw; }
+/* per-rarity safe area: special frames have taller crowns, so the rating column starts lower */
+.fut.spc .rt { top: 18.5%; }
+.fut.spc .ps { top: 31.5%; }
+.fut.mini.spc .rt { top: 18%; }
+.fut.mini.spc .ps { top: 34%; }
+/* action shots stay above the name band */
+.fut .pt.action { -webkit-mask-image: linear-gradient(#000 54%, transparent 63%); mask-image: linear-gradient(#000 54%, transparent 63%); }
+.fut.mini .pt.action { -webkit-mask-image: linear-gradient(#000 58%, transparent 67%); mask-image: linear-gradient(#000 58%, transparent 67%); }
+.fut .ft .lg { height: 7cqw; width: auto; }
+.to-g { font-family: var(--f-display); font-stretch: 87.5%; font-weight: 700; font-size: 13px; color: var(--text-2); white-space: nowrap; }
+
+/* face: a portrait crop with a rating chip, for anything under 64 px */
+.face { --s: 48px; --cut: 6px; position: relative; width: var(--s); height: var(--s); flex: none; display: inline-block; background: var(--fill); overflow: hidden; clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut)); }
+.face img { position: absolute; left: 6%; top: 4%; width: 100%; height: 100%; object-fit: cover; }
+.face b { position: absolute; left: 0; bottom: 0; padding: 2px 3px 1px; white-space: nowrap; background: var(--surface-dense); color: var(--text); font-size: 12px; line-height: 1; display: flex; gap: 3px; align-items: baseline; }
+.face b i { font-style: normal; font-family: var(--f-display); font-stretch: 87.5%; font-size: 9px; font-weight: 700; color: var(--text-2); }
+/* below-card label on the pitch */
+.slot { position: relative; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.slot-tag { display: flex; gap: 6px; align-items: center; font-size: var(--fs-12); font-weight: 600; color: var(--text-2); white-space: nowrap; line-height: 1; min-height: 18px; }
+.slot.is-focus::after { display: none; }
+.slot.is-focus { z-index: 3; }
+.slot.is-focus .fut { transform: translateY(-3px); }
+.slot.is-focus .fut::after { --c: var(--accent); content: ""; position: absolute; inset: -7px; background: linear-gradient(var(--c),var(--c)) 0 0/14px 2px, linear-gradient(var(--c),var(--c)) 0 0/2px 14px, linear-gradient(var(--c),var(--c)) 100% 0/14px 2px, linear-gradient(var(--c),var(--c)) 100% 0/2px 14px, linear-gradient(var(--c),var(--c)) 0 100%/14px 2px, linear-gradient(var(--c),var(--c)) 0 100%/2px 14px, linear-gradient(var(--c),var(--c)) 100% 100%/14px 2px, linear-gradient(var(--c),var(--c)) 100% 100%/2px 14px; background-repeat: no-repeat; }
+.chem { display: inline-flex; gap: 3px; }
+.chem i { width: 6px; height: 6px; transform: rotate(45deg); background: var(--track); }
+.chem i.on { background: var(--done); }
+.tag { --cut: 3px; display: inline-flex; align-items: center; gap: 4px; height: 18px; padding: 0 6px; font-family: var(--f-display); font-stretch: var(--display-stretch); font-size: var(--fs-11); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; background: var(--fill); color: var(--text-2); }
+.tag.accent { background: var(--accent); color: var(--on-accent); }
+.tag.done { background: var(--done-wash); color: var(--done-text); }
+.tag.ink { background: var(--active-bg); color: var(--active-fg); }
+.tag .num { font-size: 1.1em; }
+
+/* product-shot plinth for hero cards (light: a studio floor; dark: a darker floor) */
+.plinth { position: relative; background: var(--plinth); display: grid; place-items: center; }
+
+/* --------------------------------------------------------------- pitch */
+.pitch { position: relative; background: var(--pitch); overflow: hidden; }
+.pitch .lines { position: absolute; inset: 22px; border: 1px solid var(--line-strong); pointer-events: none; }
+.pitch .lines::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: var(--line-strong); }
+.pitch .lines::after { content: ""; position: absolute; left: 50%; top: 50%; width: 120px; height: 120px; margin: -60px 0 0 -60px; border: 1px solid var(--line-strong); border-radius: 50%; }
+.pitch .box { position: absolute; left: 50%; width: 44%; height: 15%; transform: translateX(-50%); border: 1px solid var(--line-strong); pointer-events: none; }
+.pitch .box.top { top: 22px; border-top: 0; } .pitch .box.bot { bottom: 22px; border-bottom: 0; }
+
+
+/* -------------------------------------------------------- app chrome */
+.brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; font-size: var(--fs-20); letter-spacing: .005em; line-height: 1; color: var(--text); }
+.mark { --m: 28px; --cut: calc(var(--m) * .24); width: var(--m); height: var(--m); display: inline-grid; place-items: center; background: var(--accent); color: var(--on-accent); flex: none; }
+.mark svg { width: 100%; height: 100%; }
+.coins { display: inline-flex; align-items: center; gap: 8px; font-size: var(--fs-20); }
+.coin { width: 14px; height: 14px; border-radius: 50%; background: var(--coin); box-shadow: inset 0 0 0 2px var(--coin-rim); flex: none; }
+
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+.l3-tag .score i, .chip .score i, .tag .score i { color: inherit; opacity: .65; }
+
+/* chips that are not actions stay neutral (BETA etc.) */
+.chip.beta { background: transparent; --ring: var(--line-strong); color: var(--text-2); }
+
+/* glass tiers: standard .42 · hero/focused .62 · dense tables .66 */
+.panel.xl, .tile.hero { background-color: var(--surface-hero, var(--surface)); }
+/* the hero / focused panel carries the red folded corner – the brand mark in the UI */
+.panel.xl.signed, .tile.hero { background-image: linear-gradient(135deg, transparent 50%, var(--accent) 50%, var(--accent) calc(50% + 3px), transparent calc(50% + 3px)), linear-gradient(315deg, transparent 50%, var(--accent) 50%, var(--accent) calc(50% + 3px), transparent calc(50% + 3px)); background-size: var(--cut) var(--cut); background-position: 0 0, 100% 100%; background-repeat: no-repeat; }
+/* tiny labels never below 11 px and at 100 % width (CDM must not read COM) */
+.fut.mini .ps { font-size: max(9cqw, 11px); font-stretch: 100%; }
+.face b i { font-size: 10px; font-stretch: 100%; }
+/* numbers inside running text: Barlow tabular, not Saira – no width jumps mid-sentence */
+p .num, .muted .num, .t-13 .num, .t-14 .num, .tile-sub .num { font-family: var(--f-body); font-stretch: 100%; font-weight: 650; font-variant-numeric: tabular-nums; }
+/* units: small and quiet next to a hero number */
+.unit-q { font-family: var(--f-body); font-stretch: 100%; font-size: .28em; font-weight: 600; color: var(--text-3); margin-left: .25em; }
+/* studio sweep: a floor plane with a horizon and a contact shadow under the hero card (no beige box) */
+.sweep { position: relative; background: linear-gradient(180deg, var(--sweep-wall, transparent) 0 62%, var(--sweep-floor, var(--fill)) 62% 100%); }
+.sweep::after { content: ""; position: absolute; left: 50%; bottom: 10%; width: 62%; height: 18px; transform: translateX(-50%); background: radial-gradient(closest-side, rgba(0, 0, 0, .16), transparent); pointer-events: none; z-index: 0; }
+.sweep > * { position: relative; z-index: 1; }
+/* card walkout: rarity back → slit wipe → Y flip → rating count-up (≤ 900 ms) */
+.fut.reveal { animation: walkout 860ms cubic-bezier(.2, .7, .2, 1) both; transform-origin: 50% 60%; }
+.fut.reveal::after { content: ""; position: absolute; top: 4%; bottom: 4%; width: 6%; left: -10%; background: rgba(255, 255, 255, .85); animation: slit 520ms 160ms cubic-bezier(.6, 0, .2, 1) both; z-index: 5; pointer-events: none; mix-blend-mode: overlay; }
+@keyframes walkout { 0% { transform: perspective(900px) rotateY(88deg) scale(.92); filter: brightness(.25) saturate(.4); } 45% { transform: perspective(900px) rotateY(0) scale(.98); filter: brightness(.6); } 70% { filter: brightness(1.12); } 100% { transform: none; filter: none; } }
+@keyframes slit { from { left: -10%; opacity: 1; } to { left: 104%; opacity: 0; } }
+
+/* eyebrow budget: data labels in stat grids are quiet sentence-case labels, not tracked caps */
+.kv .eyebrow, .kv2 .eyebrow, .kv4 .eyebrow, .facts .eyebrow, .facts3 .eyebrow, .sum .eyebrow, .dg .card-p > .eyebrow + .big ~ * .eyebrow { font-family: var(--f-body); font-stretch: 100%; text-transform: none; letter-spacing: 0; font-size: 13px; font-weight: 600; color: var(--text-3); }
+.sec-t { font-family: var(--f-display); font-stretch: var(--display-stretch); font-size: 18px; font-weight: 700; line-height: 1.1; color: var(--text); }
+
+/* lower-thirds: broadcast package – uppercase condensed title, the tag carries the red folded corner, staggered entry */
+.l3-title { text-transform: uppercase; font-stretch: 75%; font-weight: 800; letter-spacing: -.005em; font-size: 26px; }
+.l3-tag { position: relative; }
+.l3.enter .l3-tag { animation: l3in 360ms var(--ease-out) both; }
+.l3.enter .l3-title { animation: l3in 360ms 60ms var(--ease-out) both; }
+.l3.enter .l3-sub { animation: l3in 360ms 120ms var(--ease-out) both; }
+.xi > span > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* tiny position labels in Barlow – Saira's D reads as O at 11 px */
+.fut.mini .ps, .face b i { font-family: var(--f-body); font-stretch: 100%; font-weight: 700; letter-spacing: .02em; }
+.sweep { background: linear-gradient(180deg, transparent 0 56%, var(--sweep-floor, var(--fill)) 100%); }
+
+/* face chip lives outside the clipped portrait, so "79 RB" is never cut */
+.face-w { --s: 48px; position: relative; display: inline-block; width: var(--s); height: var(--s); flex: none; }
+.face-w .face { --s: inherit; width: 100%; height: 100%; }
+.face-w > b { position: absolute; left: 0; bottom: 0; padding: 2px 4px 1px; white-space: nowrap; background: var(--surface-dense); color: var(--text); font-size: 12px; line-height: 1; display: flex; gap: 3px; align-items: baseline; z-index: 1; }
+.face-w > b i { font-style: normal; font-family: var(--f-body); font-size: 10px; font-weight: 700; color: var(--text-2); }
+/* "no grade yet" (set not complete): an empty dashed diamond in the quiet ink – a lone "-" read as a glitch (T28-2) */
+.grade.none::before { border: 1.5px dashed var(--text-3); opacity: .7; }
+/* a card to get keeps its flag · league · club row (the data has it); the dashed outline says "to get" */
+.fut.ph:has(.ft) .get { display: none; }
+/* round 13: mini cards – a left column for rating + position inside the frame; the portrait starts right of it */
+.fut.mini .rt { left: 12%; top: 19%; width: 26%; font-size: 17cqw; z-index: 3; }
+.fut.mini .ps { left: 12%; top: 33.5%; width: 26%; font-size: max(8.5cqw, 11px); z-index: 3; }
+.fut.mini.spc .rt { top: 21%; }
+.fut.mini.spc .ps { top: 35.5%; }
+.fut.mini .pt.base { left: 36%; top: 15%; width: 58%; -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 14%), linear-gradient(#000 74%, transparent 92%); mask-image: linear-gradient(90deg, transparent 0, #000 14%), linear-gradient(#000 74%, transparent 92%); -webkit-mask-composite: source-in; mask-composite: intersect; }
+.fut.mini .pt.action { -webkit-mask-image: linear-gradient(90deg, transparent 26%, #000 42%), linear-gradient(#000 58%, transparent 67%); mask-image: linear-gradient(90deg, transparent 26%, #000 42%), linear-gradient(#000 58%, transparent 67%); -webkit-mask-composite: source-in; mask-composite: intersect; }
+.fut.mini.ph .rt { top: 16%; } .fut.mini.ph .ps { top: 30%; }
+.fut.mini .rt { font-size: max(17cqw, 16px); }
+.fut.mini .ps { top: calc(19% + max(17cqw, 16px) * .95); }
+.fut.mini.spc .ps { top: calc(21% + max(17cqw, 16px) * .95); }
+.fut.mini.ph .ps { top: calc(16% + max(17cqw, 16px) * .95); }
+
+
+/* glass legibility over a brighter game: a soft dark text halo (not a glow – it is a 1 px shadow in black) */
+:root[data-theme="glass"] .fut { text-shadow: none; }
+
+/* glass: keycaps on a dark chip so they read over a bright game (≥ 4.5:1) */
+:root[data-theme="glass"] .key b { background: rgba(8, 7, 11, .62); color: #F4F3F6; position: relative; --bw: 1px; --ring: rgba(255, 255, 255, .18); }
+:root[data-theme="glass"] .key b.xb { color: rgba(244, 243, 246, .86); }
+:root[data-theme="glass"] .key { color: rgba(244, 243, 246, .86); }
+/* glass: a hero card stands on the panel itself – no inner box */
+:root[data-theme="glass"] .sweep { background: none; }
+
+:root[data-theme="glass"] .sweep::after { display: none; } :root[data-theme="glass"] .sweep > * { z-index: auto; } /* glass has no contact shadow to lift above – children keep their own positioning (an absolute child, e.g. the card light, stays anchored to the sweep) */
+/* the slit is invisible unless the animation runs (reduced motion = no stray white bars) */
+.fut.reveal::after { opacity: 0; }
+
+.fut.reveal::after { animation-fill-mode: none !important; }
+
+/* ===================== round 16: the EA card spec (measured) =====================
+   Measured on real FC 27 renders in the user's own screenshots (img/): Rayan 90 RM Future Stars (special frame,
+   4× crop of ingame-future-stars.jpg) and Gabriel 89 CB gold (ingame-gallery.jpg), mapped onto EA's 576×800 art
+   (alpha bounds read from the PNGs). All values are % of the card (x of width, y of height); font sizes derive from
+   the measured cap heights with Saira's metrics (cap .70 em, cap top .15 em below a line-height-1 box).
+   Result: rating, position, name and stat rows sit at the SAME y on gold and special frames.
+   Portraits: EA's base portrait (160×160) is hard-edged – no fade; the action-shot PNG carries its own alpha fade
+   at the bottom – so we add no mask at all. */
+.fut {
+  --rt-x: 21.8%;  --rt-top: 22.9%; --rt-fs: 13.5cqw;   /* rating: cap top 24.4 %, cap 6.8 % of height */
+  --ps-top: 32.5%; --ps-fs: 6.5cqw;                   /* position: cap top 33.2 %, cap 3.3 % */
+  --pt-left: 26.3%; --pt-top: 20.8%; --pt-w: 59%;      /* base portrait: square box, bottom edge at 63.3 % */
+  --nm-top: 66.7%; --nm-fs: 7.7cqw;                    /* name: cap top 67.6 %, cap 3.9 % */
+  --st-top: 75.3%; --st-l: 14.7%; --st-r: 13.6%; --st-lab: 3.6cqw; --st-val: 5.75cqw; /* labels 75.7 %, values 78.7 % */
+  --ft-y: 87.6%; --ft-flag: 3.8cqw; --ft-badge: 6.6cqw; /* flag · league · club row centre */
+}
+.fut.spc { /* special / TOTW frames: same measured positions (Rayan = Gabriel ±0.4 %) */ }
+.fut.fut .rt { left: calc(var(--rt-x) - 13%); width: 26%; top: var(--rt-top); font-size: var(--rt-fs); line-height: 1; font-stretch: 87.5%; letter-spacing: -.01em; text-align: center; }
+.fut.fut .ps { left: calc(var(--rt-x) - 13%); width: 26%; top: var(--ps-top); font-size: var(--ps-fs); line-height: 1; font-family: var(--f-display); font-stretch: 87.5%; text-align: center; }
+.fut.fut .pt.base { left: var(--pt-left); top: var(--pt-top); width: var(--pt-w); height: auto; aspect-ratio: 1; -webkit-mask-image: none; mask-image: none; }
+.fut.fut .pt.action { left: 0; top: 0; width: 100%; height: 100%; object-fit: cover; -webkit-mask-image: none; mask-image: none; }
+.fut.fut .nm { left: 10%; right: 10%; top: var(--nm-top); font-size: var(--nm-fs); line-height: 1; }
+.fut.fut .st { left: var(--st-l); right: var(--st-r); top: var(--st-top); }
+.fut.fut .st > span { gap: .2cqw; }
+.fut.fut .st small { font-size: var(--st-lab); line-height: 1; }
+.fut.fut .st b { font-size: var(--st-val); line-height: 1; }
+.fut.fut .ft { top: calc(var(--ft-y) - 3.3%); height: 6.6%; }
+.fut.fut .ft .fl { height: var(--ft-flag); } .fut.fut .ft .bd, .fut.fut .ft .lg { height: var(--ft-badge); }
+.fut.fut .fo { left: calc(var(--rt-x) - 3.4%); top: 37.5%; }
+/* mini (pitch, lists): the same frame positions, rating/position enlarged for legibility at 64–120 px */
+.fut.mini { --rt-fs: 19cqw; --rt-top: 21.6%; --ps-top: 34.6%; --ps-fs: max(9cqw, 10px); --nm-fs: 11cqw; --nm-top: 66%; }
+.fut.fut.mini .ps { font-family: var(--f-body); font-stretch: 100%; font-weight: 700; }
+.fut.fut.mini .pt.base { left: 30%; top: 21%; width: 58%; }
+/* placeholders keep their own layout */
+.fut.fut.ph .rt { top: 16%; } .fut.fut.ph .ps { top: 30%; }
+.pitch .fut.ph .get { display: none; } /* the pitch already says "Buy 625" */
+
+/* ================================================================ grades & ranks (T14, PRINCIPLES §16)
+   FC 27 draws a Gallery grade as a badge: a dark tinted diamond, a coloured rim (lit on the two top
+   edges, shaded on the two bottom edges) and a bevelled letter. S carries a second diamond under the
+   first. The colours are the game's (tokens.css "grades & ranks"); the badge is the same in every theme. */
+.grade { isolation: isolate; }
+.grade[class*="g-"]::before {
+  background: var(--gf); border-width: max(1.5px, calc(var(--g) * .05)); border-style: solid;
+  /* rotate(45deg): top → upper-right edge, left → upper-left, right → lower-right, bottom → lower-left */
+  border-color: var(--gc) var(--gd) var(--gd) var(--gc);
+}
+.grade[class*="g-"] b { color: var(--gc); font-weight: 800; font-size: calc(var(--g) * .5); text-shadow: calc(var(--g) * .022) calc(var(--g) * .03) 0 var(--gd); }
+.grade.g-D { --gc: var(--gr-d); --gd: var(--gr-d-deep); --gf: var(--gr-d-fill); }
+.grade.g-C { --gc: var(--gr-c); --gd: var(--gr-c-deep); --gf: var(--gr-c-fill); }
+.grade.g-B { --gc: var(--gr-b); --gd: var(--gr-b-deep); --gf: var(--gr-b-fill); }
+.grade.g-A { --gc: var(--gr-a); --gd: var(--gr-a-deep); --gf: var(--gr-a-fill); }
+.grade.g-S { --gc: var(--gr-s); --gd: var(--gr-s-deep); --gf: var(--gr-s-fill); }
+/* S: the game's second diamond, showing below the first */
+.grade.g-S::after { content: ""; position: absolute; inset: 14%; z-index: -1; transform: translateY(calc(var(--g) * .09)) rotate(45deg); border: solid var(--gd); border-width: 0 max(1.5px, calc(var(--g) * .05)) max(1.5px, calc(var(--g) * .05)) 0; }
+/* a target grade ("→ B") keeps the game colour on its letter; the arrow stays neutral */
+.to-g .gl { font-weight: 800; }
+.gl.g-D { color: var(--gr-d-text); } .gl.g-C { color: var(--gr-c-text); } .gl.g-B { color: var(--gr-b-text); }
+.gl.g-A { color: var(--gr-a-text); } .gl.g-S { color: var(--gr-s-text); }
+
+/* Champions rank shield – hub-4-4.webp: a reached rank is a red shield with a gold numeral, a rank not
+   reached yet is a black shield with a grey rim and a grey numeral, the rank being played for gets the
+   green ▼. Contender = plain shield, Champion = shield with shoulder wings, Elite = wings + a laurel. */
+.rk { --s: 28px; --rk-fill: var(--rank-open-fill); --rk-rim: var(--rank-open-rim); --rk-ink: var(--rank-open-ink);
+  position: relative; display: inline-grid; place-items: center; width: var(--s); height: calc(var(--s) * 1.04); flex: none; vertical-align: middle; }
+.rk svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.rk .sh { fill: var(--rk-fill); stroke: var(--rk-rim); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: miter; }
+.rk.got .sh { stroke-width: 1; }
+.rk .wg { fill: var(--rk-rim); }
+.rk .lr { fill: none; stroke: var(--rk-rim); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.rk .hf { display: none; }
+.rk .in { fill: none; stroke: var(--rk-rim); stroke-width: 1; vector-effect: non-scaling-stroke; opacity: .7; }
+.rk.got .hf { display: block; fill: var(--rank-got-shade); }
+.rk.got .in { display: none; }
+.rk b { position: relative; margin-top: -10%; font-family: var(--f-display); font-stretch: 87.5%; font-weight: 700; font-size: calc(var(--s) * .38); line-height: 1; letter-spacing: 0; color: var(--rk-ink); }
+.rk.got { --rk-fill: var(--rank-got-fill); --rk-rim: var(--rank-got-shade); --rk-ink: var(--rank-got-ink); }
+.rk.got.t-p { --rk-fill: var(--rank-got-fill-p); --rk-rim: var(--rank-got-rim-p); --rk-ink: var(--rank-got-ink-p); }
+.rk.got.t-p .sh { stroke-width: 1.5; }
+/* Elite reached (E1): red-to-black halves (the gradients are drawn in kit.js), a gold rim + inner line, gold numeral */
+.rk.got.t-e { --rk-rim: var(--rank-e-gold); --rk-ink: var(--rank-e-ink); }
+.rk.got.t-e .sh { stroke-width: 2; }
+.rk.got.t-e .in { display: block; stroke: var(--rank-e-gold); opacity: 1; }
+.rk.got .wg { fill: var(--rank-got-ink); } .rk.got .lr { stroke: var(--rank-got-ink); }
+.rk.got.t-p .wg { fill: var(--rank-got-rim-p); }
+.rk.got.t-e .wg { fill: var(--rank-e-gold); } .rk.got.t-e .lr { stroke: var(--rank-e-gold); }
+/* the thin inner line is Champion's and Elite's only (H0): Contender is a plain shield */
+.rk.t-c .in { display: none; }
+.rk.next::before { content: ""; position: absolute; left: 50%; bottom: 100%; margin: 0 0 3px calc(var(--s) * -.17); width: calc(var(--s) * .34); height: calc(var(--s) * .26); background: var(--rank-next); clip-path: polygon(0 0, 100% 0, 50% 100%); }
+.rk.s { --s: 20px; } .rk.m { --s: 36px; } .rk.l { --s: 56px; } .rk.xl { --s: 80px; }
+.rk.s b { font-size: 9px; font-family: var(--f-body); font-stretch: 100%; } /* tiny labels are Barlow (PRINCIPLES §14) */
+/* the row of 15 shields – the game's ladder, left to right */
+/* measured on hub-0-0 (2000 px): shields 113 px apart, a Contender body 58 px wide (pitch 1.95 × body), the shield
+   being played for 1.22 × bigger, an 8 px track through the shield centres – light between reached shields */
+.rk-row { display: grid; grid-template-columns: repeat(15, 1fr); align-items: center; justify-items: center; padding-top: 14px; container-type: inline-size; }
+.rk-row .rk { --s: calc(100cqw / 15 * .77); width: var(--s); height: calc(var(--s) * 1.04); }
+.rk-row .rk.next { --s: calc(100cqw / 15 * .77 * 1.22); }
+.rk-row .rk b { font-size: max(9px, calc(var(--s) * .34)); font-family: var(--f-body); font-stretch: 100%; }
+.rk-row .rk.next::before { width: 10px; height: 8px; margin-left: -5px; }
+/* the track: each shield draws the segment to the next one, behind both (z-index −1 in the shield's own stacking context) */
+.rk-row .rk::after { content: ""; position: absolute; z-index: -1; left: 50%; top: 46%; width: calc(100cqw / 15); height: max(3px, calc(100cqw / 15 * .07)); translate: 0 -50%; background: var(--rank-track); }
+.rk-row .rk:last-child::after { display: none; }
+.rk-row .rk.got:has(+ .rk.got)::after { background: var(--rank-track-got); }
+
+/* FUT coin and Champions token (E1) – our own flat glyphs that read like the game's (never EA's art).
+   Coin: a gold ring, a black face and a thin gold inner ring (the HUD coin). Token: a red disc, a thin gold ring, a gold angular C. */
+.coin { position: relative; display: inline-block; vertical-align: -2px; width: 14px; height: 14px; border-radius: 50%; background: var(--coin-face); box-shadow: inset 0 0 0 2px var(--coin), inset 0 0 0 3px var(--coin-face), inset 0 0 0 4px var(--coin-rim); flex: none; }
+.coin.l { box-shadow: inset 0 0 0 3px var(--coin), inset 0 0 0 4.5px var(--coin-face), inset 0 0 0 5.5px var(--coin-rim); }
+.ctok { display: inline-block; vertical-align: -2px; width: 14px; height: 14px; flex: none; }
+.ctok svg { display: block; width: 100%; height: 100%; }
+.coin.l, .ctok.l { width: 20px; height: 20px; vertical-align: -4px; }
+
+/* Optical centring (user feedback 2026-11-04): an icon beside text sits on the middle of the CAPITALS, not the
+   middle of the line box. Saira and Barlow caps are 0.70 em (measured).
+   – in running text: vertical-align puts the icon's box centre at 0.35 em above the baseline;
+   – in flex/grid rows: the text beside it is trimmed to cap-top…baseline, so align-items:center lands on the caps;
+   – a rank shield's body centre is 46 % down its box (viewBox y 23 of 50), so it moves down 4 % of its height. */
+.coin, .ctok { vertical-align: calc(.35em - 7px); }
+.coin.l, .ctok.l { vertical-align: calc(.35em - 10px); }
+.grade { vertical-align: calc(.35em - var(--g) / 2); }
+.rk { vertical-align: calc(.35em - var(--s) * .52); translate: 0 calc(var(--s) * .0416); }
+/* the letter/numeral is positioned out of flow, so a badge's baseline is its bottom edge (vertical-align above is exact) */
+.rk b { position: absolute; left: 0; right: 0; top: 0; height: 92%; margin: 0; display: grid; place-items: center; }
+.grade b { position: absolute; inset: 0; display: grid; place-items: center; }
+:is(.row, .lrow, .task, .buyrow, .coins, .lad .r, .ic):has(> :is(.rk, .grade:not(.none), .coin, .ctok)) > :not(.rk, .grade, .coin, .ctok, .fut, .face, .face-w, .chip, .tag, .key, .switch, .bar, .ticks) { text-box: trim-both cap alphabetic; }
+.ic { display: inline-flex; align-items: center; gap: 8px; }
+/* a badge beside a two-line block (title + sub line): centred on cap-top of the first line … baseline of the last */
+.ic-block > * { text-box: trim-both cap alphabetic; }
+/* the game's small marks inside a grade (rewards.png, zoomed; positions in % of the badge):
+   D none · C a diamond pip at the bottom (centre 89 %) · B and A a thin inner line + a V chevron (81–89 %)
+   · S the inner line, the chevron and a pip on it (centre 79 %). The chevron is a 45° V, 18.5 % wide. Same colours as the badge. */
+.grade:is(.g-B, .g-A, .g-S) b::before { content: ""; position: absolute; inset: 19.5%; transform: rotate(45deg); border: max(1px, calc(var(--g) * .014)) solid var(--gc); opacity: .75; pointer-events: none; }
+.grade:is(.g-B, .g-A) b::after { content: ""; position: absolute; left: 40.75%; width: 18.5%; top: 81%; height: 8.6%; background: var(--gc); clip-path: polygon(0 0, 22% 0, 50% 55%, 78% 0, 100% 0, 50% 100%); }
+.grade.g-C b::after { content: ""; position: absolute; left: 50%; top: 89%; width: max(2px, calc(var(--g) * .05)); aspect-ratio: 1; translate: -50% -50%; rotate: 45deg; background: var(--gc); }
+.grade.g-S b::after { content: ""; position: absolute; left: 40.75%; width: 18.5%; top: 74%; height: 15%; background: var(--gc);
+  clip-path: polygon(0 46.7%, 22% 46.7%, 50% 76%, 50% 48.3%, 62.4% 33%, 50% 17.7%, 37.6% 33%, 50% 48.3%, 50% 76%, 78% 46.7%, 100% 46.7%, 50% 100%); }
+
+/* ---------- icons, chips and numbers share one optical centre (§16a, user 2026-11-04) ----------
+   An icon beside text (coin, token gem, dot, flag, badge, shield, keycap glyph) is centred on the text's
+   CAPITALS, never hung from the top or the baseline. In a flex row that is align-items: center (rows here);
+   inline in running text, .ico (or the icon classes below) sit on 0.5 cap minus half their own height.
+   Chips, tags and keycaps: one height per size, text centred on both axes, the caps nudged down to the
+   optical centre (Saira/Barlow caps ride ~1 px high in a centred line box – measured on every page). */
+.ico { display: inline-block; flex: none; vertical-align: calc(.5cap - .5 * var(--ico, 1em)); }
+.coin { vertical-align: calc(.5cap - 7px); }
+.gem { vertical-align: calc(.5cap - .19em); }
+.dot { vertical-align: calc(.5cap - 4px); }
+.row > .coin, .row > .gem, .row > .dot, .row > .ico { align-self: center; }
+.tag, .chip { justify-content: center; line-height: 1; }
+.tag { padding-top: 2px; }
+.chip, .key b { padding-top: 1px; }
+.seg > span, .seg > b { padding-top: 2px; }
+
+/* ------------------------------------------------------------------ match detail
+   (T15, 05-overlay-champions + 05-match.js): a Champions match opens its own detail in place of the rank ladder –
+   same grid cell, same panel size, so nothing moves. Unread fields say "Not read" in --text-3 (.md-why explains it once).
+   Selection/focus use the shared .is-sel / .is-focus markings (not restyled here). */
+.ch > .ladder, .ch > .md { grid-column: 3; grid-row: 1; }
+.ch.has-md > .ladder { visibility: hidden; }
+.md { display: flex; flex-direction: column; gap: 20px; padding: 20px 24px 22px; min-height: 0; overflow: hidden; }
+.md[hidden] { display: none; }
+.md:not([hidden]) { animation: md-in 220ms var(--ease-out) both; }
+@keyframes md-in { from { opacity: 0; transform: translateX(6px); } }
+@media (prefers-reduced-motion: reduce) { .md:not([hidden]) { animation: none; } }
+.md-hd { display: flex; justify-content: space-between; align-items: center; min-height: 24px; }
+.md-hd .eyebrow .num { font-size: 1.15em; color: var(--text); letter-spacing: .02em; }
+.md-back { appearance: none; border: 0; background: none; padding: 0; margin: 0; cursor: pointer; font: inherit; color: inherit; }
+.md-top { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 16px; min-height: 92px; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
+.md-res { font-family: var(--f-display); font-stretch: 75%; font-weight: 800; font-size: 64px; line-height: .86; letter-spacing: -.015em; text-transform: uppercase; color: var(--text); }
+.md-res.l { color: var(--text-2); }
+.md-sc { display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-end; gap: 6px; min-width: 150px; height: 56px; text-align: right; }
+.md-big { font-size: 64px; }
+.md-nr { font-size: 13px; font-weight: 500; color: var(--text-3); white-space: nowrap; }
+.md-sec { display: flex; flex-direction: column; gap: 10px; }
+.md-line { position: relative; height: 28px; margin-top: 2px; background: linear-gradient(var(--line-strong), var(--line-strong)) 0 50% / 100% 2px no-repeat; }
+.md-line.empty { background: repeating-linear-gradient(90deg, var(--line-strong) 0 6px, transparent 6px 11px) 0 50% / 100% 2px no-repeat; }
+.md-half { position: absolute; top: 5px; bottom: 5px; width: 1px; background: var(--line-strong); }
+.md-g { position: absolute; width: 10px; height: 10px; transform: translateX(-50%) rotate(45deg); }
+.md-g.for { top: 1px; background: var(--done); }
+.md-g.against { bottom: 1px; background: var(--text-3); }
+.md-ticks { position: relative; height: 12px; font-family: var(--f-num); font-stretch: var(--num-stretch); font-variant-numeric: tabular-nums; font-size: 12px; font-weight: 600; line-height: 1; color: var(--text-3); }
+.md-ticks span { position: absolute; top: 0; }
+.md-ticks span.mid { transform: translateX(-50%); }
+.md-kv { display: flex; flex-direction: column; margin: 0; }
+.md-r { display: flex; justify-content: space-between; align-items: center; gap: 16px; min-height: 38px; border-top: 1px solid var(--line); font-size: 14px; }
+.md-r dt { color: var(--text-2); white-space: nowrap; }
+.md-r dd { margin: 0; text-align: right; color: var(--text); }
+.md-r dd b { font-weight: 650; }
+.md-r dd .num { font-size: 16px; }
+.md-rec { font-size: 22px; }
+.md-lock { display: inline-flex; } .md-lock svg { width: 12px; height: 12px; }
+.md-warn { color: var(--warn-text); font-weight: 600; }
+.md .tag.warn { background: var(--warn-wash); color: var(--warn-text); }
+.md-why { margin: auto 0 0; display: flex; gap: 10px; font-size: 13px; line-height: 1.45; color: var(--text-3); }
+.md-why .dot { margin-top: 6px; }
+/* ===================== cards (S1 · T8/T9, user review 2026-11-04) =====================
+   Complete full cards on EA's measured layout: "++" under the position when the card has a ++ role there,
+   the alternative positions as a column on the right of the frame (x 84–97 %, y 28–42 %), and under the
+   flag row a facts bar that straddles the frame's bottom tip (y 89–94 %): foot · SM ★ · WF ★ · meta rating.
+   Chips use EA's own colour pair for the rarity (ink fill, EA's contrast colour as text) – no theme colours on EA art. */
+.fut .pp { left: calc(var(--rt-x) - 13%); width: 26%; top: 36.9%; text-align: center; font-family: var(--f-num); font-stretch: 75%; font-weight: 800; font-size: 4.6cqw; line-height: 1; letter-spacing: .04em; color: var(--ink); }
+.fut .alt { right: 8.2%; top: 22.6%; display: flex; flex-direction: column; gap: 1.1cqw; z-index: 2; }
+.fut .alt i { position: static; display: block; min-width: 12.6cqw; padding: .9cqw 1.4cqw .8cqw; font: normal 700 max(4.3cqw, 9px)/1 var(--f-body); letter-spacing: .02em; text-align: center; white-space: nowrap;
+  background: color-mix(in srgb, var(--ink) 86%, transparent); color: var(--inv, var(--alt));
+  clip-path: polygon(1.4cqw 0, 100% 0, 100% calc(100% - 1.4cqw), calc(100% - 1.4cqw) 100%, 0 100%, 0 1.4cqw); }
+.fut .alt sup { font-size: .72em; vertical-align: .32em; margin-left: .15em; letter-spacing: 0; }
+.fut .fx { left: 50%; top: 91.9%; height: 6.2%; transform: translateX(-50%); display: flex; align-items: stretch; z-index: 3; white-space: nowrap;
+  background: color-mix(in srgb, var(--ink) 92%, transparent); color: var(--inv, var(--alt));
+  clip-path: polygon(2cqw 0, 100% 0, 100% calc(100% - 2cqw), calc(100% - 2cqw) 100%, 0 100%, 0 2cqw); }
+.fut .fx > span { position: static; display: flex; align-items: center; gap: .6cqw; padding: 0 2.3cqw; font: normal 700 max(4.6cqw, 10px)/1 var(--f-body); }
+.fut .fx > span + span { box-shadow: inset 1px 0 0 color-mix(in srgb, var(--inv, var(--alt)) 28%, transparent); }
+.fut .fx b { font-family: var(--f-num); font-stretch: 75%; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 1.12em; }
+.fut .fx small { font-size: .74em; opacity: .72; letter-spacing: .04em; }
+.fut .fx svg { width: .86em; height: .86em; }
+.fut .fx .mt { background: var(--inv, var(--alt)); color: var(--ink); }
+.fut .fx .mt .gem { position: static; font-size: .9em; }
+.fut.mini .fx, .fut.mini .alt, .fut.mini .pp { display: none; }
+/* EA's holo sticker (Web App: the ownership badge of a hyper-cosmetic card – EA's FC mark, or the "1" triangle when
+   first owner) sits where the first-owner triangle sits, under the position */
+.fut .hs { left: calc(var(--rt-x) - 3.6%); top: 41.4%; width: 7.2%; height: auto; }
+.fut .pp ~ .hs { top: 42.6%; }
+/* holographic (EA hyperCosmetics, foil asset 1112): static foil + animated foil between the background and the
+   portrait, the same 576×800 box as EA's art – nothing is drawn by us, only EA's two PNGs */
+.fut .foil { inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.fut .foil-a { inset: 0; pointer-events: none; background: var(--foil) 0 0 / 2700% 100% no-repeat; animation: foil-sweep 6800ms linear var(--fd, 600ms) infinite; }
+/* one pass through EA's 27 frames at its pace (1.8 s of a 6.8 s cycle), then rest on frame 0 until the next pass (EA: 2–8 s);
+   each card starts at its own offset (--fd from its key), so a row of holo cards never sweeps in sync */
+@keyframes foil-sweep {
+  0% { background-position: 0 0; animation-timing-function: steps(26, jump-none); }
+  26.47% { background-position: 100% 0; animation-timing-function: steps(1, jump-end); }
+  26.5%, 100% { background-position: 0 0; }
+}
+.fut.mini .hs { display: none; }
+@media (prefers-reduced-motion: reduce) { .fut .foil-a { animation: none; background-position: 50% 0; } }
+/* cards: motion is kit.js (K.cardSwap / K.reveal – frame-sampled 3D turn). The old CSS walkout (rotateY 88° squash,
+   brightness filter on the whole card, the white slit ::after) is retired: it left grey bars and slabs beside the card. */
+.fut.reveal { animation: none; }
+.fut.reveal::after { content: none; display: none; }
+.fct-out .fut { position: relative; }
+
+/* cards · §16a (user 2026-11-04): icons beside text sit on the capitals' optical centre; repeated markers keep even gaps;
+   an unread value says so; first owner is the game's marker; focus brackets follow the card's outline. */
+/* optical centre: every label box is trimmed to cap height, so flex centring puts stars, gems, ++ and chips on the caps */
+.fut .fx > span, .fut .fx b, .fut .fx small, .fut .alt i, .fut .pp, .face-w > b > span, .face-w > b i { text-box: trim-both cap alphabetic; }
+.fut .fx > span { padding-block: 0; gap: .9cqw; }
+.fut .fx svg { width: .78em; height: .78em; flex: none; }
+.fut .fx .mt { gap: 1cqw; }
+.fut .fx .mt .gem { width: .5em; height: .5em; margin: 0 .1em; vertical-align: 0; } /* rotated: its diagonal (.71em) = the cap height */
+.fut .alt { gap: 1.2cqw; }
+.fut .alt i { min-width: 13.2cqw; padding: 1.25cqw 1.4cqw; }
+.fut .alt sup { vertical-align: baseline; font-size: .7em; margin-left: .2em; }
+/* face chip "82 ST": one centre line for the rating and the position (was baseline-aligned, so ST sat low) */
+.face-w > b { align-items: center; gap: 4px; padding: 3px 4px; }
+.face-w > b > span { font-size: 12px; line-height: 1; }
+.face-w > b i { line-height: 1; }
+/* an unread value keeps its place and says so – never "–" (only when the data truly lacks the face stats) */
+.fut .st.st-none { display: flex; justify-content: center; align-items: center; height: 7.4%; font: normal 600 max(4.4cqw, 10px)/1 var(--f-body); letter-spacing: .02em; color: var(--ink); opacity: .78; }
+/* first owner: the game's downward "1" triangle in the card's own ink, under the position (under "++" when it is there) */
+.fut .fo, .fut.fut .fo { left: calc(var(--rt-x) - 3.6%); top: 41.4%; width: 7.2%; height: auto; border: 0; z-index: 2; }
+.fut .pp ~ .fo { top: 42.6%; }
+.fut .fo svg { display: block; width: 100%; height: auto; }
+.fut .fo path { fill: var(--ink); }
+.fut .fo path.one { fill: var(--inv, var(--alt)); }
+.fut.mini .fo { left: 20%; width: 10%; top: calc(var(--ps-top) + 11%); }
+.fut.ph .fo path { fill: var(--text-2); } .fut.ph .fo path.one { fill: var(--surface); }
+/* card focus: brackets that follow EA's shield, 3 % outside it; the old rectangular viewfinder is retired */
+.fut .fb { left: -3%; top: -2%; width: 106%; height: 104%; pointer-events: none; display: none; overflow: visible; z-index: 6; }
+.fut .fb path { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linecap: square; stroke-linejoin: miter; }
+.slot.is-focus > .fut > .fb, .fut.is-focus > .fb { display: block; }
+.fut.is-focus:not(.slot) { background-image: none; background-color: transparent; transform: translateY(-3px); } /* the generic cut-corner focus would paint a slab behind a card */
+.slot.is-focus .fut::after { content: none; background: none; }
+/* a card inside a list row has no marking of its own – the row's bar marks it */
+.lrow .fut > .fb, .lrow .fut::after { display: none !important; }
+.lrow .fut, .lrow .face-w { transform: none !important; }
+/* holo in LIGHT (coordinator, s6 R5 #7): EA's static foil halo reaches ~20–25 px outside the shield and reads as a glow on
+   paper – clip both foil layers to the shield's own outline (EA's gold outline, the placeholder path, 1 % outside it).
+   Dark and glass keep EA's look. */
+:root[data-theme="light"] .fut .foil, :root[data-theme="light"] .fut .foil-a {
+  clip-path: polygon(6.6% 8.3%, 40.3% 5.5%, 50% 2.2%, 59.7% 5.5%, 93.4% 8.3%, 94.8% 16.5%, 94.8% 77.5%, 92% 82.5%, 83.6% 87.4%, 69.6% 92.4%, 50% 97.6%,
+    30.4% 92.4%, 16.4% 87.4%, 8% 82.5%, 5.2% 77.5%, 5.2% 16.5%); }
+/* final round (user references fc-tracker-fixtures/user-cards-stats-vs-ea.png + new-items-first-owner-pack.webp):
+   stats and the flag row re-measured on EA's Rayan render (card-height %): label caps 74.8 % (cap 2.0 %), value caps
+   77.6 % (cap 3.7 %, bold, EA's wide figures ≈ Saira at 100 % width), flag row centre 86.3 % (flag 3 % tall, league and
+   club ≈ 5.5 %). Boxes are trimmed to the cap height, so these are the caps' own positions. */
+.fut { --st-top: 74.8%; --st-lab: 4cqw; --st-val: 7.35cqw; --ft-y: 86.3%; --ft-flag: 4.15cqw; --ft-badge: 7.6cqw; }
+.fut.fut .st > span { gap: 1.05cqw; }
+.fut.fut .st small, .fut.fut .st b { text-box: trim-both cap alphabetic; font-stretch: 100%; }
+.fut.fut .st small { font-weight: 700; letter-spacing: .01em; }
+.fut.fut .st b { font-weight: 700; letter-spacing: -.01em; }
+.fut.fut .ft { gap: 3.4cqw; }
+/* first owner, measured on the pack (Nicolas 79 GK): a flat-topped downward triangle ≈ 10.3 % of the card wide, as
+   tall as wide, centred under the rating column, the "1" knocked out in the card's own contrast colour */
+.fut .fo, .fut.fut .fo { left: calc(var(--rt-x) - 5.15%); width: 10.3%; top: 39.4%; }
+.fut .pp ~ .fo { top: 40.6%; }
+.fut.mini .fo { left: calc(25% - 6.5%); width: 13%; top: calc(var(--ps-top) + 10%); }
+/* end cards */
+/* T17 (user round 8) – mini cards like the game's small cards (fixtures/round8/game-mini-rice.png, -cm88, -cam80): no
+   name; rating + position top-left, the first-owner triangle under the position (≈15 % of the card wide, the "1" in
+   the card's contrast colour), the flag · league · club row where the name was (row centre ≈77 % of the card height;
+   flag ≈13 %, league/club ≈17 % of the card wide). A placeholder keeps its name. */
+.fut.fut.mini .ft { top: 70.5%; height: 13%; gap: 5cqw; }
+.fut.fut.mini .ft .fl { height: 11cqw; } .fut.fut.mini .ft .lg, .fut.fut.mini .ft .bd { height: 16cqw; }
+.fut.fut.mini .fo { left: calc(var(--rt-x) - 7.5%); width: 15%; top: calc(var(--ps-top) + 11.5%); }
+.fut.fut.mini .pt.base { top: 17%; width: 62%; left: 30%; }
+/* T17 – card light: EA's static foil pops up once and then stays where it is with a small pulse. The animated foil
+   sprite (a band sweeping across, and past the shield) is retired: the user wants no sweep, no movement. */
+.fut .foil-a { display: none; }
+.fut.holo .foil { animation: foil-pop 320ms cubic-bezier(.2, .8, .2, 1) both, foil-pulse 2600ms ease-in-out 320ms infinite alternate; }
+@keyframes foil-pop { 0% { opacity: 0; transform: scale(.94); } 60% { opacity: 1; transform: scale(1.015); } 100% { opacity: 1; transform: none; } }
+@keyframes foil-pulse { from { opacity: 1; } to { opacity: .72; } }
+@media (prefers-reduced-motion: reduce) { .fut.holo .foil { animation: none; } }
+/* T17b – the mini's flag · league · club row like the game's (round8 game-mini-rice.png, card ≈116 px wide): three equal
+   boxes (≈19 % of the card wide each, 5 % gaps), every item centred in its box on one optical centre line, the group
+   centred under the art, the row centre at 77 % on every card (same bottom margin). Flag ≈13 % tall, league/club ≈17 %. */
+.fut.fut.mini .ft { display: grid; grid-auto-flow: column; grid-auto-columns: 19cqw; column-gap: 5cqw; justify-content: center; align-items: center; justify-items: center; top: calc(77% - 6.5%); height: 13%; gap: 0 5cqw; }
+.fut.fut.mini .ft .fl { width: 19cqw; height: auto; max-height: 13cqw; object-fit: contain; }
+.fut.fut.mini .ft .lg, .fut.fut.mini .ft .bd { height: 17cqw; width: auto; max-width: 19cqw; object-fit: contain; }
+/* name + row tried (T17b #3) at every mini size the screens use (46–110 px): at 84 px the name is ≈7 px and unreadable,
+   at 110 px it sits on the portrait's chin and crowds the row. Neither has the game's breathing room, and the game's
+   own minis carry no name – so a mini never shows the name (a full card does; a placeholder keeps it). */
+/* T17c – a target grade is the game's badge, never a loose coloured letter: "[C] → [B]" / "→ [B]" (K.toGrade) */
+.grade.xs { --g: 18px; }
+.to-g { display: inline-flex; align-items: center; gap: 3px; vertical-align: middle; color: var(--text-3); font-size: 13px; }
+.to-g > i { font-style: normal; line-height: 1; }
+.to-g .grade { vertical-align: middle; }
+/* T17c – the tiniest cards: the position scales with the card like the rating (it had a 10–11 px floor that made it as
+   big as the rating on a 46 px mini); floor 7 px stays legible. Face chips: rating and position scale with --s. */
+.fut.fut.mini { --ps-fs: max(10.5cqw, 7px); }
+.fut.fut.mini .ps { font-size: var(--ps-fs); }
+.face-w > b > span { font-size: max(calc(var(--s) * .25), 10px); }
+.face-w > b i { font-size: max(calc(var(--s) * .19), 7px); }
+/* T17d – two small sizes (user 2026-11-04): a "small" card (≥ 96 px, the pitch on 06) shows the name on one line above
+   the flag · league · club row – there is room; a "mini" (< 96 px, list rows ≈46 px) has no name (kit.js mini()). */
+.fut.fut.mini:has(.ft) .nm { display: block; top: 61.5%; left: 9%; right: 9%; font-size: 9.6cqw; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; z-index: 2; }
+.fut.fut.mini:has(.ft) .nm.long { font-size: 8.4cqw; }
+/* the list-row minis (≈46 px): rating and position both scale with the card, the position never climbs into the rating */
+.fut.fut.mini { --rt-fs: 19cqw; }
+.fut.fut.mini .rt { font-size: var(--rt-fs); }
+.fut.fut.mini .ps { top: calc(var(--rt-top) + 17.5cqw); }
+/* T17e – small cards (≥ 96 px, name shown): name + flag · league · club row centred in the lower panel (below the art,
+   above the tip ≈ 64–90 %), icons a little smaller so both fit */
+.fut.fut.mini:has(.nm):has(.ft) .nm { top: 66%; }
+.fut.fut.mini:has(.nm):has(.ft) .ft { top: calc(80% - 5.5%); height: 11%; grid-auto-columns: 16cqw; }
+.fut.fut.mini:has(.nm):has(.ft) .ft .fl { width: 15cqw; max-height: 10.5cqw; }
+.fut.fut.mini:has(.nm):has(.ft) .ft .lg, .fut.fut.mini:has(.nm):has(.ft) .ft .bd { height: 13.5cqw; max-width: 16cqw; }
+/* full cards: the lower block (name, stats, flag row) 1.5 % higher – vertically centred in the lower panel */
+.fut:not(.mini) { --nm-top: 65.2%; --st-top: 73.3%; --ft-y: 84.8%; }
+/* T17f (user 2026-11-04) – focus brackets: four corner brackets on the card's own box (every frame shape – gold, Hero,
+   TOTW, Icon – fits in it); the shield-following path only fitted one frame */
+/* face chips: the card's own art behind the portrait, shown at the plain lower panel (where the stats sit), so gold,
+   TOTW, Icon … read at a glance – EA's own background, no colour of ours */
+.face-w .face { background: var(--fbg) 50% 84% / 240% auto no-repeat, var(--surface-dense); }
+/* small cards: rating + position a touch smaller and a little further in, so they never run over the frame's edge */
+.fut.fut.mini { --rt-fs: 17cqw; --ps-fs: max(9.5cqw, 7px); }
+.fut.fut.mini .rt, .fut.fut.mini .ps { left: calc(var(--rt-x) - 11%); width: 26%; }
+.fut.fut.mini .ps { top: calc(var(--rt-top) + 16cqw); }
+/* the first-owner mark sits centred under the rating + position column (it followed --rt-x, the column moved 2 % in) */
+.fut.fut.mini .fo { width: 15%; left: calc(var(--rt-x) + 2% - 7.5%); top: 43.5%; } /* a little closer under the position (user 2026-11-05) */
+/* T17g – holo/action white box: an action-shot portrait that EA's CDN doesn't have (404) was drawn by the browser as a
+   broken image – a full-card frame plus the broken-image icon – until fctPt swapped in the base portrait. A portrait
+   is now hidden until it has actually loaded. */
+.fut .pt:not(.ok) { visibility: hidden; }
+/* T17h – XXS face chips: a clean square in the card's own rarity colour, not a crop of the shield's pattern/edge. The
+   colour is EA's own art – one tiny spot of the card's plain lower panel (where the stats sit, x 50 % y 80 %) blown up
+   to fill the square, so it reads as a flat fill (gold for gold, the special's own colour for specials). */
+.face-w .face { background: var(--fbg) 50% 80% / 4000% auto no-repeat, var(--surface-dense); }
+
+
+/* ══ production additions (src/ui React parts) ══ */
+/* panel tiers (glass: .20 standard · .34 hero/focused · .44 dense; solid themes: one surface) */
+.panel.tier-hero { background-color: var(--surface-hero, var(--surface)); }
+.panel.tier-dense { background-color: var(--surface-dense, var(--surface)); }
+/* the hero panel's red folded corner, on any tier */
+.panel.signed { background-image: linear-gradient(135deg, transparent 50%, var(--accent) 50%, var(--accent) calc(50% + 3px), transparent calc(50% + 3px)), linear-gradient(315deg, transparent 50%, var(--accent) 50%, var(--accent) calc(50% + 3px), transparent calc(50% + 3px)); background-size: var(--cut) var(--cut); background-position: 0 0, 100% 100%; background-repeat: no-repeat; }
+/* FocusCursor: four red brackets over an element that keeps its own background (cut or square corners) */
+.focus-cursor { position: absolute; inset: 0; pointer-events: none; z-index: 5; --c: var(--accent);
+  background:
+    linear-gradient(var(--c), var(--c)) 0 0 / 14px 2px, linear-gradient(var(--c), var(--c)) 0 0 / 2px 14px,
+    linear-gradient(var(--c), var(--c)) 100% 0 / 14px 2px, linear-gradient(var(--c), var(--c)) 100% 0 / 2px 14px,
+    linear-gradient(var(--c), var(--c)) 0 100% / 14px 2px, linear-gradient(var(--c), var(--c)) 0 100% / 2px 14px,
+    linear-gradient(var(--c), var(--c)) 100% 100% / 14px 2px, linear-gradient(var(--c), var(--c)) 100% 100% / 2px 14px;
+  background-repeat: no-repeat; }
+.focus-cursor.cut { --cut: var(--cut-l);
+  background:
+    linear-gradient(135deg, transparent 50%, var(--c) 50%, var(--c) calc(50% + 2.5px), transparent calc(50% + 2.5px)) 0 0 / var(--cut) var(--cut),
+    linear-gradient(315deg, transparent 50%, var(--c) 50%, var(--c) calc(50% + 2.5px), transparent calc(50% + 2.5px)) 100% 100% / var(--cut) var(--cut),
+    linear-gradient(var(--c), var(--c)) 100% 0 / 14px 2px, linear-gradient(var(--c), var(--c)) 100% 0 / 2px 14px,
+    linear-gradient(var(--c), var(--c)) 0 100% / 14px 2px, linear-gradient(var(--c), var(--c)) 0 100% / 2px 14px;
+  background-repeat: no-repeat; }
+/* a card whose rarity art is not known: EA's outline as a plain, solid silhouette (never a guessed colour) */
+.fut.ph.plain .ph-svg path { fill: var(--fill); stroke: var(--line-strong); stroke-dasharray: none; }
+.fut.ph.plain .pt { opacity: 1; filter: none; }
+/* buttons are buttons: reset the browser's own look on the React parts */
+button.tab, button.seg, button.btn, button.switch { font: inherit; border: 0; cursor: pointer; }
+button.tab { background: none; color: var(--text-3); font-family: var(--f-display); font-stretch: var(--display-stretch); font-weight: 600; font-size: var(--fs-20); }
+button.tab.is-on { color: var(--tab-on-fg); background: var(--tab-on-bg); }
+button.seg { padding: 0; font-family: var(--f-display); font-stretch: var(--display-stretch); font-size: var(--fs-15); font-weight: 600; }
+button.btn { font-family: var(--f-display); font-stretch: var(--display-stretch); }
+/* a tab row with its keys (Segs): Q / E pinned at the ends, the tabs scroll between them with a fade on the side with more */
+.cat-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.cat-row > :not(.cat-tabs) { flex: none; }
+.cat-row > .cat-tabs { flex: 0 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: none; display: flex; gap: 6px; }
+.cat-row > .cat-tabs::-webkit-scrollbar { display: none; }
+.cat-row > .cat-tabs > * { flex: none; }
+.cat-row > .cat-tabs[data-more-right="true"] { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 72px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 72px), transparent); }
+.cat-row > .cat-tabs[data-more-left="true"] { -webkit-mask-image: linear-gradient(90deg, transparent, #000 72px); mask-image: linear-gradient(90deg, transparent, #000 72px); }
+.cat-row > .cat-tabs[data-more-left="true"][data-more-right="true"] { -webkit-mask-image: linear-gradient(90deg, transparent, #000 72px, #000 calc(100% - 72px), transparent); mask-image: linear-gradient(90deg, transparent, #000 72px, #000 calc(100% - 72px), transparent); }

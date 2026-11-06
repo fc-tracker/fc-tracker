@@ -214,6 +214,10 @@ impl FirstOwnerInfo<'_> {
     /// a purchase never beats EA saying the club copy is first owner), then a "no" read, then the
     /// user's mark. Without any of these: not first owner.
     pub fn known_or_manual(&self, def_id: u64) -> bool {
+        // the user's own mark first (Players page): it stays until the user changes it
+        if let Some(&m) = self.manual.get(&def_id) {
+            return m;
+        }
         match self.scanned.get(&def_id) {
             Some(true) => true,
             _ if self.known.contains(&def_id) => true,
@@ -223,6 +227,11 @@ impl FirstOwnerInfo<'_> {
     }
 
     pub fn status(&self, c: &GalleryCard) -> FirstOwnerStatus {
+        match self.manual.get(&c.def_id) {
+            Some(true) => return FirstOwnerStatus::Manual,
+            Some(false) => return FirstOwnerStatus::ManualNo,
+            None => {}
+        }
         match self.scanned.get(&c.def_id) {
             Some(true) => FirstOwnerStatus::Scanned,
             _ if self.known.contains(&c.def_id) => FirstOwnerStatus::Known,
@@ -379,10 +388,23 @@ pub struct CardView {
     /// EA's market average (else the lowest Buy Now seen) on the user's own platform market.
     pub price: Option<u64>,
     pub price_at: Option<u64>,
+    /// The card's art beyond the rarity (brand v2 FutCard: the flag · league · club row, the face stats).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nation: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub league: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub club: Option<u64>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub face: Vec<u8>,
+    /// EA's art guid: the action shot of a special.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub art: Option<String>,
 }
 
 fn view(c: &GalleryCard, ctx: &Context) -> CardView {
     CardView {
+        art: c.art.clone(),
         def_id: c.def_id,
         name: c.name.clone(),
         rating: c.rating,
@@ -394,6 +416,10 @@ fn view(c: &GalleryCard, ctx: &Context) -> CardView {
         slot: None,
         price: ctx.prices.get(&c.def_id).and_then(Price::value),
         price_at: ctx.prices.get(&c.def_id).map(|p| p.at),
+        nation: c.nation,
+        league: c.league,
+        club: c.team,
+        face: c.face.clone(),
     }
 }
 
@@ -503,6 +529,7 @@ impl Entry<'_> {
             Entry::Slot { slot, points, first_owner } => {
                 let s = obs.and_then(|o| o.slots.get(*slot));
                 CardView {
+                    art: None,
                     def_id: u64::MAX - *slot as u64,
                     name: None,
                     rating: s.and_then(|s| s.rating).map(|r| r as u64),
@@ -514,6 +541,10 @@ impl Entry<'_> {
                     slot: Some(*slot),
                     price: None,
                     price_at: None,
+                    nation: None,
+                    league: None,
+                    club: None,
+                    face: Vec::new(),
                 }
             }
         }

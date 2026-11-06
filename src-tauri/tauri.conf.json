@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "FC-Tracker",
-  "version": "0.1.101",
+  "version": "0.2.0",
   "identifier": "dk.fctracker.app",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -63,8 +63,8 @@
         "label": "toast",
         "title": "FC-Tracker toast",
         "url": "index.html?view=toast",
-        "width": 640,
-        "height": 92,
+        "width": 480,
+        "height": 60,
         "x": 680,
         "y": 20,
         "visible": false,
@@ -112,6 +112,8 @@
         },
         "installerHooks": "nsis/hooks.nsh",
         "installerIcon": "icons/icon.ico",
+        "headerImage": "nsis/header.bmp",
+        "sidebarImage": "nsis/sidebar.bmp",
         "template": "nsis/installer.nsi"
       },
       "webviewInstallMode": {

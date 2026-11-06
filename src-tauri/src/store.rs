@@ -54,6 +54,10 @@ pub struct Snapshot {
     /// Card database entries for Gallery sets (definitionId → card), incl. EA's `isCollected`.
     #[serde(default)]
     pub gallery: BTreeMap<u64, GalleryCard>,
+    /// Cards the user took out as a wrong read (Players page, user 2026-11-05: an 85 Risser the reader saw): never
+    /// collected for FC-Tracker, whatever a later read or sync says, until the user puts them back.
+    #[serde(default)]
+    pub removed_cards: BTreeSet<u64>,
     #[serde(default)]
     pub gallery_synced_at: Option<u64>,
     /// Men's ↔ women's team links from EA (`chemistry/teamlinks`), e.g. 1 ↔ 116009 (Arsenal).
@@ -280,6 +284,7 @@ impl Store {
         let absorbed = crate::merge::absorb_redirected(&dir, &mut snapshot);
         let mut store = Self { dir, snapshot, sync_active: false, sync_missed: Vec::new(), sync_abort: false, sync_blocked: None, sync_never_owned: BTreeMap::new(), sync_sets_read: BTreeSet::new(), club_read_started: None, revision: Default::default(), focus_set: None, dirty: false, pending_buy: None, last_coins: None, web: crate::webdata::WebData::default(), web_dirty: false, sync_last_set: None, unknown_sets: BTreeSet::new(), unknown_new: Vec::new(), paid_new: Vec::new() };
         store.web = crate::webdata::WebData::load(&store.dir);
+        store.apply_removed();
         if store.replay_card_database_captures() > 0 || !absorbed.is_empty() {
             store.save();
         }
@@ -422,6 +427,7 @@ impl Store {
             }
             crate::merge::merge(&mut self.snapshot, other);
         }
+        self.apply_removed();
         self.bump();
         self.save();
         Ok(())
@@ -702,6 +708,29 @@ impl Store {
         changed
     }
 
+    /// The user's word on wrong reads: a removed card is never collected (after every merge and at load).
+    pub fn apply_removed(&mut self) {
+        for d in self.snapshot.removed_cards.clone() {
+            if let Some(c) = self.snapshot.gallery.get_mut(&d) {
+                c.collected = false;
+            }
+        }
+    }
+
+    /// Takes a card out as a wrong read, or puts it back (it was collected before it was taken out).
+    pub fn set_card_removed(&mut self, def_id: u64, removed: bool) {
+        if removed {
+            self.snapshot.removed_cards.insert(def_id);
+            self.apply_removed();
+        } else if self.snapshot.removed_cards.remove(&def_id) {
+            if let Some(c) = self.snapshot.gallery.get_mut(&def_id) {
+                c.collected = true;
+            }
+        }
+        self.snapshot.first_owner_version += 1;
+        self.save();
+    }
+
     fn merge_gallery(&mut self, cards: Vec<GalleryCard>) {
         for c in cards {
             let merged = match self.snapshot.gallery.get(&c.def_id) {
@@ -717,6 +746,7 @@ impl Store {
             };
             self.snapshot.gallery.insert(merged.def_id, merged);
         }
+        self.apply_removed();
     }
 
     /// Re-applies the saved raw card-database responses (`captures/*_defid.json`). Recovers
@@ -1228,6 +1258,30 @@ mod tests {
     }
 
     #[test]
+    fn a_card_taken_out_as_a_wrong_read_stays_out_until_put_back() {
+        let mut s = temp_store();
+        s.merge_gallery(vec![GalleryCard { def_id: 7, collected: true, ..Default::default() }]);
+        s.set_card_removed(7, true);
+        assert!(!s.snapshot.gallery[&7].collected);
+        // a later read that says collected does not bring it back
+        s.merge_gallery(vec![GalleryCard { def_id: 7, collected: true, ..Default::default() }]);
+        assert!(!s.snapshot.gallery[&7].collected);
+        s.set_card_removed(7, false);
+        assert!(s.snapshot.gallery[&7].collected);
+    }
+
+    #[test]
+    fn the_users_first_owner_mark_beats_a_later_read() {
+        let mut s = temp_store();
+        s.set_first_owner(9, Some(false));
+        s.snapshot.first_owner_scanned.insert(9, true); // an in-game read afterwards
+        let snap = &s.snapshot;
+        let fo = crate::gallery_sets::FirstOwnerInfo { known: &snap.first_owner, manual: &snap.first_owner_manual, scanned: &snap.first_owner_scanned, club_no: &snap.first_owner_club_no };
+        assert!(!fo.known_or_manual(9));
+        assert_eq!(fo.status(&GalleryCard { def_id: 9, collected: true, ..Default::default() }), crate::gallery_sets::FirstOwnerStatus::ManualNo);
+    }
+
+    #[test]
     fn a_first_owner_sbc_reward_gets_its_origin_and_stats_are_kept() {
         let mut s = temp_store();
         let far = now_ms() / 1000 + 86_400;
@@ -1520,3 +1574,4 @@ mod tests {
         assert_eq!(out[0].0.rating, Some(88));
     }
 }
+

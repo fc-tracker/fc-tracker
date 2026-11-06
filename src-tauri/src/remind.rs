@@ -6,7 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 
 /// Settings → Match reminders (in `ui.json`).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -57,14 +57,17 @@ pub struct Need {
 }
 
 #[derive(Default)]
-struct Live {
-    needs: Vec<Need>,
+pub(crate) struct Live {
+    pub(crate) needs: Vec<Need>,
     /// Moments already shown in this match.
     fired: Vec<u16>,
     /// Players already told to come on.
     subbed: Vec<String>,
     /// The clock was read at least once (logged once per match).
     clock_seen: bool,
+    /// The last minute taken as true, and a run of the same other reading (see `steady`).
+    last_ok: Option<u16>,
+    run: Option<(u16, u8)>,
 }
 
 static LIVE: Mutex<Option<Live>> = Mutex::new(None);
@@ -144,6 +147,15 @@ pub fn minute(app: &AppHandle, minute: u16) {
     if !prefs.on {
         return;
     }
+    // one misread must never remind early (a replay of a recording read 28' as 23')
+    let minute = {
+        let mut live = LIVE.lock().unwrap();
+        let Some(l) = live.as_mut() else { return };
+        match steady(l, minute) {
+            Some(m) => m,
+            None => return,
+        }
+    };
     {
         let mut live = LIVE.lock().unwrap();
         if let Some(l) = live.as_mut() {
@@ -153,45 +165,83 @@ pub fn minute(app: &AppHandle, minute: u16) {
             }
         }
     }
-    let now: Vec<Need> = {
+    // the side panel's match brief (T24, mockup 07): the clock as read and the subs still to come
+    {
+        let live = LIVE.lock().unwrap();
+        let next: Vec<Need> = live.as_ref().map(|l| l.needs.iter().filter(|n| !n.start && !l.subbed.contains(&n.player)).cloned().collect()).unwrap_or_default();
+        let _ = app.emit_to(crate::MISSING, "match-clock", serde_json::json!({ "minute": minute, "needs": next }));
+    }
+    let shown = {
         let mut live = LIVE.lock().unwrap();
         let Some(l) = live.as_mut() else { return };
-        let due: Vec<Need> = l.needs.iter().filter(|n| !n.start && n.at <= minute && !l.subbed.contains(&n.player)).cloned().collect();
-        l.subbed.extend(due.iter().map(|n| n.player.clone()));
-        due
+        on_minute(l, &prefs, minute)
     };
-    if !now.is_empty() {
-        show(app, minute, true, now);
-        return;
-    }
-    // a late first reading never shows several moments at once: the latest one
-    let due = {
-        let live = LIVE.lock().unwrap();
-        let Some(l) = live.as_ref() else { return };
-        prefs.at.iter().copied().filter(|&m| m > 0 && m <= minute && !l.fired.contains(&m)).max()
-    };
-    if let Some(m) = due {
-        if let Some(l) = LIVE.lock().unwrap().as_mut() {
-            l.fired.extend(prefs.at.iter().copied().filter(|&x| x > 0 && x <= m));
-        }
-        moment(app, m);
+    if let Some(r) = shown {
+        show(app, r.at, r.now, r.needs);
     }
 }
 
+/// The clock as the reminders take it: a reading moving on from the last one by 0–3 minutes is
+/// taken; anything else (a jump, a step back – a misread "28" → "23", "23" → "73") only when the same
+/// reading comes three times in a row. The clock moves about a minute every 8–10 s, so a true jump
+/// (the app started mid-match) is taken within a few looks, while one misread is never acted on.
+pub(crate) fn steady(l: &mut Live, m: u16) -> Option<u16> {
+    let near = l.last_ok.is_some_and(|last| m >= last && m <= last + 3);
+    let run = match l.run {
+        Some((v, n)) if v == m => n + 1,
+        _ => 1,
+    };
+    l.run = Some((m, run));
+    if near || run >= 3 {
+        l.last_ok = Some(m);
+        return Some(m);
+    }
+    None
+}
+
+/// What one reminder shows: at which minute, "sub on now" or a set moment, and who.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct Shown {
+    pub at: u16,
+    pub now: bool,
+    pub needs: Vec<Need>,
+}
+
+/// The clock read `minute` (pure – the app and the recording replay run the same rules): the
+/// players whose minute came, else the latest set moment passed (a late first reading never shows
+/// several moments at once).
+pub(crate) fn on_minute(l: &mut Live, prefs: &Prefs, minute: u16) -> Option<Shown> {
+    let due: Vec<Need> = l.needs.iter().filter(|n| !n.start && n.at <= minute && !l.subbed.contains(&n.player)).cloned().collect();
+    if !due.is_empty() {
+        l.subbed.extend(due.iter().map(|n| n.player.clone()));
+        return Some(Shown { at: minute, now: true, needs: due });
+    }
+    let m = prefs.at.iter().copied().filter(|&m| m > 0 && m <= minute && !l.fired.contains(&m)).max()?;
+    l.fired.extend(prefs.at.iter().copied().filter(|&x| x > 0 && x <= m));
+    moment_of(l, m)
+}
+
 /// A set moment: loading in (everyone, with their minutes), later the subs still to come.
+pub(crate) fn moment_of(l: &mut Live, at: u16) -> Option<Shown> {
+    if at == 0 {
+        if l.fired.contains(&0) {
+            return None;
+        }
+        l.fired.push(0);
+    }
+    let needs: Vec<Need> = l.needs.iter().filter(|n| (at == 0 || !n.start) && !l.subbed.contains(&n.player)).cloned().collect();
+    (!needs.is_empty()).then_some(Shown { at, now: false, needs })
+}
+
 fn moment(app: &AppHandle, at: u16) {
-    let needs = {
+    let shown = {
         let mut live = LIVE.lock().unwrap();
         let Some(l) = live.as_mut() else { return };
-        if at == 0 {
-            if l.fired.contains(&0) {
-                return;
-            }
-            l.fired.push(0);
-        }
-        l.needs.iter().filter(|n| (at == 0 || !n.start) && !l.subbed.contains(&n.player)).cloned().collect::<Vec<_>>()
+        moment_of(l, at)
     };
-    show(app, at, false, needs);
+    if let Some(r) = shown {
+        show(app, r.at, r.now, r.needs);
+    }
 }
 
 fn show(app: &AppHandle, at: u16, now: bool, needs: Vec<Need>) {
@@ -207,6 +257,86 @@ fn show(app: &AppHandle, at: u16, now: bool, needs: Vec<Need>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn need(player: &str, start: bool, at: u16) -> Need {
+        Need { player: player.into(), evo: "Evo".into(), level: 1, levels: 3, start, bench: false, at }
+    }
+    fn who(r: &Option<Shown>) -> Vec<String> {
+        r.as_ref().map(|r| r.needs.iter().map(|n| n.player.clone()).collect()).unwrap_or_default()
+    }
+
+    /// The user's scenario (2026-11-05): an evo player subbed on at 30:00, one who starts, a bench
+    /// card at 70:00 – minute by minute as the clock reads them, each reminder exactly once.
+    #[test]
+    fn an_evo_sub_at_30_fires_once_and_the_rest_at_their_minutes() {
+        let prefs = Prefs::default();
+        let mut l = Live { needs: vec![need("Suhonen", false, 30), need("Starter", true, 70), need("Bench", false, 70)], ..Default::default() };
+        // loading in: everyone, the starter too
+        assert_eq!(who(&moment_of(&mut l, 0)), vec!["Suhonen", "Starter", "Bench"]);
+        assert_eq!(moment_of(&mut l, 0), None, "loading in shows once");
+        let mut log = Vec::new();
+        for m in 0..=95u16 {
+            if let Some(r) = on_minute(&mut l, &prefs, m) {
+                log.push((m, r.now, r.needs.iter().map(|n| n.player.clone()).collect::<Vec<_>>()));
+            }
+        }
+        assert_eq!(
+            log,
+            vec![
+                (30, true, vec!["Suhonen".to_string()]),
+                // half time: the subs still to come (never the starter, never one already on)
+                (45, false, vec!["Bench".to_string()]),
+                (70, true, vec!["Bench".to_string()]),
+            ]
+        );
+    }
+
+    /// The clock can be read late (the app started mid-match) or skip minutes: the due sub still
+    /// comes, and several passed moments show as one.
+    #[test]
+    fn a_late_or_skipping_clock_still_reminds_once() {
+        let prefs = Prefs { on: true, at: vec![30, 45], sub_at: 70 };
+        let mut l = Live { needs: vec![need("Late", false, 70)], ..Default::default() };
+        // first reading at 50': the 30' and 45' moments are one reminder
+        let r = on_minute(&mut l, &prefs, 50).unwrap();
+        assert_eq!((r.at, r.now), (45, false));
+        assert_eq!(on_minute(&mut l, &prefs, 51), None);
+        // the clock jumps from 66' to 74' (a missed look): the sub still comes, once
+        assert_eq!(on_minute(&mut l, &prefs, 66), None);
+        assert_eq!(who(&on_minute(&mut l, &prefs, 74)), vec!["Late"]);
+        assert_eq!(on_minute(&mut l, &prefs, 80), None);
+    }
+
+    /// One misread never counts: a jump up (23' read as 73') or back needs three readings in a row;
+    /// normal steps are taken at once, and a true jump (the app started mid-match) within three looks.
+    #[test]
+    fn a_misread_minute_is_never_taken() {
+        let mut l = Live::default();
+        // the first readings of a match: three in a row (0' at kickoff)
+        assert_eq!([0u16, 0, 0].map(|m| steady(&mut l, m)), [None, None, Some(0)]);
+        assert_eq!(steady(&mut l, 1), Some(1));
+        assert_eq!(steady(&mut l, 3), Some(3));
+        // "23" read as "73" once: not taken; the true minute goes on
+        assert_eq!(steady(&mut l, 73), None);
+        assert_eq!(steady(&mut l, 4), Some(4));
+        // "28" read as "23" (back): not taken
+        assert_eq!(steady(&mut l, 1), None);
+        assert_eq!(steady(&mut l, 5), Some(5));
+        // the app started late / a long gap: 60' three times → taken
+        assert_eq!([60u16, 60, 60].map(|m| steady(&mut l, m)), [None, None, Some(60)]);
+    }
+
+    /// A misread clock that goes back (the replay found "10:36" read as 0') must not fire anything
+    /// twice or early.
+    #[test]
+    fn a_clock_going_back_never_fires_again() {
+        let prefs = Prefs::default();
+        let mut l = Live { needs: vec![need("Sub", false, 30)], ..Default::default() };
+        assert_eq!(who(&on_minute(&mut l, &prefs, 31)), vec!["Sub"]);
+        for m in [3u16, 13, 30, 31] {
+            assert_eq!(on_minute(&mut l, &prefs, m), None, "{m}'");
+        }
+    }
 
     #[test]
     fn reminders_default_to_loading_in_and_half_time_and_subs_at_70() {

@@ -1,3 +1,103 @@
+/* ══ Brand v2 frames (ported from design/d-draft-2/components.css – keep in step) ══
+   The cut corner (top-left + bottom-right at 45°), the .ring border that follows it, the game-cursor focus and the
+   one-marking rules (PRINCIPLES §16/16a). Tokens only. */
+/* ------------------------------------------------------------- cut corner */
+/* The signature: top-left and bottom-right folded in at 45°. --cut sets the size (tokens). */
+.cut, .panel, .btn, .chip, .seg, .key b, .tile, .lrow, .bar, .field, .toast, .l3-body, .switch, .tick, .mark, .tag {
+  --cut: var(--cut-m);
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+}
+/* A crisp border that follows the cut: a solid even-odd ring, --bw wide, in --ring.
+   (The inner diagonal is offset by bw·tan 22.5° so the stroke is the same width on every side.) */
+.ring { position: relative; --bw: 1px; --ring: var(--line); }
+.switch { --bw: 1px; }
+.ring::after, .switch::after, :root[data-theme="glass"] .key b::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 4;
+  /* the diagonals (user 2026-11-05): the inner diagonal is offset by bw·(√2 − 1) = .414 bw, so the stroke is exactly
+     bw wide at 45° like an SVG 1 px stroke – it anti-aliases as one line. The earlier 1.35 × bw (.909 offset) spread over
+     ~2 px across and read as a double stroke next to the cut. The fill's clip and this frame share --cut exactly. */
+  --bwd: calc(var(--bw) * .414);
+  background: var(--ring);
+  clip-path: polygon(evenodd,
+    var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut), var(--cut) 0,
+    calc(var(--cut) + var(--bwd)) var(--bw), calc(100% - var(--bw)) var(--bw),
+    calc(100% - var(--bw)) calc(100% - var(--cut) - var(--bwd)),
+    calc(100% - var(--cut) - var(--bwd)) calc(100% - var(--bw)),
+    var(--bw) calc(100% - var(--bw)), var(--bw) calc(var(--cut) + var(--bwd)),
+    calc(var(--cut) + var(--bwd)) var(--bw));
+}
+/* controller focus: a 2 px red ring on the same cut, lifted 2 px. No glow. */
+.is-focus { position: relative; --fc: var(--accent); }
+.is-focus:not(.slot):not(input) {
+  background-image:
+    linear-gradient(135deg, transparent 50%, var(--fc) 50%, var(--fc) calc(50% + 2.5px), transparent calc(50% + 2.5px)),
+    linear-gradient(315deg, transparent 50%, var(--fc) 50%, var(--fc) calc(50% + 2.5px), transparent calc(50% + 2.5px)),
+    linear-gradient(var(--fc), var(--fc)), linear-gradient(var(--fc), var(--fc)),
+    linear-gradient(var(--fc), var(--fc)), linear-gradient(var(--fc), var(--fc));
+  background-size: var(--cut) var(--cut), var(--cut) var(--cut), 14px 2px, 2px 14px, 14px 2px, 2px 14px;
+  background-position: 0 0, 100% 100%, 100% 0, 100% 0, 0 100%, 0 100%;
+  background-repeat: no-repeat;
+}
+.is-focus.panel, .is-focus.tile { background-color: var(--surface-hero, var(--surface)); }
+.btn-primary.is-focus { --fc: var(--on-accent); }
+.is-focus.tile, .is-focus.lift-on-focus, .is-focus.btn, .is-focus.seg, .is-focus.mt { transform: translateY(-2px); }
+.lift { filter: var(--lift-1); }
+.lift-2 { filter: var(--lift-2); }
+
+/* ===================== frames, markings, fills (§16 – user review 2026-11-04) ==============   One frame, the same on all four sides (glass has no bright top/left rim any more – it read as a broken border).
+   One marking per element. LIST ROWS (every .lrow, table and ladder row): the left bar + the --sel plate = "this row";
+   focus and selection are the same row (the detail follows it), D-pad / click move it, hover only shows the --fill
+   plate and never moves or swaps it – never red brackets on a row (user 2026-11-04: "the highlighter contradicts
+   itself"). Everything else (tiles, cards, panels, buttons): red corner brackets on the element's own corners
+   (cut on a cut element, square on a square one – class .sq).
+   Fills are plates inside the frame, never touching it: 4 px on rows and tiles, 2 px on toggles and small controls. */
+
+/* list rows: the focused row IS the selected row – the bar, never brackets, no lift */
+.lrow.is-focus:not(.slot), .lrow:focus-visible { background-image: none; transform: none; outline: none; }
+/* the bar is the plate's left edge: same box (4 px in), starting below the plate's cut corner – never beside or taller than it */
+.lrow.is-focus::before, .lrow:focus-visible::before { content: ""; position: absolute; left: 4px; top: calc(4px + max(0px, calc(var(--cut, 0px) - 2.4px))); bottom: 4px; width: 3px; background: var(--text); z-index: 1; }
+.list.rule > .lrow.is-focus::before, .lrow.sq.is-focus::before { top: 4px; }
+
+/* square boxes (class .sq) keep their square shape: four square brackets */
+.is-focus.sq:not(.slot) {
+  --c: var(--fc);
+  clip-path: none;
+  background-image:
+    linear-gradient(var(--c), var(--c)), linear-gradient(var(--c), var(--c)), linear-gradient(var(--c), var(--c)), linear-gradient(var(--c), var(--c)),
+    linear-gradient(var(--c), var(--c)), linear-gradient(var(--c), var(--c)), linear-gradient(var(--c), var(--c)), linear-gradient(var(--c), var(--c));
+  background-size: 14px 2px, 2px 14px, 14px 2px, 2px 14px, 14px 2px, 2px 14px, 14px 2px, 2px 14px;
+  background-position: 0 0, 0 0, 100% 0, 100% 0, 0 100%, 0 100%, 100% 100%, 100% 100%;
+  background-repeat: no-repeat;
+}
+
+/* row fills (hover, focus, selected) are a plate 4 px inside the row, on the row's own shape */
+.lrow { isolation: isolate; --plate: transparent; }
+.lrow::after {
+  content: ""; position: absolute; inset: 4px; z-index: -1; pointer-events: none; background: var(--plate);
+  --pc: max(0px, calc(var(--cut) - 2.4px)); /* the cut 4 px further in: c − 4·(2 − √2) */
+  clip-path: polygon(var(--pc) 0, 100% 0, 100% calc(100% - var(--pc)), calc(100% - var(--pc)) 100%, 0 100%, 0 var(--pc));
+}
+.list.rule > .lrow::after, .lrow.sq::after { clip-path: none; }
+/* only rows you can act on react to the cursor – a static row (a total, a checklist) never lights up */
+.lrow:is([data-f], a, button):hover { --plate: var(--fill); }   /* hover: the plate only */
+.lrow.is-focus, .lrow.is-sel, .lrow.now { --plate: var(--sel); }  /* "this row": plate + bar */
+
+/* small framed controls: the hover fill sits 2 px inside the 1 px frame */
+.btn-secondary { isolation: isolate; }
+.btn-secondary::before {
+  content: ""; position: absolute; inset: 3px; z-index: -1; pointer-events: none; background: var(--plate, transparent);
+  --pc: max(0px, calc(var(--cut) - 1.8px));
+  clip-path: polygon(var(--pc) 0, 100% 0, 100% calc(100% - var(--pc)), calc(100% - var(--pc)) 100%, 0 100%, 0 var(--pc));
+}
+/* the lower-third strip is square at the top-left (the tag sits there): its frame follows that shape */
+.l3-body.ring::after {
+  clip-path: polygon(evenodd,
+    0 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 0,
+    var(--bw) var(--bw), calc(100% - var(--bw)) var(--bw), calc(100% - var(--bw)) calc(100% - var(--cut) - var(--bwd)),
+    calc(100% - var(--cut) - var(--bwd)) calc(100% - var(--bw)), var(--bw) calc(100% - var(--bw)), var(--bw) var(--bw));
+}
+
+/* ══ v1 frames (surfaces not moved to v2 yet) ══ */
 /* Frames that follow the cut corners (launcher, overlay, side panel, FC-Tracker Web).
    A border, outline or inset shadow on an element with a clip-path loses its line along every cut:
    the clip removes the corner, the line doesn't turn with it. Here the frame is a ring drawn by
@@ -124,3 +224,26 @@ html[data-view="launcher"] .support-btn { box-sizing: border-box; height: 36px; 
 .upd-box .upd-error { color: var(--result-loss, var(--accent)); font-size: 13px; }
 .upd-mark { width: 12px; height: 12px; flex: none; background: var(--accent-2); transform: rotate(45deg); box-shadow: 0 0 10px var(--accent-2); }
 @media (prefers-reduced-motion: reduce) { .upd-required { backdrop-filter: none; } }
+
+/* ===================== a framed panel never lets content escape its frame (§16, user 2026-11-05) =====================
+   Every .ring / Panel is either sized by its content (it grows, the frame follows) or a fixed-height box whose content
+   scrolls INSIDE it: the frame (.ring::after, inset 0) stays on the outer, non-scrolling element and the content scrolls
+   in an inner .frame-scroll (Panel scroll). A .ring that scrolls itself drags its ::after frame through the rows, and
+   a fixed box with overflow visible lets text run past the cut – both are bugs. The outer element's padding keeps the
+   scrolled content clear of the frame line. */
+.ring:has(> .frame-scroll) { overflow: hidden; display: flex; flex-direction: column; }
+.ring > .frame-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; overscroll-behavior: contain; }
+
+/* Scroll areas (user 2026-11-05): the last line can always scroll fully into view (bottom padding), and while more
+   follows a short fade at the bottom says so – it goes when the end is reached (a scroll-driven animation on the
+   scroller itself; no scroll range = no fade). Opt in with .scroll-fade (every .frame-scroll has it). */
+@property --fade-end { syntax: "<length>"; inherits: false; initial-value: 0px; }
+@keyframes fct-fade-end { 0%, 96% { --fade-end: 28px; } 100% { --fade-end: 0px; } }
+.frame-scroll, .scroll-fade {
+  padding-bottom: max(var(--scroll-pad, 14px), 14px);
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - var(--fade-end)), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - var(--fade-end)), transparent);
+  animation: fct-fade-end linear both;
+  animation-timeline: scroll(self block);
+}
+@media (prefers-reduced-motion: reduce) { .frame-scroll, .scroll-fade { animation-duration: 1ms; } }

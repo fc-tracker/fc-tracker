@@ -1,7 +1,17 @@
 // Service worker: the only part that talks to the app on 127.0.0.1.
 // When the app isn't running, what the Web App delivers is saved here (on this PC, in the
 // extension's own storage) and handed to the app the next time it runs – nothing gets lost.
+//
+// Who owns a club sync (v2, BRAND-MIGRATION.md "No sync without an owner"):
+// - paired with the app → the app. It gets every response (or later, saved here), and keeps it on
+//   its own FC-Tracker account. The extension holds no account token for that – /ping only says
+//   whose account it is.
+// - not paired, signed in here (e-mail code, its own device on the account) → the account: the
+//   finished sync is sent to api.fc-tracker.com, which merges it into the account's Gallery and
+//   Web App parts (server/src/club.rs). EA's session token never leaves the Web App.
+// - neither → no sync at all; the badge and the popup offer the sign-in.
 const APP = "http://127.0.0.1:47827";
+const API = "https://api.fc-tracker.com";
 
 async function token() {
   const { token } = await chrome.storage.local.get("token");
@@ -16,6 +26,147 @@ async function call(path, { method = "GET", body } = {}) {
   const res = await fetch(APP + path, { method, headers, body: body && JSON.stringify(body) });
   const data = await res.json().catch(() => ({}));
   return { ok: res.ok, status: res.status, ...data };
+}
+
+// ---------- the FC-Tracker account (used only when no app is paired) ----------
+// The refresh token (rotated on every use, per device) stays in this extension's local storage;
+// the 15-minute access token only in session memory. Errors are codes (popup: authError_<code>).
+
+async function account() {
+  const { acct } = await chrome.storage.local.get("acct");
+  return acct?.refresh ? acct : null;
+}
+
+async function api(method, path, body, auth = true) {
+  const headers = { "Content-Type": "application/json" };
+  if (auth) headers.Authorization = `Bearer ${await accessToken()}`;
+  let res;
+  try {
+    res = await fetch(API + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+  } catch {
+    throw "offline";
+  }
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    const code = (json && typeof json.error === "string" && json.error) || "server";
+    if (code === "signed_out" && auth) await signedOutHere();
+    throw code;
+  }
+  return json;
+}
+
+// One refresh at a time: two with the same refresh token would look like a stolen copy and the
+// server would sign this device out.
+let refreshing = null;
+async function accessToken() {
+  const { access } = await chrome.storage.session.get("access");
+  if (access?.until > Date.now() + 30_000) return access.token;
+  refreshing ??= (async () => {
+    const acct = await account();
+    if (!acct) throw "signed_out";
+    const r = await api("POST", "/v1/auth/refresh", { refresh: acct.refresh }, false).catch(async (e) => {
+      if (e === "signed_out") await signedOutHere();
+      throw e;
+    });
+    await chrome.storage.local.set({ acct: { ...acct, refresh: r.refresh } });
+    await chrome.storage.session.set({ access: { token: r.access, until: Date.now() + r.expires_in * 1000 } });
+    return r.access;
+  })().finally(() => (refreshing = null));
+  return refreshing;
+}
+
+/** The server ended this device's sign-in (signed out elsewhere, or revoked in the devices list). */
+async function signedOutHere() {
+  await chrome.storage.local.remove(["acct", "pushPending"]);
+  await chrome.storage.session.remove("access");
+}
+
+function deviceName() {
+  const ua = navigator.userAgent;
+  return `FC-Tracker extension · ${/Edg\//.test(ua) ? "Edge" : "Chrome"}`;
+}
+
+async function signIn(email, code) {
+  const r = await api(
+    "POST",
+    "/v1/auth/verify",
+    { email: email.trim(), code, device: { name: deviceName(), kind: "extension" }, locale: await currentLocale() },
+    false,
+  );
+  await chrome.storage.local.set({ acct: { refresh: r.refresh, email: r.user.email, at: Date.now() } });
+  await chrome.storage.session.set({ access: { token: r.access, until: Date.now() + r.expires_in * 1000 } });
+  await showPairingHint(false);
+}
+
+async function signOut() {
+  await api("POST", "/v1/auth/logout").catch(() => {});
+  await signedOutHere();
+}
+
+/** Who gets a club sync now: "app" (paired), "account" (signed in here) or null (nobody – no sync). */
+async function owner() {
+  if (await token()) return "app";
+  if (await account()) return "account";
+  return null;
+}
+
+/** JSON → gzip → base64 (the server's part format). */
+async function packed(value) {
+  const stream = new Blob([JSON.stringify(value)]).stream().pipeThrough(new CompressionStream("gzip"));
+  const bytes = new Uint8Array(await new Response(stream).arrayBuffer());
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+
+/**
+ * The last finished sync (what FC-Tracker Web gets too) goes to the account. Only when no app is
+ * paired – a paired app keeps it on its own account. Kept as pending until the server took it.
+ */
+// ---------- the coin balance (passive) ----------
+// EA's Web App loads the balance itself (usermassinfo at sign-in, tradepile, watchlist). The last
+// one seen is kept here, because the sign-in response arrives before a sync begins – FC-Tracker Web
+// and the account get it with the sync as `fct://webapp/coins {credits, at}` (web-core reads it).
+// No request of our own. The app gets every response anyway and reads it itself.
+const COIN_URL = /\/(usermassinfo|tradepile|watchlist|user\/credits)(\?|$)/;
+
+async function noteCoins(url, body) {
+  if (!COIN_URL.test(String(url)) || !body || typeof body !== "object") return;
+  const credits = body.credits ?? body.userInfo?.credits;
+  if (!Number.isSafeInteger(credits) || credits < 0) return;
+  await chrome.storage.local.set({ coinsSeen: { credits, at: Date.now() } });
+}
+
+/** A sync's entries with the last balance seen in front (newer reads in the sync still win). */
+async function withCoins(entries) {
+  const { coinsSeen } = await chrome.storage.local.get("coinsSeen");
+  return coinsSeen ? [{ url: "fct://webapp/coins", body: coinsSeen }, ...entries] : entries;
+}
+
+function pushClub() {
+  return serial(async () => {
+    const { wLast, pushPending } = await chrome.storage.local.get(["wLast", "pushPending"]);
+    if (!wLast?.keys?.length || (await owner()) !== "account") return { ok: false, error: "nothing" };
+    if (pushPending !== wLast.at) await chrome.storage.local.set({ pushPending: wLast.at });
+    const stored = await chrome.storage.local.get(wLast.keys);
+    const entries = await withCoins(wLast.keys.map((k) => stored[k]).filter(Boolean).map(({ url, body }) => ({ url, body })));
+    try {
+      const r = await api("POST", "/v1/club-sync", { at: wLast.at, data: await packed({ entries }) });
+      await chrome.storage.local.set({ pushedAt: wLast.at, pushCollected: r.collected ?? null });
+      await chrome.storage.local.remove("pushPending");
+      return { ok: true, collected: r.collected ?? null };
+    } catch (e) {
+      // "bad_request" / "too_large": sending it again won't help
+      if (e === "bad_request" || e === "too_large" || e === "signed_out") await chrome.storage.local.remove("pushPending");
+      return { ok: false, error: String(e) };
+    }
+  });
+}
+
+/** A sync the server didn't take yet (offline, server busy): tried again at the next check-in. */
+async function retryPush() {
+  const { pushPending, wLast } = await chrome.storage.local.get(["pushPending", "wLast"]);
+  if (pushPending && pushPending === wLast?.at) await pushClub();
 }
 
 // ---------- i18n: follow the app's language (English by default), not Chrome's ----------
@@ -50,7 +201,8 @@ async function messages() {
 // "webLinked" only decides what a sync without the app answers. The page gets the sync when it
 // asks (chrome.runtime.sendMessage from the site;
 // externally_connectable allows only fc-tracker.com). Nothing is sent anywhere else.
-const WEB_ORIGINS = ["https://www.fc-tracker.com", "https://fc-tracker.com"];
+// FC-Tracker Web and the dashboard (also on its own host, dashboard.fc-tracker.com)
+const WEB_ORIGINS = ["https://www.fc-tracker.com", "https://fc-tracker.com", "https://dashboard.fc-tracker.com"];
 
 async function webLinked() {
   return !!(await chrome.storage.local.get("webLinked")).webLinked;
@@ -126,7 +278,17 @@ chrome.runtime.onMessageExternal.addListener((msg, sender, reply) => {
         await chrome.storage.local.set({ webLinked: true });
         const { wLast } = await chrome.storage.local.get("wLast");
         await showPairingHint(false);
-        return reply({ ok: true, version: chrome.runtime.getManifest().version, syncAt: wLast?.at ?? null, syncing: await webSyncing() });
+        // v2 additions: who gets a sync (null = nobody: the extension asks for a sign-in first) and
+        // when the last one reached the account (no e-mail, no token – only that it happened)
+        const { pushedAt } = await chrome.storage.local.get("pushedAt");
+        return reply({
+          ok: true,
+          version: chrome.runtime.getManifest().version,
+          syncAt: wLast?.at ?? null,
+          syncing: await webSyncing(),
+          owner: await owner(),
+          pushedAt: pushedAt ?? null,
+        });
       }
       case "sets":
         // which Gallery sets a sync reads (the page has the same list as the app)
@@ -139,7 +301,7 @@ chrome.runtime.onMessageExternal.addListener((msg, sender, reply) => {
         const { wLast } = await chrome.storage.local.get("wLast");
         if (!wLast?.keys?.length) return reply({ ok: true, at: null, entries: [] });
         const stored = await chrome.storage.local.get(wLast.keys);
-        return reply({ ok: true, at: wLast.at, entries: wLast.keys.map((k) => stored[k]).filter(Boolean).map(({ url, body }) => ({ url, body })) });
+        return reply({ ok: true, at: wLast.at, entries: await withCoins(wLast.keys.map((k) => stored[k]).filter(Boolean).map(({ url, body }) => ({ url, body }))) });
       }
       case "update":
         // the page needs a newer extension (update required): ask the store now
@@ -148,6 +310,14 @@ chrome.runtime.onMessageExternal.addListener((msg, sender, reply) => {
       case "open-webapp":
         // the user asked for a sync: the Web App syncs by itself when it opens
         await chrome.tabs.create({ url: "https://www.ea.com/ea-sports-fc/ultimate-team/web-app/" });
+        return reply({ ok: true });
+      case "open-popup":
+        // FC-Tracker Web's "Sign in to the extension" (no owner yet): the popup holds the e-mail-code sign-in
+        try {
+          await chrome.action.openPopup();
+        } catch {
+          await chrome.tabs.create({ url: chrome.runtime.getURL("popup.html?tab=1") });
+        }
         return reply({ ok: true });
       default:
         return reply({ ok: false, error: "unknown_message" });
@@ -261,6 +431,7 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
         case "ping": {
           const res = await call("/ping");
           if (LOCALES.includes(res.locale)) await chrome.storage.local.set({ locale: res.locale });
+          await rememberAppState(res);
           await rememberLatest(res);
           await showPairingHint(!res.authorized);
           if (res.authorized) flush();
@@ -289,8 +460,56 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
           const { appSeen, openFailedAt } = await chrome.storage.local.get(["appSeen", "openFailedAt"]);
           // "Open FC-Tracker" didn't start the app in the last 10 minutes: offer the download
           const openFailed = !!openFailedAt && Date.now() - openFailedAt < 10 * 60 * 1000;
-          return reply({ paired, appSeen: !!appSeen || paired, openFailed, web: await webLinked(), lastSyncAt: lastSyncAt ?? 0, saved: await hasSaved() });
+          const acct = await account();
+          const { pushedAt, pushPending, pushCollected, theme } = await chrome.storage.local.get(["pushedAt", "pushPending", "pushCollected", "theme"]);
+          return reply({
+            paired,
+            appSeen: !!appSeen || paired,
+            openFailed,
+            web: await webLinked(),
+            lastSyncAt: lastSyncAt ?? 0,
+            saved: await hasSaved(),
+            // v2: who gets a sync, this extension's own sign-in, the last push to the account
+            owner: paired ? "app" : acct ? "account" : null,
+            email: acct?.email ?? null,
+            pushedAt: pushedAt ?? 0,
+            pushPending: !!pushPending,
+            pushCollected: pushCollected ?? null,
+            theme: theme ?? "glass",
+          });
         }
+        case "auth-start":
+          try {
+            await api("POST", "/v1/auth/start", { email: String(msg.email ?? "").trim(), locale: await currentLocale() }, false);
+            return reply({ ok: true });
+          } catch (e) {
+            return reply({ ok: false, error: String(e) });
+          }
+        case "auth-verify":
+          try {
+            await signIn(String(msg.email ?? ""), String(msg.code ?? "").replace(/\D/g, ""));
+            // a sync from the last day, read before the sign-in (kept for FC-Tracker Web), goes to the account now
+            const { wLast } = await chrome.storage.local.get("wLast");
+            if (!(await token()) && wLast?.at > Date.now() - 24 * 3600 * 1000) {
+              await chrome.storage.local.set({ pushPending: wLast.at });
+              retryPush();
+            }
+            return reply({ ok: true });
+          } catch (e) {
+            return reply({ ok: false, error: String(e) });
+          }
+        case "sign-out":
+          await signOut();
+          await showPairingHint(!(await token()));
+          return reply({ ok: true });
+        case "open-popup":
+          // the badge's "Sign in" (a click in the Web App): the popup holds the sign-in
+          try {
+            await chrome.action.openPopup();
+          } catch {
+            await chrome.tabs.create({ url: chrome.runtime.getURL("popup.html?tab=1") });
+          }
+          return reply({ ok: true });
         case "openApp": {
           // fctracker:// (registered by the app's installer); no answer within ~8 s = not installed here
           await chrome.storage.local.remove("openFailedAt");
@@ -319,10 +538,21 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
           // that run while the app is closed.
           try {
             const res = await call("/gallery-sets");
-            if (res.ok && Array.isArray(res.sets)) await chrome.storage.local.set({ gallerySets: res.sets });
+            if (res.ok && Array.isArray(res.sets)) await chrome.storage.local.set({ gallerySets: res.sets, gallerySetsAt: Date.now() });
             if (res.ok) return reply(res);
           } catch {}
-          const { gallerySets } = await chrome.storage.local.get("gallerySets");
+          // no app: the same list from fc-tracker's API (public, no account data) – once a day
+          const { gallerySets, gallerySetsAt } = await chrome.storage.local.get(["gallerySets", "gallerySetsAt"]);
+          const fresh = Array.isArray(gallerySets) && gallerySets.length && Date.now() - (gallerySetsAt ?? 0) < 24 * 3600 * 1000;
+          if (!fresh && (await owner()) === "account") {
+            try {
+              const r = await api("GET", "/v1/gallery-sets", undefined, false);
+              if (Array.isArray(r?.sets) && r.sets.length) {
+                await chrome.storage.local.set({ gallerySets: r.sets, gallerySetsAt: Date.now() });
+                return reply({ ok: true, sets: r.sets, cached: false });
+              }
+            } catch {}
+          }
           return reply({ ok: true, sets: Array.isArray(gallerySets) ? gallerySets : [], cached: true });
         }
         case "syncBlocked":
@@ -333,12 +563,22 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
             return reply({ ok: false, error: "app_unreachable" });
           }
         case "syncStart":
+          // no owner (not paired, not signed in): no sync – checked here too, not only in the badge
+          if (!(await owner())) return reply({ ok: false, error: "no_owner" });
           await webStart(sender.tab?.id);
           return reply({ batch: await startBatch() });
         case "capture": {
+          // nothing is kept or sent for nobody – not even for FC-Tracker Web
+          if (!(await owner())) return reply({ ok: false, error: "no_owner" });
+          await noteCoins(msg.url, msg.body);
           const at = Date.now();
           const web = await webLinked();
           await webKeep(msg.url, msg.body, at);
+          // not paired: the app isn't the owner – the account (or FC-Tracker Web) gets the finished sync
+          if (!(await token())) {
+            if (await account()) return reply({ ok: true, account: true, items: 0 });
+            return reply(web ? { ok: true, web: true, items: 0 } : { ok: false, error: "no_owner" });
+          }
           try {
             if (await hasSaved()) await flush(); // keep the order: older saved data first
             const res = await call("/capture", { method: "POST", body: { url: msg.url, body: msg.body, at } });
@@ -353,6 +593,13 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
           const at = Date.now();
           const web = await webLinked();
           await webDone(at);
+          if (!(await token()) && (await account())) {
+            // signed in without the app: the sync goes to the account (the badge shows it happening)
+            await chrome.storage.local.set({ lastSyncAt: at });
+            const r = await pushClub();
+            if (msg.closeTab && sender.tab?.id) setTimeout(() => chrome.tabs.remove(sender.tab.id), 1500);
+            return reply({ ok: true, account: true, pushed: r.ok, collected: r.collected ?? null, error: r.error ?? null });
+          }
           try {
             if (await hasSaved()) await flush();
             const res = await call("/sync-done", { method: "POST", body: { at } });
@@ -382,7 +629,13 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
           return reply({ ok: true });
         case "unpair":
           await chrome.storage.local.remove("token");
+          await chrome.storage.session.remove("appAccount");
           return reply({ ok: true });
+        case "app-account": {
+          // the paired app's account (bridge protocol 2); undefined = an older app that doesn't say
+          const { appAccount } = await chrome.storage.session.get("appAccount");
+          return reply({ ok: true, appAccount: appAccount ?? null });
+        }
         default:
           return reply({ ok: false, error: "unknown_message" });
       }
@@ -404,17 +657,17 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
  * code field. Never a tab of its own: opening pages by itself felt like malware (user, 2026-10-15).
  */
 async function showPairingHint(needed) {
-  // used with FC-Tracker Web only: no app to pair with, nothing to point at
-  if (needed && !(await token()) && (await webLinked())) needed = false;
+  // signed in without the app: the sync has an owner, nothing to point at
+  if (needed && !(await token()) && (await account())) needed = false;
   if (needed) {
     await chrome.action.setBadgeText({ text: "!" });
-    await chrome.action.setBadgeBackgroundColor({ color: "#f5c542" });
+    await chrome.action.setBadgeBackgroundColor({ color: "#F5B03B" }); // v2 --amber: the user has to act
     return;
   }
   // connected: a newer version is out → "↑" on the icon until it is installed
   const outdated = isOlder(chrome.runtime.getManifest().version, (await chrome.storage.local.get("latest")).latest);
   await chrome.action.setBadgeText({ text: outdated ? "↑" : "" });
-  if (outdated) await chrome.action.setBadgeBackgroundColor({ color: "#8d6bff" });
+  if (outdated) await chrome.action.setBadgeBackgroundColor({ color: "#EF4359" }); // v2 --red: the one action
 }
 
 /** "0.10.2" older than "0.10.5"? (missing = not older) */
@@ -426,6 +679,19 @@ function isOlder(have, latest) {
     if ((a[i] ?? 0) !== (b[i] ?? 0)) return (a[i] ?? 0) < (b[i] ?? 0);
   }
   return false;
+}
+
+/**
+ * What a paired app tells (bridge protocol 2): its theme – the popup and the badge follow it – and
+ * whose account it keeps the sync on. An older app says neither: dark glass, account unknown.
+ */
+async function rememberAppState(res) {
+  if (!res?.authorized) return;
+  const theme = ["light", "dark", "glass"].includes(res.theme) ? res.theme : null;
+  const appAccount = res.account && typeof res.account === "object" ? { signedIn: !!res.account.signed_in, email: res.account.email ?? null } : null;
+  const { theme: had } = await chrome.storage.local.get("theme");
+  if (theme && theme !== had) await chrome.storage.local.set({ theme });
+  await chrome.storage.session.set({ appAccount });
 }
 
 /** The app tells which extension version belongs to it. */
@@ -485,13 +751,16 @@ async function checkIn() {
   try {
     const res = await call("/ping");
     if (LOCALES.includes(res.locale)) await chrome.storage.local.set({ locale: res.locale });
+    await rememberAppState(res);
     await rememberLatest(res);
     await showPairingHint(!res.authorized);
     if (res.authorized) await flush();
+    else await retryPush();
     return res;
   } catch {
     await showPairingHint(!(await token()));
-    return null; // app not running
+    await retryPush(); // app not running: a sync waiting for the account goes now
+    return null;
   }
 }
 

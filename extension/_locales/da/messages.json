@@ -201,5 +201,161 @@
         "content": "$1"
       }
     }
+  },
+  "v2_extension": {
+    "message": "—",
+    "description": "Marker: the keys after this one belong to the v2-extension session (brand v2, account, no sync without an owner)."
+  },
+  "popClubSync": {
+    "message": "Klub-synk"
+  },
+  "popApp": {
+    "message": "Appen"
+  },
+  "popAccount": {
+    "message": "Konto"
+  },
+  "stateAppClosed": {
+    "message": "Appen er lukket"
+  },
+  "subAppClosed": {
+    "message": "Din synk gemmes her og gives til appen, næste gang den kører."
+  },
+  "stateAccount": {
+    "message": "Logget ind"
+  },
+  "subAccount": {
+    "message": "Åbn Web App'en – din klub synkes selv til din FC-Tracker-konto."
+  },
+  "subAccountPending": {
+    "message": "Din seneste synk venter på kontoen – den sendes igen inden for et minut."
+  },
+  "stateNone": {
+    "message": "Synker ikke endnu"
+  },
+  "subNone": {
+    "message": "Log ind herunder, eller hent appen – så synker din klub af sig selv."
+  },
+  "subNoneApp": {
+    "message": "Forbind appen eller log ind – så synker din klub af sig selv."
+  },
+  "accountViaApp": {
+    "message": "Appen gemmer din klub på $EMAIL$.",
+    "placeholders": {
+      "email": {
+        "content": "$1"
+      }
+    }
+  },
+  "accountAppKeeps": {
+    "message": "Din klub går til appen, og appen gemmer den på sin konto."
+  },
+  "accountAppSignedOut": {
+    "message": "Appen er ikke logget ind – din klub bliver på denne pc. Log ind i appen for at gemme den på din konto."
+  },
+  "accountAppLocal": {
+    "message": "Din klub går til FC-Tracker-appen på denne pc."
+  },
+  "chipViaApp": {
+    "message": "Via appen"
+  },
+  "chipSignedIn": {
+    "message": "Logget ind"
+  },
+  "accountSignedInAs": {
+    "message": "Logget ind som"
+  },
+  "accountPushed": {
+    "message": "Senest gemt på din konto $WHEN$",
+    "placeholders": {
+      "when": {
+        "content": "$1"
+      }
+    }
+  },
+  "signInWhy": {
+    "message": "Ingen app på denne pc? Log ind med din e-mail, så gemmes din klub-synk på din FC-Tracker-konto. Ingen adgangskode – vi sender en kode."
+  },
+  "emailPlaceholder": {
+    "message": "din@e-mail.dk"
+  },
+  "sendCode": {
+    "message": "Send kode"
+  },
+  "codeSentTo": {
+    "message": "Vi har sendt en 6-cifret kode til $EMAIL$. Den virker i 10 minutter.",
+    "placeholders": {
+      "email": {
+        "content": "$1"
+      }
+    }
+  },
+  "verifyCode": {
+    "message": "Log ind"
+  },
+  "otherEmail": {
+    "message": "Brug en anden e-mail"
+  },
+  "signOut": {
+    "message": "Log ud"
+  },
+  "sendingCode": {
+    "message": "Sender koden …"
+  },
+  "verifying": {
+    "message": "Tjekker koden …"
+  },
+  "signingOut": {
+    "message": "Logger ud …"
+  },
+  "authError_email_invalid": {
+    "message": "Det er ikke en e-mailadresse."
+  },
+  "authError_code_invalid": {
+    "message": "Forkert kode – tjek e-mailen og prøv igen."
+  },
+  "authError_code_expired": {
+    "message": "Koden er udløbet – send en ny."
+  },
+  "authError_rate_limited": {
+    "message": "For mange forsøg – vent et minut og prøv igen."
+  },
+  "authError_offline": {
+    "message": "Ingen forbindelse til FC-Tracker – tjek dit internet."
+  },
+  "authError_mail_failed": {
+    "message": "E-mailen kunne ikke sendes – prøv igen om lidt."
+  },
+  "authError_server": {
+    "message": "FC-Trackers server svarede ikke – prøv igen om lidt."
+  },
+  "authError_signed_out": {
+    "message": "Du blev logget ud – log ind igen."
+  },
+  "badgeSignInBtn": {
+    "message": "Log ind"
+  },
+  "badgeNoOwner": {
+    "message": "Log ind på FC-Tracker eller hent appen – så synker din klub af sig selv."
+  },
+  "badgePushing": {
+    "message": "Gemmer din klub på din konto …"
+  },
+  "badgePushed": {
+    "message": "Gemt på din konto ✓ · $COUNT$ Gallery-kort",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "badgePushedPlain": {
+    "message": "Gemt på din konto ✓"
+  },
+  "badgePushFailed": {
+    "message": "Din konto kunne ikke nås – synken gemmes og sendes igen inden for et minut."
+  },
+  "badgeSignedOut": {
+    "message": "Du blev logget ud – klik på FC-Tracker-ikonet og log ind igen."
   }
 }

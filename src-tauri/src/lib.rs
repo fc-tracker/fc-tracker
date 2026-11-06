@@ -17,6 +17,7 @@ mod model;
 mod names;
 mod objectives_screen;
 mod remind;
+mod replay;
 mod scan;
 mod session;
 mod speed;
@@ -348,9 +349,13 @@ fn show_toast_window(app: &AppHandle, payload: serde_json::Value) {
 
 /// Sync progress on top of the game ("syncing – stay out of Ultimate Team", "synced"): unlike
 /// page hints it stays up while the user moves through menus, for `secs`.
-pub(crate) fn show_notice(app: &AppHandle, payload: serde_json::Value, secs: u64) {
+pub(crate) fn show_notice(app: &AppHandle, mut payload: serde_json::Value, secs: u64) {
     let until = std::time::Instant::now() + std::time::Duration::from_secs(secs);
     *app.state::<AppState>().notice_until.lock().unwrap() = Some(until);
+    // how long it stays: the toast draws its timer line from it (mockup 08)
+    if let Some(o) = payload.as_object_mut() {
+        o.insert("secs".into(), secs.into());
+    }
     show_toast_window(app, payload);
     // One timer for all notices (progress updates come every second during a sync): it sleeps
     // until the newest deadline and hides the notice when that passed.
@@ -440,6 +445,27 @@ fn open_help(app: AppHandle, topic: Option<String>) {
     }
 }
 
+/// ○ / B in the launcher: it goes to the tray (tracking keeps running), like its close button.
+#[tauri::command]
+fn hide_launcher(app: AppHandle) {
+    if let Some(main) = app.get_webview_window("main") {
+        let _ = main.hide();
+    }
+}
+
+/// The launcher's tiles: opens the overlay (if it isn't open) and tells it which section to show
+/// ("objectives", "champions", "gallery", "value", "planner"). The overlay listens to "overlay-section".
+#[tauri::command]
+fn open_overlay(app: AppHandle, section: Option<String>) {
+    let open = app.get_webview_window(OVERLAY).is_some_and(|w| w.is_visible().unwrap_or(false));
+    if !open {
+        toggle_overlay(&app);
+    }
+    if let Some(section) = section {
+        let _ = app.emit_to(OVERLAY, "overlay-section", section);
+    }
+}
+
 #[tauri::command]
 fn launch_game(state: State<AppState>) -> Result<(), String> {
     launch_installed_game(&state)
@@ -510,6 +536,12 @@ fn open_site(path: String) -> Result<(), String> {
     game::open_site(&path)
 }
 
+/// What's new → "All release notes": the releases on the public repo.
+#[tauri::command]
+fn open_release_notes() -> Result<(), String> {
+    game::open_release_notes()
+}
+
 #[tauri::command]
 fn unpair(state: State<AppState>) -> BridgeInfo {
     let mut b = state.bridge.lock().unwrap();
@@ -522,6 +554,26 @@ fn set_locale(app: AppHandle, state: State<AppState>, locale: String) -> bool {
     let changed = state.bridge.lock().unwrap().set_locale(&locale);
     refresh_tray(&app);
     changed
+}
+
+/// The UI's theme (light / dark / glass): the paired extension's popup and badge follow it.
+#[tauri::command]
+fn set_bridge_theme(state: State<AppState>, theme: String) -> bool {
+    state.bridge.lock().unwrap().set_theme(&theme)
+}
+
+/// The coin balance, as last seen (ms): read passively from the Web App's own responses
+/// (usermassinfo at sign-in, tradepile, watchlist – `sync_data::credits`) or on screen.
+#[derive(serde::Serialize)]
+pub struct Coins {
+    value: u64,
+    read_at: u64,
+}
+
+/// The user's coins (None until a sync or the screen has shown them).
+#[tauri::command]
+fn coins(state: State<AppState>) -> Option<Coins> {
+    state.store.lock().unwrap().snapshot.coins.map(|[value, read_at]| Coins { value, read_at })
 }
 
 // ---------- system tray: the launcher closes to it, tracking keeps running ----------
@@ -658,6 +710,79 @@ fn mark_swap_done(state: State<AppState>, set_key: String, out_def_id: u64, out_
     state.store.lock().unwrap().mark_swap_done(&set_key, out_def_id, out_slot, into_def_id)
 }
 
+/// Players (user 2026-11-05): every collected Gallery card – and the ones taken out as wrong reads – with what FC-Tracker
+/// knows about it: first owner and from where, and the sets whose best selection it is in.
+#[derive(serde::Serialize)]
+struct CardRow {
+    def_id: u64,
+    name: Option<String>,
+    rating: Option<u64>,
+    position: Option<String>,
+    positions: Vec<String>,
+    rareflag: Option<u64>,
+    nation: Option<u64>,
+    league: Option<u64>,
+    club: Option<u64>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    face: Vec<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    art: Option<String>,
+    score: u64,
+    holo: bool,
+    first_owner: gallery_sets::FirstOwnerStatus,
+    removed: bool,
+    sets: Vec<String>,
+}
+
+#[tauri::command]
+async fn gallery_cards(app: AppHandle) -> Vec<CardRow> {
+    let overview = gallery_overview(app.clone()).await;
+    let state = app.state::<AppState>();
+    let s = state.store.lock().unwrap();
+    let snap = &s.snapshot;
+    let fo = gallery_sets::FirstOwnerInfo { known: &snap.first_owner, manual: &snap.first_owner_manual, scanned: &snap.first_owner_scanned, club_no: &snap.first_owner_club_no };
+    let mut sets: std::collections::BTreeMap<u64, Vec<String>> = Default::default();
+    for cat in &overview {
+        for set in &cat.sets {
+            for c in &set.lineup {
+                sets.entry(c.def_id).or_default().push(set.name.clone());
+            }
+        }
+    }
+    let mut rows: Vec<CardRow> = snap
+        .gallery
+        .values()
+        .filter(|c| c.collected || snap.removed_cards.contains(&c.def_id))
+        .map(|c| CardRow {
+            def_id: c.def_id,
+            name: c.name.clone(),
+            rating: c.rating,
+            position: c.position.clone(),
+            positions: c.positions.clone(),
+            rareflag: c.rareflag,
+            nation: c.nation,
+            league: c.league,
+            club: c.team,
+            face: c.face.clone(),
+            art: c.art.clone(),
+            score: c.score,
+            holo: c.holo,
+            first_owner: fo.status(c),
+            removed: snap.removed_cards.contains(&c.def_id),
+            sets: sets.remove(&c.def_id).unwrap_or_default(),
+        })
+        .collect();
+    rows.sort_by(|a, b| b.rating.cmp(&a.rating).then(b.score.cmp(&a.score)));
+    rows
+}
+
+/// Takes a card out as a wrong read (true) or puts it back (false).
+#[tauri::command]
+fn set_card_removed(app: AppHandle, state: State<AppState>, def_id: u64, removed: bool) {
+    state.store.lock().unwrap().set_card_removed(def_id, removed);
+    let _ = app.emit("gallery-updated", ());
+}
+
 /// The user's choice in a card's menu: first owner (true), purchased (false) or automatic (null).
 #[tauri::command]
 fn set_first_owner(state: State<AppState>, def_id: u64, value: Option<bool>) {
@@ -747,10 +872,28 @@ fn account_secret() -> Option<String> {
     account::secret()
 }
 
-/// Saves (or, with null, removes) the account secret.
+/// Saves (or, with null, removes) the account secret – every window hears it at once ("account-changed").
 #[tauri::command]
-fn set_account_secret(value: Option<String>) -> Result<(), String> {
-    account::set_secret(value.as_deref())
+fn set_account_secret(app: AppHandle, value: Option<String>) -> Result<(), String> {
+    account::set_secret(value.as_deref())?;
+    if value.is_none() {
+        account::set_user(None);
+    }
+    let _ = app.emit("account-changed", account::view());
+    Ok(())
+}
+
+/// The account as every window shows it: signed in (Credential Manager) and the profile the launcher read.
+#[tauri::command]
+fn account_view() -> account::AccountView {
+    account::view()
+}
+
+/// The launcher read the profile (or signed out): kept for the other windows, which hear it at once.
+#[tauri::command]
+fn set_account_user(app: AppHandle, user: Option<serde_json::Value>) {
+    account::set_user(user);
+    let _ = app.emit("account-changed", account::view());
 }
 
 #[derive(serde::Serialize)]
@@ -1100,6 +1243,11 @@ fn squads_input(store: &store::Store) -> squads::Input {
         names_known,
         club: {
             let mut club: Vec<squads::Player> = snap.items.values().filter_map(|i| squads::club_player(i, &snap.gallery, &attrs)).collect();
+            // first owner on the squad's cards, by the same proofs as the Gallery
+            let fo = gallery_sets::FirstOwnerInfo { known: &snap.first_owner, manual: &snap.first_owner_manual, scanned: &snap.first_owner_scanned, club_no: &snap.first_owner_club_no };
+            for p in club.iter_mut() {
+                p.first_owner = fo.known_or_manual(p.def_id);
+            }
             if let Some((_, hub)) = web.latest.iter().find(|(k, _)| k.ends_with("/academy/hub/v2")) {
                 let extra = squads::evo_players(&hub.body, &club, &snap.gallery, &attrs);
                 club.extend(extra);
@@ -1536,8 +1684,10 @@ pub fn run() {
             // Windows are created only now (`"create": false` in tauri.conf.json): their pages call
             // commands right away, and the state above must exist by then.
             // Started by Windows at login (--autostart): quietly – tracking runs, the launcher
-            // stays in the tray until the user opens it.
-            let quiet = std::env::args().any(|a| a == "--autostart");
+            // stays in the tray until the user opens it. Never right after an update (--updated):
+            // the relaunch carries the old run's args, and the launcher must open (updates.rs).
+            updates::boot(std::env::args());
+            let quiet = updates::start_hidden(std::env::args());
             for mut config in app.config().app.windows.clone() {
                 if quiet && config.label == "main" {
                     config.visible = false;
@@ -1681,11 +1831,13 @@ pub fn run() {
                     // Navigation only while the overlay is open; otherwise the press is the game's.
                     // The overlay decides what "back" means (close a menu, leave a set, close).
                     gamepad::Pad::Nav(action) => {
-                        if let Some(win) = h.get_webview_window(OVERLAY) {
-                            if win.is_visible().unwrap_or(false) {
-                                wake_overlay(&h, &win);
-                                let _ = win.emit("pad", action);
-                            }
+                        let overlay = h.get_webview_window(OVERLAY).filter(|w| w.is_visible().unwrap_or(false));
+                        if let Some(win) = overlay {
+                            wake_overlay(&h, &win);
+                            let _ = win.emit("pad", action);
+                        } else if let Some(main) = h.get_webview_window("main").filter(|w| w.is_focused().unwrap_or(false)) {
+                            // the launcher has the focus (the game hasn't): the controller drives the launcher
+                            let _ = main.emit("pad", action);
                         }
                     }
                 });
@@ -1707,8 +1859,12 @@ pub fn run() {
             set_autostart,
             unpair,
             set_locale,
+            set_bridge_theme,
+            coins,
             gallery_overview,
             set_first_owner,
+            gallery_cards,
+            set_card_removed,
             price_share,
             best_value,
             set_value,
@@ -1717,6 +1873,8 @@ pub fn run() {
             paid_pool,
             account_secret,
             set_account_secret,
+            account_view,
+            set_account_user,
             sync_part_export,
             sync_part_import,
             card_defs,
@@ -1760,9 +1918,13 @@ pub fn run() {
             sync_and_launch,
             controller,
             open_help,
+            open_overlay,
+            open_release_notes,
+            hide_launcher,
             updates::check_update,
             updates::update_state,
             updates::install_update,
+            updates::updated_notice,
             cancel_sync,
             open_data_dir
         ])
@@ -1772,6 +1934,35 @@ pub fn run() {
 
 #[cfg(test)]
 mod real_plan {
+    /// Design export (no behaviour change): FC-Tracker's meta rating (`squads::strength`) per position for
+    /// every club card and every catalog card with face stats, from a copy of a real data folder:
+    /// `FCT_REAL_DIR=<copy> FCT_STRENGTH_OUT=<file> cargo test --lib strength_export -- --ignored --nocapture`.
+    #[test]
+    #[ignore]
+    fn strength_export() {
+        let Ok(dir) = std::env::var("FCT_REAL_DIR") else { return };
+        let store = crate::store::Store::load(std::path::PathBuf::from(dir));
+        let input = crate::squads_input(&store);
+        let attrs = store.web.attributes.as_ref().map(|a| crate::squads::Attributes::from_value(&a.body)).unwrap_or_default();
+        let row = |p: &crate::squads::Player| {
+            let by: serde_json::Map<String, serde_json::Value> =
+                p.positions.iter().map(|pos| (pos.clone(), serde_json::json!((crate::squads::strength(p, pos) * 10.0).round() / 10.0))).collect();
+            serde_json::Value::Object(by)
+        };
+        let club: serde_json::Map<String, serde_json::Value> = input.club.iter().map(|p| (p.key.to_string(), row(p))).collect();
+        let catalog: serde_json::Map<String, serde_json::Value> = store
+            .snapshot
+            .gallery
+            .values()
+            .filter(|c| c.face.len() == 6)
+            .filter_map(|c| crate::squads::catalog_player(c, &attrs).map(|p| (c.def_id.to_string(), row(&p))))
+            .collect();
+        println!("strength: {} club cards, {} catalog cards", club.len(), catalog.len());
+        if let Ok(out) = std::env::var("FCT_STRENGTH_OUT") {
+            std::fs::write(out, serde_json::to_string(&serde_json::json!({ "club": club, "catalog": catalog })).unwrap()).unwrap();
+        }
+    }
+
     /// The objective squads on a copy of a real data folder: `FCT_REAL_DIR=<copy> cargo test --lib real_plan -- --ignored --nocapture`.
     #[test]
     #[ignore]

@@ -61,6 +61,17 @@ pub struct SquadPrefs {
     pub chem_mode: String,
     /// Club cards the user took out of every squad ("Change" on a card).
     pub exclude: Vec<u64>,
+    /// Swaps the user asked for (user 2026-11-04, "Change players"): each card no longer stands at that
+    /// position – FC-Tracker re-solves, the card is replaced or moves to another slot and the rest of the
+    /// squad adapts. Never a "has to include" and never a card left out of every squad.
+    pub swaps: Vec<SwapOut>,
+    /// The exact player the user picked for one position (user 2026-11-05: "Change LaBonta · CM" → João Neves):
+    /// that card plays there and only there in every squad – a "has to include" at that position; the card it
+    /// replaced is swapped out of the position (`swaps`) and the rest re-solves around it.
+    pub pins: Vec<SwapOut>,
+    /// Reroll (user 2026-11-05): 0 = the best squad; n = the n-th best formation's squad (cycling), each still the best
+    /// for the objectives in it – a fresh look without piling up swaps.
+    pub reroll: u32,
     /// A squad the user locked in for the coming challenges ("Lock in squad"): these cards play,
     /// in this formation, until unlocked.
     pub locked: Option<LockedSquad>,
@@ -79,6 +90,15 @@ pub struct SquadPrefs {
     /// A bench player's own sub minute (club item id → minute; user 2026-11-01: "75:00 for one who
     /// only has to come on"); the rest come on at Settings → Match reminders' minute.
     pub sub_at: BTreeMap<u64, u16>,
+}
+
+/// One card swapped out of one position (see `SquadPrefs::swaps`).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SwapOut {
+    /// Club item id (or the card definition for a card to get).
+    pub key: u64,
+    /// The position it stood at (EA's name, "CAM").
+    pub pos: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -106,7 +126,7 @@ pub struct DoneMark {
 
 impl Default for SquadPrefs {
     fn default() -> Self {
-        Self { chem_target: 33, chem_first: false, hide_loans: true, budget: None, must: Vec::new(), must_cards: Vec::new(), done_marks: Vec::new(), primary: None, place: None, goal: "progress".into(), max_buys: Some(3), formation: None, formations: Vec::new(), chem_mode: "balanced".into(), exclude: Vec::new(), locked: None, track: true, played: 0, played_at: 0, skip: Vec::new(), keep: Vec::new(), facts: BTreeMap::new(), sub_at: BTreeMap::new() }
+        Self { chem_target: 33, chem_first: false, hide_loans: true, budget: None, must: Vec::new(), must_cards: Vec::new(), done_marks: Vec::new(), primary: None, place: None, goal: "progress".into(), max_buys: Some(3), formation: None, formations: Vec::new(), chem_mode: "balanced".into(), exclude: Vec::new(), swaps: Vec::new(), pins: Vec::new(), reroll: 0, locked: None, track: true, played: 0, played_at: 0, skip: Vec::new(), keep: Vec::new(), facts: BTreeMap::new(), sub_at: BTreeMap::new() }
     }
 }
 
@@ -117,6 +137,10 @@ impl Default for SquadPrefs {
 pub struct Player {
     /// Club item id (owned) or card definition (catalog).
     pub key: u64,
+    /// First owner, proven (the set page's triangle or EA's `owners == 1` – gallery_sets FirstOwnerInfo).
+    pub first_owner: bool,
+    /// EA's art guid (a special's action shot).
+    pub art: Option<String>,
     pub def_id: u64,
     pub name: String,
     pub rating: u32,
@@ -1118,13 +1142,26 @@ const OUT_OF_POSITION: f64 = 5.0e4;
 
 impl Ctx<'_> {
     fn eligible(&self, p: usize, pos: &str) -> bool {
-        self.players[p].positions.iter().any(|x| x == pos)
+        !self.swapped(p, pos) && !self.pinned_away(p, pos) && self.players[p].positions.iter().any(|x| x == pos)
+    }
+
+    /// The user picked this card for another position ("Change players" → a pick): it stands only there.
+    fn pinned_away(&self, p: usize, pos: &str) -> bool {
+        let key = self.players[p].key;
+        let mut pins = self.prefs.pins.iter().filter(|w| w.key == key).peekable();
+        pins.peek().is_some() && !pins.any(|w| w.pos == pos)
+    }
+
+    /// The user swapped this card out of this position ("Change players"): never placed there again.
+    fn swapped(&self, p: usize, pos: &str) -> bool {
+        let key = self.players[p].key;
+        self.prefs.swaps.iter().any(|s| s.key == key && s.pos == pos)
     }
 
     /// Where a card may stand: its own positions – or anywhere when it's a club card that meets a
     /// requirement (user 2026-10-31: "Corona at RB if that solves the puzzle" – it gets 0 chemistry).
     fn fits(&self, p: usize, pos: &str) -> bool {
-        self.eligible(p, pos) || (self.players[p].owned && !self.meets[p].is_empty() && pos != "GK" && !self.players[p].positions.iter().any(|x| x == "GK"))
+        self.eligible(p, pos) || (!self.swapped(p, pos) && !self.pinned_away(p, pos) && self.players[p].owned && !self.meets[p].is_empty() && pos != "GK" && !self.players[p].positions.iter().any(|x| x == "GK"))
     }
 
     fn active(&self, p: usize) -> bool {
@@ -1385,7 +1422,8 @@ fn solve(players: &[Player], reqs: &[Req], formations: &[Formation], prefs: &Squ
 
 fn solve_with(players: &[Player], reqs: &[Req], formations: &[Formation], prefs: &SquadPrefs, links: &BTreeMap<u64, u64>, o: SolveOpts) -> Option<(usize, Pick)> {
     let meets: Vec<Vec<usize>> = players.iter().map(|p| reqs.iter().enumerate().filter(|(_, r)| r.need.met_by(p, links)).map(|(i, _)| i).collect()).collect();
-    let must = (0..players.len()).filter(|&i| prefs.must.contains(&players[i].key)).collect();
+    // "has to include" – and a card picked for a position (it plays, there only: `pinned_away`)
+    let must = (0..players.len()).filter(|&i| prefs.must.contains(&players[i].key) || prefs.pins.iter().any(|w| w.key == players[i].key)).collect();
     // a formation the user picked is the only one tried
     let picked: Vec<&str> = prefs.formations.iter().map(String::as_str).chain(prefs.formation.as_deref()).collect();
     let only: Vec<usize> = (0..formations.len()).filter(|&i| picked.is_empty() || picked.iter().any(|n| formations[i].name == *n || formations[i].label == *n)).collect();
@@ -1428,6 +1466,24 @@ fn solve_with(players: &[Player], reqs: &[Req], formations: &[Formation], prefs:
         *pick = ctx.solve_formation(&formations[*fi], pool, 1);
     }
     results.sort_by(|a, b| b.1.score.total_cmp(&a.1.score));
+    // Reroll: the n-th best formation (of the fully searched ones), or another start in the only one
+    if prefs.reroll > 0 && !results.is_empty() {
+        let k = results.len().min(6);
+        let n = prefs.reroll as usize;
+        if k > 1 {
+            let (fi, _, pool) = &results[n % k];
+            let mut cand = ctx.solve_formation(&formations[*fi], pool, 1);
+            for seed in [7u64, 2024] {
+                let p = ctx.solve_formation(&formations[*fi], pool, seed);
+                if p.score > cand.score {
+                    cand = p;
+                }
+            }
+            return Some((*fi, cand));
+        }
+        let (fi, _, pool) = &results[0];
+        return Some((*fi, ctx.solve_formation(&formations[*fi], pool, 97 + 31 * n as u64)));
+    }
     // a few restarts on the most promising formations
     for (fi, pick, pool) in results.iter().take(3) {
         let mut cand = pick.clone();
@@ -1437,12 +1493,18 @@ fn solve_with(players: &[Player], reqs: &[Req], formations: &[Formation], prefs:
                 cand = p;
             }
         }
-        if best.as_ref().is_none_or(|b| cand.score > b.1.score) {
+        // the user's order of preferred formations (Settings, user 2026-11-04: a ranked list): each step down the
+        // list costs a little, so the first one wins unless another is clearly better
+        let ranked = |fi: usize, score: f64| score - FORMATION_RANK * picked.iter().position(|n| formations[fi].name == *n || formations[fi].label == *n).unwrap_or(0) as f64;
+        if best.as_ref().is_none_or(|b| ranked(*fi, cand.score) > ranked(b.0, b.1.score)) {
             best = Some((*fi, cand));
         }
     }
     best
 }
+
+/// One step down the user's ranked formations weighs like ~half a rating point of one card.
+const FORMATION_RANK: f64 = 0.6;
 
 // ---------- output ----------
 
@@ -1491,6 +1553,16 @@ pub struct ClubEntry {
     pub price: Option<u64>,
     /// FC-Tracker's meta rating per position the card can play (the picker sorts by it).
     pub meta: BTreeMap<String, f64>,
+    /// The card itself (FUT card art: portrait, rarity, badge, face stats).
+    pub def_id: u64,
+    pub rareflag: u64,
+    pub club: u64,
+    /// The league badge on the card's flag row.
+    pub league: u64,
+    pub face: Option<[u32; 6]>,
+    /// EA's art guid (a special's action shot).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub art: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -1614,6 +1686,11 @@ pub struct SlotView {
     pub skill_moves: u32,
     /// A "has to include" card.
     pub must: bool,
+    /// First owner, proven (the card shows EA's first-owner mark).
+    pub first_owner: bool,
+    /// EA's art guid (a special's action shot).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub art: Option<String>,
     /// Not in the club yet (a card to buy) and its price.
     pub owned: bool,
     pub price: Option<u64>,
@@ -1627,6 +1704,10 @@ pub struct SlotView {
     /// Face stats (PAC SHO PAS DRI DEF PHY) – who can do "a player with min. 85 PAC".
     #[serde(skip_serializing_if = "Option::is_none")]
     pub face: Option<[u32; 6]>,
+    /// The card's EA rarity, club (team) and own positions – its art on the pitch (brand v2 FutCard).
+    pub rareflag: u64,
+    pub club: u64,
+    pub positions: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -1772,6 +1853,12 @@ pub fn search(input: &Input, q: &str, limit: usize) -> Vec<ClubEntry> {
             owned: false,
             price: fresh_price(input, c.def_id),
             meta: meta_of(c),
+            def_id: c.def_id,
+            rareflag: c.rareflag,
+            club: c.club,
+            league: c.league,
+            face: c.face,
+            art: c.art.clone(),
         })
         .collect();
     out.sort_by(|a, b| b.rating.cmp(&a.rating).then_with(|| a.name.cmp(&b.name)));
@@ -2101,6 +2188,15 @@ pub struct RushPick {
     pub generic: bool,
     /// His active evolution that a match here moves on.
     pub evo: Option<String>,
+    /// The card itself (EA's art on the Rush view): definition, rarity, league, club, positions, face stats.
+    pub def_id: u64,
+    pub rareflag: u64,
+    pub league: u64,
+    pub club: u64,
+    pub positions: Vec<String>,
+    pub face: Option<[u32; 6]>,
+    pub first_owner: bool,
+    pub art: Option<String>,
 }
 
 /// The match brief (user 2026-11-01): a to-do list for the next match – before it in broad strokes
@@ -2113,6 +2209,9 @@ pub struct MatchBrief {
     pub players: Vec<BriefPlayer>,
     /// In the match, for anyone: win, keep a clean sheet …
     pub anyone: Vec<BriefTask>,
+    /// In the match, tasks with a requirement on the doer: one line each, who can do it inside.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub reqs: Vec<BriefTask>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -2141,6 +2240,35 @@ pub struct BriefTask {
     pub text: String,
     /// Still to do.
     pub left: u32,
+    /// The squad requirement the doer has to meet (index into the session's `reqs`): the task is a
+    /// requirement line ("Score from outside the box · with a 4★ weak foot player · 2 left"), never one player's.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub req: Option<usize>,
+    /// Who in the XI (then the bench) can do it, the most suitable first: attackers before
+    /// midfielders before defenders, then by shooting.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub who: Vec<BriefWho>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct BriefWho {
+    pub name: String,
+    pub pos: String,
+    pub bench: bool,
+}
+
+/// How suitable a player is for a goal or an assist: lower first. Attackers, then attacking and wide
+/// midfielders, central, holding, full backs and centre backs; the keeper last. Then the better shot.
+fn suitability(pos: &str, face: Option<[u32; 6]>) -> (u8, i64) {
+    let tier = match pos {
+        "ST" | "CF" | "LW" | "RW" | "LF" | "RF" => 0,
+        "CAM" | "LM" | "RM" => 1,
+        "CM" => 2,
+        "CDM" => 3,
+        "LB" | "RB" | "LWB" | "RWB" | "CB" => 4,
+        _ => 5,
+    };
+    (tier, -(face.map_or(0, |f| f[1]) as i64))
 }
 
 /// "Score 1 header in the Ghoul Fest Live Event." → "Score 1 header": the place and the squad part
@@ -2232,7 +2360,7 @@ pub fn match_brief(s: &ComboPlan) -> MatchBrief {
             .filter(|x| x.counts && !x.bonus && x.progress < x.target)
             .map(|x| (x, x.text.to_lowercase()))
             .filter(|(_, l)| scores(l) || ["header", "clean sheet", "win "].iter().any(|k| l.contains(k)) || l.starts_with("win"))
-            .map(|(x, l)| (BriefTask { text: short_task(&x.text), left: x.target - x.progress }, scores(&l)))
+            .map(|(x, l)| (BriefTask { text: short_task(&x.text), left: x.target - x.progress, req: None, who: Vec::new() }, scores(&l)))
             .fold(Vec::new(), |mut acc: Vec<(BriefTask, bool)>, t| {
                 if !acc.iter().any(|a| a.0.text == t.0.text) {
                     acc.push(t);
@@ -2284,18 +2412,35 @@ pub fn match_brief(s: &ComboPlan) -> MatchBrief {
         if !doable || it.progress >= it.target {
             continue;
         }
-        let task = BriefTask { text: short_task(&it.text), left: it.target - it.progress };
+        let mut task = BriefTask { text: short_task(&it.text), left: it.target - it.progress, req: None, who: Vec::new() };
         let mut who: Vec<(String, String, bool)> = Vec::new();
         if let (None, Some(q)) = (it.req, sq) {
-            who.extend(q.slots.iter().filter(|x| x.pos != "GK" && task_fits(&l, x)).map(|x| (x.name.clone(), x.pos.clone(), false)));
+            let mut fit: Vec<&SlotView> = q.slots.iter().filter(|x| x.pos != "GK" && task_fits(&l, x)).collect();
+            // a goal or an assist: only the most suitable tier (never a defender while an attacker can)
+            if scores(&l) {
+                fit.sort_by_key(|x| suitability(&x.pos, x.face));
+                let top = fit.first().map(|x| suitability(&x.pos, x.face).0);
+                fit.retain(|x| Some(suitability(&x.pos, x.face).0) == top);
+            }
+            who.extend(fit.into_iter().map(|x| (x.name.clone(), x.pos.clone(), false)));
         }
         if let (true, Some(k), Some(q)) = (it.scorer, it.req, sq) {
+            // a requirement on the doer ("… with a 4★ weak foot player"): a requirement line with everyone who
+            // can do it, the most suitable first – the user picks in the match, we don't name one
             let need = &s.reqs[k].need;
-            if let Some(j) = sreqs.iter().position(|r| &r.need == need) {
+            let mut xi: Vec<&SlotView> = match sreqs.iter().position(|r| &r.need == need) {
                 // a goal or an assist is not the keeper's job
-                who.extend(q.slots.iter().filter(|x| x.counts_for.contains(&j) && x.pos != "GK").map(|x| (x.name.clone(), x.pos.clone(), false)));
-            }
-            who.extend(s.bench.iter().filter(|p| p.reqs.contains(&k) && p.pos != "GK").map(|p| (p.name.clone(), p.pos.clone(), true)));
+                Some(j) => q.slots.iter().filter(|x| x.counts_for.contains(&j) && x.pos != "GK").collect(),
+                None => Vec::new(),
+            };
+            xi.sort_by_key(|x| suitability(&x.pos, x.face));
+            task.req = Some(k);
+            task.who = xi.into_iter().map(|x| BriefWho { name: x.name.clone(), pos: x.pos.clone(), bench: false }).collect();
+            let mut bench: Vec<_> = s.bench.iter().filter(|p| p.reqs.contains(&k) && p.pos != "GK").collect();
+            bench.sort_by_key(|p| suitability(&p.pos, None));
+            task.who.extend(bench.into_iter().map(|p| BriefWho { name: p.name.clone(), pos: p.pos.clone(), bench: true }));
+            b.reqs.push(task);
+            continue;
         }
         tasks.push((task, who));
     }
@@ -2539,6 +2684,11 @@ fn squad_view(club: &[Player], f: &Formation, pick: &Pick, reqs: &[Req], prefs: 
             generic: !p.owned && price.is_none() && !prefs.must_cards.contains(&p.def_id),
             evo,
             face: p.face,
+            rareflag: p.rareflag,
+            first_owner: p.first_owner && p.owned,
+            art: p.art.clone(),
+            club: p.club,
+            positions: p.positions.clone(),
         });
     }
     // what the club has for each (the box says "your club has 1 (Corona) – get 2 more")
@@ -3012,6 +3162,14 @@ impl<'a> Planner<'a> {
             price: (!p.owned).then(|| fresh_price(self.input, p.def_id)).flatten(),
             generic: !p.owned && fresh_price(self.input, p.def_id).is_none(),
             evo: self.input.evos.iter().find(|e| e.item == p.key && plays_in(&e.modes, place)).map(|e| e.name.clone()),
+            def_id: p.def_id,
+            rareflag: p.rareflag,
+            league: p.league,
+            club: p.club,
+            positions: p.positions.clone(),
+            face: p.face,
+            first_owner: p.first_owner && p.owned,
+            art: p.art.clone(),
         });
         plan.bench = bench_picks
             .iter()
@@ -3291,7 +3449,9 @@ const LIVE_WITHIN_S: u64 = 400 * 24 * 3600;
 pub fn plan(input: &Input, prefs: &SquadPrefs) -> SquadsView {
     let links = link_map(&input.team_links);
     let formations = if input.formations.is_empty() { builtin_formations() } else { input.formations.clone() };
-    let mut club: Vec<Player> = input.club.iter().filter(|p| !p.positions.is_empty() && (!(prefs.hide_loans && p.loan) || prefs.must.contains(&p.key)) && (!prefs.exclude.contains(&p.key) || prefs.must.contains(&p.key))).cloned().collect();
+    // a card the user picked for a position plays like a "has to include" (a loan or a left-out card too)
+    let kept = |k: u64| prefs.must.contains(&k) || prefs.pins.iter().any(|w| w.key == k);
+    let mut club: Vec<Player> = input.club.iter().filter(|p| !p.positions.is_empty() && (!p.loan || kept(p.key)) && (!prefs.exclude.contains(&p.key) || kept(p.key))).cloned().collect();
     // a card EA names "---" that no catalog knows: its club and position, never an empty name
     for p in club.iter_mut().filter(|p| p.name.trim().is_empty()) {
         let team = input.names.team_name(p.club).unwrap_or("?");
@@ -3619,14 +3779,15 @@ pub fn plan(input: &Input, prefs: &SquadPrefs) -> SquadsView {
             let mut c: Vec<ClubEntry> = input
                 .club
                 .iter()
-                .filter(|p| !p.positions.is_empty())
-                .map(|p| ClubEntry { key: p.key, name: p.name.clone(), rating: p.rating, positions: p.positions.clone(), nation: p.nation, nation_name: input.names.nations.get(&p.nation).cloned(), loan: p.loan, owned: true, price: None, meta: meta_of(p) })
+                // a loan card is not a club player to pick from (user 2026-11-05) – only one the user pinned in
+                .filter(|p| !p.positions.is_empty() && (!p.loan || prefs.must.contains(&p.key)))
+                .map(|p| ClubEntry { key: p.key, name: p.name.clone(), rating: p.rating, positions: p.positions.clone(), nation: p.nation, nation_name: input.names.nations.get(&p.nation).cloned(), loan: p.loan, owned: true, price: None, meta: meta_of(p), def_id: p.def_id, rareflag: p.rareflag, club: p.club, league: p.league, face: p.face, art: p.art.clone() })
                 .collect();
             // the cards to get the user picked, so their chips have a name
             for &def in &prefs.must_cards {
                 if let Some(p) = input.catalog.iter().find(|c| c.def_id == def) {
                     if !c.iter().any(|x| x.key == def) {
-                        c.push(ClubEntry { key: def, name: p.name.clone(), rating: p.rating, positions: p.positions.clone(), nation: p.nation, nation_name: input.names.nations.get(&p.nation).cloned(), loan: false, owned: false, price: fresh_price(input, def), meta: meta_of(p) });
+                        c.push(ClubEntry { key: def, name: p.name.clone(), rating: p.rating, positions: p.positions.clone(), nation: p.nation, nation_name: input.names.nations.get(&p.nation).cloned(), loan: false, owned: false, price: fresh_price(input, def), meta: meta_of(p), def_id: def, rareflag: p.rareflag, club: p.club, league: p.league, face: p.face, art: p.art.clone() });
                     }
                 }
             }
@@ -3826,6 +3987,8 @@ pub fn club_player(item: &crate::types::Item, catalog: &BTreeMap<u64, crate::typ
         .or_else(|| card.filter(|c| c.face.len() == 6).map(|c| std::array::from_fn(|i| c.face[i] as u32)));
     Some(Player {
         key: item.id,
+        first_owner: false,
+        art: card.and_then(|c| c.art.clone()),
         def_id,
         // each source in turn: EA writes "---" for many cards in the club data – the catalog has the name
         // (by the card, the player's base card, the item's asset id). Never the club as a name
@@ -3871,6 +4034,8 @@ pub fn catalog_player(c: &crate::types::GalleryCard, attrs: &Attributes) -> Opti
     }
     Some(Player {
         key: c.def_id,
+        first_owner: false,
+        art: c.art.clone(),
         def_id: c.def_id,
         name: c.name.clone().unwrap_or_default(),
         rating: c.rating.unwrap_or(0) as u32,
@@ -4064,6 +4229,114 @@ mod tests {
         assert_eq!(chem, vec![1, 3], "an Icon counts twice for France");
     }
 
+    /// "Change players" (user 2026-11-04): the cards picked are swapped out of their slots – FC-Tracker re-solves,
+    /// each one is replaced (or moves to another position it plays), the rest of the squad adapts, and none of them
+    /// becomes a "has to include" or is left out of every squad.
+    /// Formations are a ranked list (user 2026-11-04): with squads equally good, the first one in the list wins.
+    #[test]
+    fn the_first_ranked_formation_wins_a_tie() {
+        let all = ["GK", "CB", "RB", "LB", "CDM", "CM", "CAM", "RM", "LM", "RW", "LW", "ST", "CF"];
+        let mut club: Vec<Player> = (1..=11).map(|k| pl(k, &letters(k), 85, &["GK"], 1, 100, 1)).collect();
+        for (i, p) in club.iter_mut().enumerate().skip(1) {
+            p.positions = all[1..].iter().map(|s| s.to_string()).collect();
+            p.key = i as u64 + 1;
+        }
+        let f = builtin_formations();
+        let name = |n: &str| f.iter().find(|x| x.label == n || x.name == n).map(|x| x.name.clone()).unwrap();
+        for order in [["4-4-2", "4-3-3"], ["4-3-3", "4-4-2"]] {
+            let prefs = SquadPrefs { chem_target: 0, formations: order.iter().map(|n| name(n)).collect(), ..Default::default() };
+            let (fi, _) = solve(&club, &[], &f, &prefs, &BTreeMap::new(), &BTreeSet::new(), None).unwrap();
+            assert_eq!(f[fi].name, name(order[0]), "{order:?}");
+        }
+    }
+
+    #[test]
+    fn a_swap_replaces_or_moves_the_cards_and_never_makes_them_a_must() {
+        let mut club = Vec::new();
+        let positions = [("GK", 1), ("CB", 3), ("RB", 1), ("LB", 1), ("CM", 4), ("CDM", 1), ("CAM", 1), ("RW", 1), ("LW", 1), ("ST", 3)];
+        let mut k = 0;
+        for (pos, n) in positions {
+            for i in 0..n {
+                k += 1;
+                club.push(pl(k, &letters(k), 88 - i as u32, &[pos], 1, 100 + k, 1));
+            }
+        }
+        // the best striker also plays CAM
+        let best_st = club.iter().position(|p| p.positions == ["ST"]).unwrap();
+        club[best_st].positions.push("CAM".into());
+        let f = builtin_formations();
+        let base = SquadPrefs { chem_target: 0, formations: vec!["4-3-3".into()], ..Default::default() };
+        let (fi, pick) = solve(&club, &[], &f, &base, &BTreeMap::new(), &BTreeSet::new(), None).unwrap();
+        let at = |pick: &Pick, fi: usize| -> Vec<(u64, String)> { pick.slots.iter().zip(&f[fi].slots).filter_map(|(s, pos)| s.map(|i| (club[i].key, pos.clone()))).collect() };
+        let before = at(&pick, fi);
+        // swap two cards out of their slots: a centre back and a striker
+        let cb = before.iter().find(|(_, p)| p == "CB").unwrap().clone();
+        let st = before.iter().find(|(_, p)| p == "ST").unwrap().clone();
+        let prefs = SquadPrefs { swaps: vec![SwapOut { key: cb.0, pos: cb.1.clone() }, SwapOut { key: st.0, pos: st.1.clone() }], ..base.clone() };
+        let (fi2, pick2) = solve(&club, &[], &f, &prefs, &BTreeMap::new(), &BTreeSet::new(), None).unwrap();
+        let after = at(&pick2, fi2);
+        assert_eq!(after.len(), 11, "the squad is still full");
+        assert!(!after.contains(&cb) && !after.contains(&st), "neither stands where it was swapped out of");
+        // a swap is not a must and not a leave-out
+        assert!(prefs.must.is_empty() && prefs.exclude.is_empty());
+        // the rest adapts: another centre back and another striker came in
+        assert_eq!(after.iter().filter(|(_, p)| p == "CB").count(), before.iter().filter(|(_, p)| p == "CB").count());
+        assert_eq!(after.iter().filter(|(_, p)| p == "ST").count(), before.iter().filter(|(_, p)| p == "ST").count());
+    }
+
+    #[test]
+    fn a_reroll_is_a_fresh_squad_in_another_formation_without_swaps() {
+        let mut club = Vec::new();
+        let positions = [("GK", 2), ("CB", 4), ("RB", 2), ("LB", 2), ("CM", 4), ("CDM", 2), ("CAM", 2), ("RW", 2), ("LW", 2), ("RM", 2), ("LM", 2), ("ST", 3)];
+        let mut k = 0;
+        for (pos, n) in positions {
+            for i in 0..n {
+                k += 1;
+                club.push(pl(k, &letters(k), 88 - i as u32, &[pos], 1, 100 + k, 1));
+            }
+        }
+        let f = builtin_formations();
+        let base = SquadPrefs { chem_target: 0, ..Default::default() };
+        let (fi0, p0) = solve(&club, &[], &f, &base, &BTreeMap::new(), &BTreeSet::new(), None).unwrap();
+        let (fi1, p1) = solve(&club, &[], &f, &SquadPrefs { reroll: 1, ..base.clone() }, &BTreeMap::new(), &BTreeSet::new(), None).unwrap();
+        assert_ne!(f[fi0].name, f[fi1].name, "another formation");
+        assert_eq!(p1.slots.iter().flatten().count(), 11, "a full squad");
+        assert!(base.swaps.is_empty());
+        // no reroll: the same best squad as before
+        let (fi0b, p0b) = solve(&club, &[], &f, &base, &BTreeMap::new(), &BTreeSet::new(), None).unwrap();
+        assert_eq!((fi0, p0.slots.clone()), (fi0b, p0b.slots));
+    }
+
+    #[test]
+    fn a_picked_player_plays_exactly_at_that_position() {
+        let mut club = Vec::new();
+        let positions = [("GK", 1), ("CB", 3), ("RB", 1), ("LB", 1), ("CM", 5), ("CDM", 1), ("CAM", 1), ("RW", 1), ("LW", 1), ("ST", 2)];
+        let mut k = 0;
+        for (pos, n) in positions {
+            for i in 0..n {
+                k += 1;
+                club.push(pl(k, &letters(k), 88 - i as u32, &[pos], 1, 100 + k, 1));
+            }
+        }
+        // the weakest centre mid also plays CDM – the pick must still put him at CM
+        let weakest_cm = club.iter().rposition(|p| p.positions == ["CM"]).unwrap();
+        club[weakest_cm].positions.push("CDM".into());
+        let f = builtin_formations();
+        let base = SquadPrefs { chem_target: 0, formations: vec!["4-3-3".into()], ..Default::default() };
+        let (fi, pick) = solve(&club, &[], &f, &base, &BTreeMap::new(), &BTreeSet::new(), None).unwrap();
+        let at = |pick: &Pick, fi: usize| -> Vec<(u64, String)> { pick.slots.iter().zip(&f[fi].slots).filter_map(|(s, pos)| s.map(|i| (club[i].key, pos.clone()))).collect() };
+        let before = at(&pick, fi);
+        let out = before.iter().find(|(_, p)| p == "CM").unwrap().clone();
+        let chosen = club[weakest_cm].key;
+        assert!(!before.iter().any(|(k, _)| *k == chosen), "the pick was on the bench");
+        let prefs = SquadPrefs { swaps: vec![SwapOut { key: out.0, pos: out.1.clone() }], pins: vec![SwapOut { key: chosen, pos: "CM".into() }], ..base.clone() };
+        let (fi2, pick2) = solve(&club, &[], &f, &prefs, &BTreeMap::new(), &BTreeSet::new(), None).unwrap();
+        let after = at(&pick2, fi2);
+        assert_eq!(after.len(), 11);
+        assert!(after.contains(&(chosen, "CM".into())), "the picked player stands at CM: {after:?}");
+        assert!(!after.contains(&out), "the replaced one is out of that position");
+    }
+
     #[test]
     fn the_squad_meets_every_requirement_it_can_and_names_the_rest() {
         let mut club = Vec::new();
@@ -4103,6 +4376,7 @@ mod tests {
             pos: "ST".into(), name: "Owned ST".into(), def_id: 9_999, rating: 80, chem: 3, strength, loan: false, counts_for: vec![], accel: None, key_ps: 0, key_ps_plus: 0,
             full: false, nation: 1, nation_name: None, foot: 0, weak_foot: 3, skill_moves: 3, must: false, owned: true, price: None,
             league: 0, league_name: None, out_of_position: false, generic: false, evo: None, face: None,
+            rareflag: 0, club: 0, positions: vec!["ST".into()], first_owner: false, art: None,
         };
         SquadView { formation: "4-3-3".into(), chem: 30, chem_target: 33, slots: vec![slot], strength, met: 0, changes: None, must_missing: vec![], buys: 0, cost: 0, manager: None }
     }
@@ -4227,6 +4501,20 @@ mod tests {
         let s = &v.combos[0];
         assert!(s.squad.as_ref().unwrap().slots.iter().all(|x| x.nation != 23));
         assert!(!s.items[0].counts && !s.reqs[0].met);
+    }
+
+    #[test]
+    fn a_loan_card_is_never_a_club_player_to_pick_or_list() {
+        let mut input = scenario(json!({ "groups": [ev(1, "Phantom", &[(11, "Win 5 matches in any FUT game mode.", 0, 5)])] }));
+        // the best striker in the club is a loan
+        let mut loan = pl(900, "Loanee", 99, &["ST"], 1, 1, 1);
+        loan.loan = true;
+        input.club.push(loan);
+        for prefs in [SquadPrefs::default(), SquadPrefs { hide_loans: false, ..SquadPrefs::default() }] {
+            let v = plan(&input, &prefs);
+            assert!(v.club.iter().all(|c| c.key != 900), "not in the club list (Change / alternatives)");
+            assert!(v.combos.iter().filter_map(|s| s.squad.as_ref()).all(|sq| sq.slots.iter().all(|x| x.name != "Loanee")), "never picked");
+        }
     }
 
     #[test]
@@ -4602,14 +4890,41 @@ mod tests {
         // before: the squad, the kit
         assert!(b.before.iter().any(|x| x.kind == "squad" || x.kind == "ready"));
         assert!(b.before.iter().any(|x| x.kind == "use" && x.text == "Mexico National team Away kit"));
-        // in the match: a Spaniard (never the keeper) scores, the striker heads one in, anyone wins
-        let spain = b.players.iter().find(|p| p.tasks.iter().any(|t| t.text == "Score 3 goals")).expect("a scorer");
-        assert_ne!(spain.pos, "GK");
+        // in the match: "3 goals with a Spaniard" is a requirement line with every Spaniard who can, the most
+        // suitable first (attackers before defenders, never the keeper) – no single player named for it
+        let spain = b.reqs.iter().find(|t| t.text == "Score 3 goals").expect("a requirement line");
+        assert!(spain.req.is_some() && !spain.who.is_empty() && spain.who.iter().all(|w| w.pos != "GK"));
+        let tiers: Vec<u8> = spain.who.iter().map(|w| suitability(&w.pos, None).0).collect();
+        assert!(tiers.windows(2).all(|w| w[0] <= w[1]), "attackers first: {:?}", spain.who);
+        assert!(!b.players.iter().any(|p| p.tasks.iter().any(|t| t.text == "Score 3 goals")));
         assert!(b.players.iter().any(|p| is_attacker(&p.pos) && p.tasks.iter().any(|t| t.text == "Score 1 header")));
         assert!(b.anyone.iter().any(|t| t.text == "Win 2 matches" && t.left == 2));
         // "with a ST (Main Position)": the striker, not anyone
         assert!(b.players.iter().any(|p| p.pos == "ST" && p.tasks.iter().any(|t| t.text.starts_with("Score at least 1 goal in 13"))));
         assert!(!b.anyone.iter().any(|t| t.text.starts_with("Score at least 1 goal in 13")));
+    }
+
+    #[test]
+    fn a_goal_goes_to_the_most_suitable_player_never_a_defender_ahead_of_an_attacker() {
+        assert!(suitability("ST", None) < suitability("CAM", None) && suitability("CM", None) < suitability("RB", None));
+        assert!(suitability("ST", Some([80, 90, 70, 80, 30, 70])) < suitability("ST", Some([80, 70, 70, 80, 30, 70])), "the better shot first");
+        // "with a player with min. 85 PAC": a fast right back and a fast striker both fit – the striker is named
+        let mut input = scenario(json!({ "groups": [ev(1, "Pace", &[(11, "Score 2 goals with a player with min. 85 PAC in Squad Battles.", 0, 2)])] }));
+        for p in input.club.iter_mut() {
+            if p.positions.iter().any(|x| x == "RB" || x == "ST") {
+                p.face = Some([92, 70, 70, 70, 60, 70]);
+            }
+        }
+        let v = plan(&input, &SquadPrefs::default());
+        let b = &v.combos[0].brief;
+        let all: Vec<&BriefTask> = b.reqs.iter().chain(b.players.iter().flat_map(|p| p.tasks.iter())).collect();
+        assert!(!all.is_empty(), "the goal task is in the brief: {b:?}");
+        for p in b.players.iter().filter(|p| p.tasks.iter().any(|t| t.text.starts_with("Score 2 goals"))) {
+            assert!(is_attacker(&p.pos), "a defender named for a goal: {p:?}");
+        }
+        for t in b.reqs.iter().filter(|t| t.text.starts_with("Score 2 goals")) {
+            assert!(t.who.first().is_some_and(|w| is_attacker(&w.pos)), "attackers first: {:?}", t.who);
+        }
     }
 
     #[test]

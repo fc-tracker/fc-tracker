@@ -15,7 +15,7 @@ const SHARED_KEYS = [
   "fct.section",
   "fct.squads.event",
   "fct.embedMissing",
-  "fct.zoom",
+  "fct.zoom2",
   "fct.howSeen",
   "fct.usage.off",
 ];
@@ -44,9 +44,20 @@ async function collect(): Promise<SharedSettings> {
   const value: SharedSettings = { ls: Object.fromEntries(SHARED_KEYS.map((k) => [k, ls.get(k)])) };
   if (!IS_WEB) {
     const p = await api.uiPrefs().catch(() => null);
-    if (p) value.ui = { mode: p.mode, missing_side: p.missing_side, after_play: p.after_play, champions: p.champions, squads: p.squads };
+    if (p) value.ui = { mode: p.mode, missing_side: p.missing_side, after_play: p.after_play, champions: p.champions, squads: p.squads, reminders: p.reminders };
   }
   return value;
+}
+
+/** The app's own settings as the account last had them (FC-Tracker Web and the dashboard keep a copy to show; the
+ *  web page never applies or sends them back). */
+const APP_UI = "fct.sync.settings.app";
+export function appSettings(): Partial<UiPrefs> | null {
+  try {
+    return JSON.parse(ls.get(APP_UI) ?? "null");
+  } catch {
+    return null;
+  }
 }
 
 export async function readSettings(): Promise<{ value: SharedSettings; writtenAt: number }> {
@@ -72,6 +83,7 @@ export async function applySettings(incoming: SharedSettings, replace: boolean):
   window.dispatchEvent(new Event("fct-theme-change"));
   window.dispatchEvent(new Event("fct-settings-synced"));
   const ui = incoming.ui;
+  if (IS_WEB && ui) ls.set(APP_UI, JSON.stringify(ui));
   if (ui && replace) {
     const mine = await api.uiPrefs().catch(() => null);
     if (!mine) return;

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api, type TrackingInfo, type TrackingPrefs } from "./api";
 import { t, type MessageKey } from "./i18n";
+import { Switch } from "./ui";
 
 const PRESETS = ["auto", "light", "balanced", "fast", "max", "custom"] as const;
 
@@ -45,29 +46,26 @@ export default function Speed() {
         {PRESETS.map((p) => (
           <button
             key={p}
-            className={`ln-btn small ${info.prefs.preset === p ? "" : "ghost"}`}
+            type="button"
+            className={`seg ring ${info.prefs.preset === p ? "is-on" : ""}`}
             aria-pressed={info.prefs.preset === p}
             onClick={() => apply(p === "custom" ? { ...e, preset: "custom" } : { ...info.prefs, preset: p }, true)}
           >
-            {t(`speed.p.${p}` as MessageKey)}
+            <span>{t(`speed.p.${p}` as MessageKey)}</span>
           </button>
         ))}
       </div>
-      {info.prefs.preset === "auto" && <p className="ln-hint">{t("speed.autoHint", { preset: t(`speed.p.${pc.recommended}` as MessageKey) })}</p>}
+      {info.prefs.preset === "auto" && <p className="speed-hint">{t("speed.autoHint", { preset: t(`speed.p.${pc.recommended}` as MessageKey) })}</p>}
 
       <div className="ln-rows">
         <Row title={t("speed.continuous")} text={t("speed.continuousText")}>
-          <button className={`ln-btn small ${e.continuous ? "" : "ghost"}`} aria-pressed={e.continuous} onClick={() => edit({ continuous: !e.continuous })}>
-            {e.continuous ? t("settings.on") : t("settings.off")}
-          </button>
+          <Switch on={e.continuous} label={t("speed.continuous")} onChange={(v) => edit({ continuous: v })} />
         </Row>
         <Row title={t("speed.watch")} text={t("speed.watchText")}>
           <Num value={e.watch_ms} min={e.continuous ? 16 : 50} max={1000} step={e.watch_ms < 100 ? 1 : 10} unit="ms" onChange={(v) => edit({ watch_ms: v })} />
         </Row>
         <Row title={t("speed.same")} text={t("speed.sameText")}>
-          <button className={`ln-btn small ${e.same_for_all ? "" : "ghost"}`} aria-pressed={e.same_for_all} onClick={() => edit({ same_for_all: !e.same_for_all })}>
-            {e.same_for_all ? t("settings.on") : t("settings.off")}
-          </button>
+          <Switch on={e.same_for_all} label={t("speed.same")} onChange={(v) => edit({ same_for_all: v })} />
         </Row>
         {e.same_for_all ? (
           <Row title={t("speed.all")} text={t("speed.allText")}>
@@ -90,7 +88,7 @@ export default function Speed() {
           <Num value={e.match_ms} min={250} max={10000} step={250} unit="ms" onChange={(v) => edit({ match_ms: v })} />
         </Row>
       </div>
-      <p className="ln-hint">
+      <p className="speed-hint">
         {t("speed.cost", { looks })} {t("speed.match")}
       </p>
     </div>
@@ -100,11 +98,11 @@ export default function Speed() {
 function Row({ title, text, children }: { title: string; text: string; children: React.ReactNode }) {
   return (
     <div className="ln-row">
-      <div>
+      <div className="ln-row-text">
         <b>{title}</b>
         <p>{text}</p>
       </div>
-      {children}
+      <div className="ln-row-ctl">{children}</div>
     </div>
   );
 }
@@ -114,8 +112,8 @@ function Num({ value, min, max, step, unit, onChange }: { value: number; min: nu
   const clamp = (v: number) => Math.min(max, Math.max(min, Math.round(v)));
   return (
     <span className="speed-num">
-      <input type="range" min={min} max={max} step={step} value={value} onChange={(ev) => onChange(clamp(Number(ev.target.value)))} aria-label={unit} />
-      <input type="number" min={min} max={max} step={step} value={value} onChange={(ev) => onChange(clamp(Number(ev.target.value)))} />
+      <input type="range" min={min} max={max} step={step} value={value} style={{ ["--p" as string]: `${((value - min) / (max - min)) * 100}%` }} onChange={(ev) => onChange(clamp(Number(ev.target.value)))} aria-label={unit} />
+      <input className="ln-input" type="number" min={min} max={max} step={step} value={value} onChange={(ev) => onChange(clamp(Number(ev.target.value)))} />
       <span>{unit}</span>
     </span>
   );
@@ -128,8 +126,9 @@ function Secs({ ms, onChange }: { ms: number; onChange: (ms: number) => void }) 
   const set = (s: number) => onChange(Math.round(Math.min(10, Math.max(0, s)) * 1000));
   return (
     <span className="speed-num">
-      <input type="range" min={0} max={5} step={0.05} value={ms / 1000} onChange={(ev) => set(Number(ev.target.value))} aria-label="s" />
+      <input type="range" min={0} max={5} step={0.05} value={ms / 1000} style={{ ["--p" as string]: `${Math.min(100, (ms / 5000) * 100)}%` }} onChange={(ev) => set(Number(ev.target.value))} aria-label="s" />
       <input
+        className="ln-input"
         type="number"
         min={0}
         max={10}

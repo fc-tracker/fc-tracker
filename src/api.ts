@@ -6,6 +6,7 @@ import { browserPad } from "./browserPad";
 import { getLocale, t } from "./i18n";
 import type { ChampsData } from "./championsData";
 import type { ClubEntry, SquadPrefs, SquadsView } from "./squadsData";
+import { sharePlan } from "./panelShare";
 
 export type DisplayMode = "fullscreen" | "borderless" | "windowed" | "unknown";
 
@@ -42,8 +43,17 @@ export interface Controller {
 export interface UpdateInfo {
   current: string;
   version: string;
-  /** This version must not keep running ("Update required"). */
+  /** This version must not keep running – every update is forced (updates.rs FORCE_EVERY_UPDATE). */
   required?: boolean;
+  /** The feed's `required`: this version can't read the newest data (the overlay blocks too). */
+  data_change?: boolean;
+  /** Installs by itself once FC 27 is closed (false in a dev build). */
+  auto?: boolean;
+}
+
+/** The first start after an update ("Updated to …", once). */
+export interface UpdatedInfo {
+  version: string;
 }
 
 /** True when version a is older than b ("0.9.1" < "0.9.2"). */
@@ -64,8 +74,31 @@ export interface SyncSummary {
   sync_active: boolean;
 }
 
+/** One card on the Players page (lib.rs CardRow). */
+export interface CardRow {
+  def_id: number;
+  name: string | null;
+  rating: number | null;
+  position: string | null;
+  positions: string[];
+  rareflag: number | null;
+  nation: number | null;
+  league: number | null;
+  club: number | null;
+  face?: number[];
+  art?: string | null;
+  score: number;
+  holo: boolean;
+  first_owner: "known" | "manual" | "manual_no" | "scanned" | "scanned_no" | "club_no" | "unknown" | "none";
+  removed: boolean;
+  /** Sets whose best selection the card is in. */
+  sets: string[];
+}
+
 export interface GalleryCardView {
   def_id: number;
+  /** EA's art guid: a special's action shot. */
+  art?: string | null;
   name: string | null;
   rating: number | null;
   position: string | null;
@@ -79,6 +112,11 @@ export interface GalleryCardView {
   /** EA's market average on the user's own (PC) market, else the lowest Buy Now seen. */
   price: number | null;
   price_at: number | null;
+  /** The card art beyond the rarity (FutCard's flag · league · club row and face stats) – when the catalog knows them. */
+  nation?: number;
+  league?: number;
+  club?: number;
+  face?: number[];
 }
 
 /** Best value (DESIGN 9r): a card bought for the Gallery is resold – it costs EA's 5 % tax. */
@@ -131,6 +169,13 @@ export interface TokenPlan {
   coins_needed: number;
   players: number;
   balance: number | null;
+}
+/** The user's coin balance as last seen: read passively from the Web App's own responses during a
+ *  club sync (EA's usermassinfo / tradepile – no extra request), or on screen. `read_at` in ms.
+ *  Optional everywhere: null until a sync has shown it. */
+export interface Coins {
+  value: number;
+  read_at: number;
 }
 export interface BestValue {
   coins: [number, number] | null;
@@ -448,8 +493,17 @@ export interface GalleryCategory {
 export const IS_WEB = import.meta.env.MODE === "web";
 const browserDev = (import.meta.env.DEV || import.meta.env.MODE === "demo" || IS_WEB) && !("__TAURI_INTERNALS__" in window);
 const mock = <T,>(load: (m: typeof import("./devMock")) => T) => import("./devMock").then(load);
-/** Launcher states in the browser: ?demo=unpaired | syncing | running | windowed | outdated | chrome-closed. */
+/** Launcher states in the browser: ?demo=unpaired | syncing | running | windowed | outdated | required | updated | chrome-closed. */
 const demo = new URLSearchParams(location.search).get("demo");
+/** Dev preview of the forced update: ?mock=update (FC 27 closed: countdown) | update-running (waits for FC 27) |
+ *  update-data (can't read the newest data) | updated ("Updated to …") | ext-update (the extension updating itself). Account states: account.ts ACCOUNT_MOCK. */
+const mockUpd = new URLSearchParams(location.search).get("mock");
+const mockUpdate = (): UpdateInfo | null =>
+  mockUpd === "update" || mockUpd === "update-running"
+    ? { current: "0.1.101", version: "0.2.0", required: true, data_change: false, auto: true }
+    : mockUpd === "update-data"
+      ? { current: "0.1.101", version: "0.2.0", required: true, data_change: true, auto: true }
+      : null;
 
 const appApi = {
   galleryStatus: () =>
@@ -467,7 +521,7 @@ const appApi = {
   missingListVisible: () => (browserDev ? Promise.resolve(false) : invoke<boolean>("missing_list_visible")),
   uiPrefs: () =>
     // the website demo shows the Champions tracker switched on (a weekend in progress)
-    browserDev ? Promise.resolve<UiPrefs>({ mode: "panel", missing_side: "left", after_play: "remind", champions: import.meta.env.MODE === "demo" }) : invoke<UiPrefs>("ui_prefs"),
+    browserDev ? Promise.resolve<UiPrefs>({ mode: new URLSearchParams(location.search).get("mode") === "full" ? "full" : "panel", missing_side: "left", after_play: "remind", champions: import.meta.env.MODE === "demo" }) : invoke<UiPrefs>("ui_prefs"),
   setOverlayMode: (mode: OverlayMode) =>
     browserDev ? Promise.resolve<UiPrefs>({ mode, missing_side: "left", after_play: "remind" }) : invoke<UiPrefs>("set_overlay_mode", { mode }),
   setMissingSide: (side: "left" | "right") =>
@@ -492,22 +546,29 @@ const appApi = {
       ? Promise.resolve<SetupStatus>({ path: "", exists: true, mode: demo === "windowed" ? "windowed" : "borderless" })
       : invoke<SetupStatus>("setup_status"),
   setBorderless: () => invoke<SetupStatus>("set_borderless"),
-  gameRunning: () => (browserDev ? Promise.resolve(demo === "running" || demo === "syncing") : invoke<boolean>("game_running")),
+  gameRunning: () => (browserDev ? Promise.resolve(demo === "running" || demo === "syncing" || mockUpd === "update-running") : invoke<boolean>("game_running")),
   launchGame: () => invoke<void>("launch_game"),
   hideOverlay: () => (browserDev ? Promise.resolve() : invoke<void>("hide_overlay")),
   /** A click in an overlay opened without focus (while recording): it takes the focus. */
   overlayFocus: () => (browserDev ? Promise.resolve() : invoke<void>("overlay_focus")),
   bridgeInfo: () =>
     browserDev
-      ? Promise.resolve<BridgeInfo>({ port: 47827, paired: demo !== "unpaired", pairing_code: "4821", extension_version: demo === "outdated" ? "0.9.1" : "0.9.2", extension_latest: "0.9.2", needs_pairing: demo === "unpaired", extension_live: demo !== "chrome-closed" })
+      ? Promise.resolve<BridgeInfo>({ port: 47827, paired: demo !== "unpaired", pairing_code: "4821", extension_version: mockUpd === "ext-update" ? "0.12.9" : demo === "outdated" ? "0.9.1" : "0.9.2", extension_latest: mockUpd === "ext-update" ? "0.13.11" : "0.9.2", extension_required: mockUpd === "ext-update" ? "0.13.0" : undefined, needs_pairing: demo === "unpaired", extension_live: demo !== "chrome-closed" })
       : invoke<BridgeInfo>("bridge_info"),
   unpair: () => invoke<BridgeInfo>("unpair"),
   setLocale: (locale: string) => invoke<boolean>("set_locale", { locale }),
+  /** The paired extension's popup and badge follow the app's theme (light / dark / glass). */
+  setBridgeTheme: (theme: string) => (browserDev ? Promise.resolve(true) : invoke<boolean>("set_bridge_theme", { theme })),
   /** "Done" on a suggested swap: the stored lineup follows; the next set page read checks it. */
   markSwapDone: (setKey: string, sw: SwapSuggestion) =>
     browserDev
       ? Promise.resolve(true)
       : invoke<boolean>("mark_swap_done", { setKey, outDefId: sw.out.def_id, outSlot: sw.out.slot ?? null, intoDefId: sw.into.def_id }),
+  /** The coin balance as last seen (null until a sync or the screen has shown it). */
+  coins: () =>
+    browserDev
+      ? import("./devMock").then((m) => m.mockBestValue(null, null, null, [])).then((v): Coins | null => (v?.coins ? { value: v.coins[0], read_at: v.coins[1] } : null))
+      : invoke<Coins | null>("coins"),
   /** Best value: every set's grades with their cost, and the token plan (within the coins). */
   bestValue: (budget: number | null = null, target: number | null = null, steps: number | null = null) =>
     browserDev
@@ -524,6 +585,13 @@ const appApi = {
   paidShare: () => (browserDev ? Promise.resolve<PriceShare>({ platform: null, prices: [] }) : invoke<PriceShare>("paid_share")),
   paidPool: (platform: string, prices: Record<string, [number, number, number]>) =>
     browserDev ? Promise.resolve(0) : invoke<number>("paid_pool", { platform, prices }),
+  /** The account as every window shows it (Rust account.rs): signed in = Credential Manager; the profile the launcher read. */
+  accountView: () =>
+    browserDev
+      ? Promise.resolve({ signed_in: localStorage.getItem("fct.account") != null, user: null } as AccountView)
+      : invoke<AccountView>("account_view"),
+  /** The launcher hands the profile it read to the other windows (null on sign-out). */
+  setAccountUser: (user: unknown | null) => (browserDev ? Promise.resolve() : invoke<void>("set_account_user", { user })),
   /** The FC-Tracker account (src/account.ts): the saved secret (Credential Manager in the app). */
   accountSecret: () =>
     browserDev ? Promise.resolve(localStorage.getItem("fct.account") ?? null) : invoke<string | null>("account_secret"),
@@ -550,7 +618,11 @@ const appApi = {
   takeUnknownSets: () => (browserDev ? Promise.resolve<string[]>([]) : invoke<string[]>("take_unknown_sets")),
   /** The card menu's choice: true = first owner, false = purchased, null = automatic. */
   setFirstOwner: (defId: number, value: boolean | null) =>
-    browserDev ? Promise.resolve() : invoke<void>("set_first_owner", { defId, value }),
+    browserDev ? mock((m) => m.mockSetFirstOwner(defId, value)) : invoke<void>("set_first_owner", { defId, value }),
+  /** Players: every collected Gallery card (and the ones taken out as wrong reads). */
+  galleryCards: () => (browserDev ? mock((m) => m.mockGalleryCards()) : invoke<CardRow[]>("gallery_cards")),
+  /** Take a card out as a wrong read (true) or put it back (false). */
+  setCardRemoved: (defId: number, removed: boolean) => (browserDev ? mock((m) => m.mockSetRemoved(defId, removed)) : invoke<void>("set_card_removed", { defId, removed })),
   syncSummary: () =>
     browserDev
       ? mock((m) => (demo === "syncing" ? { ...m.mockSync, sync_active: true, item_count: 412 } : m.mockSync))
@@ -561,16 +633,25 @@ const appApi = {
   cancelSync: () => invoke<SyncSummary>("cancel_sync"),
   checkUpdate: () =>
     browserDev
-      ? Promise.resolve<UpdateInfo | null>(demo === "outdated" ? { current: "0.1.1", version: "0.1.2" } : demo === "required" ? { current: "0.1.1", version: "0.1.2", required: true } : null)
+      ? Promise.resolve<UpdateInfo | null>(mockUpdate() ?? (demo === "outdated" ? { current: "0.1.1", version: "0.1.2", required: true, auto: false } : demo === "required" ? { current: "0.1.1", version: "0.1.2", required: true, data_change: true, auto: false } : null))
       : invoke<UpdateInfo | null>("check_update"),
   /** What the app's update watcher knows (no request). */
   updateState: () =>
     browserDev
-      ? Promise.resolve<UpdateInfo | null>(demo === "outdated" ? { current: "0.1.1", version: "0.1.2" } : demo === "required" ? { current: "0.1.1", version: "0.1.2", required: true } : null)
+      ? Promise.resolve<UpdateInfo | null>(mockUpdate() ?? (demo === "outdated" ? { current: "0.1.1", version: "0.1.2", required: true, auto: false } : demo === "required" ? { current: "0.1.1", version: "0.1.2", required: true, data_change: true, auto: false } : null))
       : invoke<UpdateInfo | null>("update_state"),
-  installUpdate: () => invoke<void>("install_update"),
+  installUpdate: () => (browserDev ? new Promise<void>(() => {}) : invoke<void>("install_update")),
+  /** "Updated to …" – once, on the first start after an update (?demo=updated in the browser). */
+  updatedNotice: () =>
+    browserDev ? Promise.resolve<UpdatedInfo | null>(demo === "updated" || mockUpd === "updated" ? { version: "0.2.0" } : null) : invoke<UpdatedInfo | null>("updated_notice"),
   controller: () =>
     browserDev ? Promise.resolve<Controller | null>(demo === "xbox" ? { name: "Xbox Wireless Controller", kind: "xbox" } : null) : invoke<Controller | null>("controller"),
+  /** What's new → all release notes (the public repo's releases). */
+  openReleaseNotes: () => (browserDev ? Promise.resolve(void window.open("https://github.com/fc-tracker/fc-tracker/releases", "_blank", "noopener")) : invoke<void>("open_release_notes")),
+  /** ○ / B in the launcher: to the tray (tracking keeps running). */
+  hideLauncher: () => (browserDev ? Promise.resolve() : invoke<void>("hide_launcher")),
+  /** From the launcher's tiles: the overlay opens on that section (event "overlay-section"). */
+  openOverlay: (section?: string) => (browserDev ? Promise.resolve() : invoke<void>("open_overlay", { section: section ?? null })),
   /** From the overlay: the launcher comes forward on Help. */
   openHelp: (topic = "controls") => (browserDev ? Promise.resolve() : invoke<void>("open_help", { topic })),
   appVersion: () => (browserDev ? Promise.resolve("0.1.2") : getVersion()),
@@ -589,7 +670,8 @@ const appApi = {
     browserDev ? Promise.resolve<UiPrefs>({ mode: "panel", missing_side: "left", after_play: "remind", reminders: prefs }) : invoke<UiPrefs>("set_match_reminders", { prefs }),
   clearChampions: () => (browserDev ? import("./devMock").then((m) => m.mockChampionsEmpty) : invoke<ChampsData>("clear_champions")),
   /** Objective squads (beta): the open events with squad objectives and the best XI for each. */
-  squadsPlan: () => (browserDev ? import("./devMock").then((m) => m.mockSquads()) : invoke<SquadsView>("squads_plan")),
+  // shared with the other windows (panelShare.ts): the side panel shows the plan the overlay worked out
+  squadsPlan: () => (browserDev ? import("./devMock").then((m) => sharePlan(m.mockSquads())) : invoke<SquadsView>("squads_plan").then(sharePlan)),
   setSquadPrefs: (prefs: SquadPrefs) => (browserDev ? import("./devMock").then((m) => m.setMockSquadPrefs(prefs)) : invoke<UiPrefs>("set_squad_prefs", { prefs })),
   setSquadFacts: (facts: Record<string, boolean>) => (browserDev ? Promise.resolve() : invoke<void>("set_squad_facts", { facts })),
   /** "Has to include": every card that exists, not owned (the club list has the owned ones). */
@@ -618,6 +700,7 @@ function withWeb(a: typeof appApi): typeof appApi {
     setFirstOwner: (defId: number, value: boolean | null) => wb((b) => b.webApi.setFirstOwner(defId, value)),
     priceShare: (since: number) => wb((b) => b.webApi.priceShare(since)),
     bestValue: (budget: number | null = null, target: number | null = null, steps: number | null = null) => wb((b) => b.webApi.bestValue(budget, target, steps)),
+    coins: () => wb((b) => b.webApi.coins()),
     setValue: (key: string) => wb((b) => b.webApi.setValue(key)),
     pricePool: (platform: string, prices: Record<string, [number, number]>) => wb((b) => b.webApi.pricePool(platform, prices)),
     // no purchases are seen in the browser – it only takes the pool
@@ -645,7 +728,7 @@ function withWeb(a: typeof appApi): typeof appApi {
           return m.emptyChamps;
         }
       }),
-    squadsPlan: () => wb((b) => b.webApi.squadsPlan()),
+    squadsPlan: () => wb((b) => b.webApi.squadsPlan()).then(sharePlan),
     setSquadPrefs: (prefs: SquadPrefs) => wb((b) => b.webApi.setSquadPrefs(prefs)).then(() => ({ mode: "full", missing_side: "right", after_play: "off" }) as UiPrefs),
     setSquadFacts: (facts: Record<string, boolean>) => wb((b) => b.webApi.setSquadFacts(facts)),
     squadsSearch: (q: string) => wb((b) => b.webApi.squadsSearch(q)),
@@ -670,12 +753,17 @@ const webListen = <T,>(pick: (b: WebBackend) => (cb: (v: T) => void) => () => vo
 function mockToast(cb: (t: ToastPayload) => void): Promise<UnlistenFn> {
   const demo = new URLSearchParams(location.search).get("demo");
   import("./devMock").then((m) =>
-    cb(demo === "pack" ? m.mockPackToast : demo === "swap" ? m.mockSwapToast : demo === "login" ? { kind: "sync", state: "login", reason: "not_signed_in" } : demo === "welcome" ? { kind: "welcome", players: 529 } : demo === "suggest" ? { kind: "sync", state: "suggest" } : demo === "fill" ? { kind: "fill", set_name: "Newcastle United", count: 3, names: ["Barnes", "Wissa", "Murphy"], points: 520 } : demo === "champions" ? { kind: "champions", n: 3, outcome: "loss", score: [4, 5], when_left: null, minute: null, aet: true, opponent: "Basprovol", wins: 1, losses: 2, remaining: 12 } : demo === "recording" ? { kind: "recording" } : demo === "progress" ? { kind: "progress", what: "set", name: "Premier League" } : demo === "read" ? { kind: "read", state: "best", set_name: "Arsenal", cards: 20, identified: 20, total: 114873 } : demo === "syncing" ? { kind: "sync", state: "running", phase: "gallery", count: 186, done: 3, total: 16, set: "Premier League" } : m.mockBetterToast),
+    cb(demo && m.mockToasts[demo] ? m.mockToasts[demo] : demo === "pack" ? m.mockPackToast : demo === "swap" ? m.mockSwapToast : demo === "login" ? { kind: "sync", state: "login", reason: "not_signed_in" } : demo === "welcome" ? { kind: "welcome", players: 529 } : demo === "suggest" ? { kind: "sync", state: "suggest" } : demo === "fill" ? { kind: "fill", set_name: "Newcastle United", count: 3, names: ["Barnes", "Wissa", "Murphy"], points: 520 } : demo === "champions" ? { kind: "champions", n: 3, outcome: "loss", score: [4, 5], when_left: null, minute: null, aet: true, opponent: "Basprovol", wins: 1, losses: 2, remaining: 12 } : demo === "recording" ? { kind: "recording" } : demo === "progress" ? { kind: "progress", what: "set", name: "Premier League" } : demo === "read" ? { kind: "read", state: "best", set_name: "Arsenal", cards: 20, identified: 20, total: 114873 } : demo === "syncing" ? { kind: "sync", state: "running", phase: "gallery", count: 186, done: 3, total: 16, set: "Premier League" } : m.mockBetterToast),
   );
   return noListen();
 }
 
+/** The account as every window shows it (Rust account::AccountView). */
+export type AccountView = { signed_in: boolean; user: unknown | null };
+
 const appEvents = {
+  /** Sign-in, sign-out or a new profile – in any window (Rust emits "account-changed"). */
+  onAccountChanged: (cb: (v: AccountView) => void) => (browserDev ? noListen() : listen<AccountView>("account-changed", (e) => cb(e.payload))),
   onPaired: (cb: () => void): Promise<UnlistenFn> => (browserDev ? noListen() : listen("bridge-paired", () => cb())),
   onSyncUpdate: (cb: (s: SyncSummary) => void) =>
     browserDev ? noListen() : listen<SyncSummary>("sync-update", (e) => cb(e.payload)),
@@ -731,13 +819,19 @@ const appEvents = {
   onSquadsChanged: (cb: () => void) => (browserDev ? noListen() : listen("squads-changed", () => cb())),
   /** The game's Squad screen was read: its XI compared with the plan's (live squad check). */
   onSquadSeen: (cb: (s: SquadSeen) => void) => (browserDev ? noListen() : listen<SquadSeen>("squad-seen", (e) => cb(e.payload))),
+  /** In a match: the clock as read (minutes) and the subs still to come – the side panel's match brief. */
+  onMatchClock: (cb: (c: MatchClock) => void) => (browserDev ? noListen() : listen<MatchClock>("match-clock", (e) => cb(e.payload))),
   /** The update watcher found a release (or one went away) – at once, no reload needed. */
   onUpdate: (cb: (u: UpdateInfo | null) => void) => (browserDev ? noListen() : listen<UpdateInfo | null>("update", (e) => cb(e.payload))),
+  /** The app started installing an update (button, countdown, or by itself once FC 27 closed). */
+  onUpdateInstalling: (cb: (version: string) => void) => (browserDev ? noListen() : listen<string>("update-installing", (e) => cb(e.payload))),
 };
 
 /** The game's Squad screen compared with the plan's XI: who still has to come in. */
 /** The game's Squad screen read: `confirmed` = planned players seen on the pitch; `missing` (who is
  *  still to come in) only counts when `complete` – the whole XI was read. */
+/** The match clock (minute) and who is still to come on (remind.rs). */
+export type MatchClock = { minute: number; needs: { player: string; evo: string; level: number; levels: number; start: boolean; bench: boolean; at: number }[] };
 export type SquadSeen = { matched: number; total: number; missing: { pos: string; name: string }[]; confirmed: string[]; complete: boolean; at: number };
 
 export const events: typeof appEvents = IS_WEB
@@ -752,10 +846,13 @@ export const events: typeof appEvents = IS_WEB
         webListen((b) => b.webEvents.onStatus, (st) => cb(st.phase === "off" ? "closed" : "in_ultimate_team")),
       onToast: () => noListen(),
       onChampions: () => noListen(),
+      onAccountChanged: () => noListen(),
       onSquadsFocus: () => noListen(),
       onSquadsChanged: () => noListen(),
       onSquadSeen: () => noListen(),
+      onMatchClock: () => noListen(),
       onUpdate: () => noListen(),
+      onUpdateInstalling: () => noListen(),
     }
   : appEvents;
 

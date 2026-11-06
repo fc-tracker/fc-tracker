@@ -46,7 +46,7 @@
               "pos": "GK",
               "price": 700,
               "source": null,
-              "strength": 82.0,
+              "strength": 82,
               "nation": 129,
               "nation_name": null
             },
@@ -103,7 +103,7 @@
             "def_id": 204935,
             "rating": 85,
             "chem": 3,
-            "strength": 85.0,
+            "strength": 85,
             "loan": false,
             "counts_for": [],
             "accel": null,
@@ -117,7 +117,8 @@
             "skill_moves": 1,
             "must": false,
             "owned": true,
-            "price": null
+            "price": null,
+            "rareflag": null
           },
           {
             "pos": "RB",
@@ -139,7 +140,23 @@
             "skill_moves": 3,
             "must": false,
             "owned": true,
-            "price": null
+            "price": null,
+            "rareflag": 0,
+            "club": 116009,
+            "positions": [
+              "RB",
+              "LB",
+              "RM",
+              "LM"
+            ],
+            "face": [
+              88,
+              62,
+              80,
+              82,
+              82,
+              72
+            ]
           },
           {
             "pos": "CB",
@@ -161,7 +178,8 @@
             "skill_moves": 2,
             "must": false,
             "owned": true,
-            "price": null
+            "price": null,
+            "rareflag": null
           },
           {
             "pos": "CB",
@@ -183,7 +201,8 @@
             "skill_moves": 2,
             "must": false,
             "owned": true,
-            "price": null
+            "price": null,
+            "rareflag": null
           },
           {
             "pos": "CB",
@@ -205,7 +224,20 @@
             "skill_moves": 2,
             "must": false,
             "owned": true,
-            "price": null
+            "price": null,
+            "rareflag": 160,
+            "club": 112658,
+            "positions": [
+              "CB"
+            ],
+            "face": [
+              77,
+              44,
+              60,
+              63,
+              86,
+              83
+            ]
           },
           {
             "pos": "LB",
@@ -227,7 +259,8 @@
             "skill_moves": 4,
             "must": false,
             "owned": true,
-            "price": null
+            "price": null,
+            "rareflag": null
           },
           {
             "pos": "CM",
@@ -249,7 +282,21 @@
             "skill_moves": 3,
             "must": false,
             "owned": true,
-            "price": null
+            "price": null,
+            "rareflag": 0,
+            "club": 1,
+            "positions": [
+              "CDM",
+              "CM"
+            ],
+            "face": [
+              72,
+              75,
+              86,
+              81,
+              85,
+              84
+            ]
           },
           {
             "pos": "CM",
@@ -257,7 +304,7 @@
             "def_id": 50585891,
             "rating": 86,
             "chem": 3,
-            "strength": 84.0,
+            "strength": 84,
             "loan": false,
             "counts_for": [],
             "accel": null,
@@ -271,7 +318,21 @@
             "skill_moves": 3,
             "must": false,
             "owned": true,
-            "price": null
+            "price": null,
+            "rareflag": 150,
+            "club": 10,
+            "positions": [
+              "CDM",
+              "CM"
+            ],
+            "face": [
+              70,
+              73,
+              85,
+              84,
+              83,
+              80
+            ]
           },
           {
             "pos": "RW",
@@ -293,7 +354,23 @@
             "skill_moves": 4,
             "must": false,
             "owned": true,
-            "price": null
+            "price": null,
+            "rareflag": 0,
+            "club": 116009,
+            "positions": [
+              "RM",
+              "LM",
+              "RW",
+              "LW"
+            ],
+            "face": [
+              89,
+              85,
+              85,
+              84,
+              43,
+              69
+            ]
           },
           {
             "pos": "ST",
@@ -301,7 +378,7 @@
             "def_id": 50596595,
             "rating": 85,
             "chem": 3,
-            "strength": 86.0,
+            "strength": 86,
             "loan": false,
             "counts_for": [],
             "accel": null,
@@ -315,7 +392,23 @@
             "skill_moves": 4,
             "must": false,
             "owned": true,
-            "price": null
+            "price": null,
+            "rareflag": 150,
+            "club": 132176,
+            "positions": [
+              "LM",
+              "CAM",
+              "ST",
+              "LW"
+            ],
+            "face": [
+              91,
+              83,
+              75,
+              85,
+              56,
+              84
+            ]
           },
           {
             "pos": "LW",
@@ -337,7 +430,23 @@
             "skill_moves": 5,
             "must": false,
             "owned": true,
-            "price": null
+            "price": null,
+            "rareflag": 0,
+            "club": 116010,
+            "positions": [
+              "RM",
+              "LM",
+              "RW",
+              "LW"
+            ],
+            "face": [
+              90,
+              81,
+              78,
+              87,
+              40,
+              82
+            ]
           }
         ],
         "strength": 85.4,
@@ -389,7 +498,18 @@
       "nation_name": "Belgium",
       "loan": true,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 183277,
+      "rareflag": 72,
+      "club": 114605,
+      "face": [
+        91,
+        84,
+        85,
+        93,
+        37,
+        69
+      ]
     },
     {
       "key": 252145,
@@ -443,7 +563,18 @@
       "nation_name": "England",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 234378,
+      "rareflag": 0,
+      "club": 1,
+      "face": [
+        72,
+        75,
+        86,
+        81,
+        85,
+        84
+      ]
     },
     {
       "key": 951362162718,
@@ -457,7 +588,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 224232,
+      "rareflag": 0,
+      "club": 131682,
+      "face": [
+        77,
+        78,
+        84,
+        86,
+        81,
+        72
+      ]
     },
     {
       "key": 950668373043,
@@ -473,7 +615,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 253436,
+      "rareflag": 0,
+      "club": 116009,
+      "face": [
+        88,
+        62,
+        80,
+        82,
+        82,
+        72
+      ]
     },
     {
       "key": 950546875280,
@@ -500,7 +653,18 @@
       "nation_name": "England",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50585891,
+      "rareflag": 150,
+      "club": 10,
+      "face": [
+        70,
+        73,
+        85,
+        84,
+        83,
+        80
+      ]
     },
     {
       "key": 951367631706,
@@ -515,7 +679,18 @@
       "nation_name": "France",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 265674,
+      "rareflag": 0,
+      "club": 116033,
+      "face": [
+        88,
+        73,
+        85,
+        82,
+        79,
+        81
+      ]
     },
     {
       "key": 265239,
@@ -542,7 +717,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 239231,
+      "rareflag": 0,
+      "club": 243,
+      "face": [
+        75,
+        64,
+        79,
+        78,
+        84,
+        78
+      ]
     },
     {
       "key": 226268,
@@ -571,7 +757,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 226271,
+      "rareflag": 0,
+      "club": 73,
+      "face": [
+        60,
+        77,
+        83,
+        82,
+        77,
+        73
+      ]
     },
     {
       "key": 948544191522,
@@ -587,7 +784,18 @@
       "nation_name": "England",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 257001,
+      "rareflag": 0,
+      "club": 116009,
+      "face": [
+        89,
+        85,
+        85,
+        84,
+        43,
+        69
+      ]
     },
     {
       "key": 950301835243,
@@ -601,7 +809,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 181783,
+      "rareflag": 72,
+      "club": 114605,
+      "face": [
+        78,
+        84,
+        75,
+        81,
+        63,
+        88
+      ]
     },
     {
       "key": 950318324357,
@@ -617,7 +836,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50596595,
+      "rareflag": 150,
+      "club": 132176,
+      "face": [
+        91,
+        83,
+        75,
+        85,
+        56,
+        84
+      ]
     },
     {
       "key": 944134703855,
@@ -635,7 +865,18 @@
       "nation_name": "Netherlands",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50599178,
+      "rareflag": 3,
+      "club": 116325,
+      "face": [
+        88,
+        75,
+        80,
+        82,
+        82,
+        76
+      ]
     },
     {
       "key": 945395607676,
@@ -663,7 +904,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 211110,
+      "rareflag": 0,
+      "club": 52,
+      "face": [
+        77,
+        84,
+        85,
+        86,
+        42,
+        62
+      ]
     },
     {
       "key": 950290693318,
@@ -679,7 +931,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 245037,
+      "rareflag": 0,
+      "club": 241,
+      "face": [
+        79,
+        58,
+        77,
+        76,
+        86,
+        82
+      ]
     },
     {
       "key": 951087658700,
@@ -695,7 +958,18 @@
       "nation_name": "England",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 265249,
+      "rareflag": 0,
+      "club": 116010,
+      "face": [
+        90,
+        81,
+        78,
+        87,
+        40,
+        82
+      ]
     },
     {
       "key": 951362162724,
@@ -710,7 +984,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 226161,
+      "rareflag": 0,
+      "club": 240,
+      "face": [
+        91,
+        79,
+        80,
+        82,
+        79,
+        83
+      ]
     },
     {
       "key": 952483361404,
@@ -725,7 +1010,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50406911,
+      "rareflag": 71,
+      "club": 448,
+      "face": [
+        80,
+        81,
+        84,
+        84,
+        76,
+        85
+      ]
     },
     {
       "key": 944097727761,
@@ -738,7 +1034,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 67229397,
+      "rareflag": 160,
+      "club": 112658,
+      "face": [
+        77,
+        44,
+        60,
+        63,
+        86,
+        83
+      ]
     },
     {
       "key": 204935,
@@ -778,7 +1085,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 230869,
+      "rareflag": 0,
+      "club": 448,
+      "face": [
+        84,
+        81,
+        76,
+        85,
+        49,
+        82
+      ]
     },
     {
       "key": 951336742773,
@@ -792,7 +1110,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50596673,
+      "rareflag": 150,
+      "club": 116009,
+      "face": [
+        82,
+        84,
+        75,
+        82,
+        53,
+        80
+      ]
     },
     {
       "key": 950069928555,
@@ -810,7 +1139,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50524813,
+      "rareflag": 87,
+      "club": 1032,
+      "face": [
+        82,
+        75,
+        83,
+        86,
+        77,
+        73
+      ]
     },
     {
       "key": 950080604164,
@@ -826,7 +1166,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 239345,
+      "rareflag": 0,
+      "club": 115995,
+      "face": [
+        77,
+        76,
+        80,
+        87,
+        46,
+        58
+      ]
     },
     {
       "key": 951362162717,
@@ -842,7 +1193,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 244260,
+      "rareflag": 0,
+      "club": 241,
+      "face": [
+        74,
+        79,
+        82,
+        85,
+        51,
+        59
+      ]
     },
     {
       "key": 951362162723,
@@ -858,7 +1220,18 @@
       "nation_name": "England",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 235794,
+      "rareflag": 0,
+      "club": 1,
+      "face": [
+        74,
+        80,
+        82,
+        87,
+        57,
+        68
+      ]
     },
     {
       "key": 950395590054,
@@ -871,7 +1244,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 210676,
+      "rareflag": 0,
+      "club": 347,
+      "face": [
+        80,
+        79,
+        78,
+        85,
+        27,
+        84
+      ]
     },
     {
       "key": 945696773928,
@@ -886,7 +1270,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 272094,
+      "rareflag": 0,
+      "club": 116327,
+      "face": [
+        83,
+        76,
+        81,
+        83,
+        60,
+        77
+      ]
     },
     {
       "key": 951681889914,
@@ -901,7 +1296,18 @@
       "nation_name": "France",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 237197,
+      "rareflag": 0,
+      "club": 132176,
+      "face": [
+        89,
+        72,
+        80,
+        82,
+        82,
+        78
+      ]
     },
     {
       "key": 951357722226,
@@ -914,7 +1320,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 247513,
+      "rareflag": 0,
+      "club": 115995,
+      "face": [
+        57,
+        38,
+        54,
+        55,
+        86,
+        80
+      ]
     },
     {
       "key": 950558447152,
@@ -927,7 +1344,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50588551,
+      "rareflag": 22,
+      "club": 131681,
+      "face": [
+        82,
+        85,
+        70,
+        82,
+        55,
+        83
+      ]
     },
     {
       "key": 950091690629,
@@ -942,7 +1370,18 @@
       "nation_name": "England",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 238074,
+      "rareflag": 0,
+      "club": 5,
+      "face": [
+        76,
+        71,
+        83,
+        78,
+        83,
+        82
+      ]
     },
     {
       "key": 951363721180,
@@ -958,7 +1397,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 84096594,
+      "rareflag": 19,
+      "club": 241,
+      "face": [
+        85,
+        74,
+        85,
+        86,
+        79,
+        77
+      ]
     },
     {
       "key": 944136579512,
@@ -971,7 +1421,18 @@
       "nation_name": "France",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 237678,
+      "rareflag": 0,
+      "club": 243,
+      "face": [
+        77,
+        34,
+        65,
+        68,
+        84,
+        85
+      ]
     },
     {
       "key": 951681889913,
@@ -984,7 +1445,18 @@
       "nation_name": "England",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 227678,
+      "rareflag": 0,
+      "club": 1,
+      "face": [
+        71,
+        55,
+        72,
+        75,
+        86,
+        80
+      ]
     },
     {
       "key": 952483441315,
@@ -997,7 +1469,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 212218,
+      "rareflag": 0,
+      "club": 448,
+      "face": [
+        53,
+        52,
+        76,
+        70,
+        85,
+        79
+      ]
     },
     {
       "key": 950558752409,
@@ -1010,7 +1493,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 229582,
+      "rareflag": 0,
+      "club": 52,
+      "face": [
+        69,
+        50,
+        61,
+        66,
+        85,
+        82
+      ]
     },
     {
       "key": 951099282969,
@@ -1024,7 +1518,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50597808,
+      "rareflag": 150,
+      "club": 246,
+      "face": [
+        87,
+        65,
+        71,
+        76,
+        84,
+        86
+      ]
     },
     {
       "key": 942162464500,
@@ -1038,7 +1543,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 277846,
+      "rareflag": 0,
+      "club": 1745,
+      "face": [
+        81,
+        78,
+        79,
+        84,
+        54,
+        68
+      ]
     },
     {
       "key": 950558752410,
@@ -1052,7 +1568,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 248717,
+      "rareflag": 0,
+      "club": 115995,
+      "face": [
+        60,
+        62,
+        77,
+        74,
+        85,
+        84
+      ]
     },
     {
       "key": 950541012665,
@@ -1065,7 +1592,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 230142,
+      "rareflag": 0,
+      "club": 457,
+      "face": [
+        71,
+        86,
+        81,
+        84,
+        45,
+        74
+      ]
     },
     {
       "key": 951681755744,
@@ -1078,7 +1616,18 @@
       "nation_name": "France",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 227316,
+      "rareflag": 0,
+      "club": 116033,
+      "face": [
+        48,
+        62,
+        70,
+        69,
+        86,
+        84
+      ]
     },
     {
       "key": 943312809150,
@@ -1096,7 +1645,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 243812,
+      "rareflag": 0,
+      "club": 243,
+      "face": [
+        87,
+        77,
+        79,
+        87,
+        33,
+        63
+      ]
     },
     {
       "key": 951116953392,
@@ -1111,7 +1671,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50596683,
+      "rareflag": 150,
+      "club": 116326,
+      "face": [
+        83,
+        72,
+        79,
+        85,
+        78,
+        72
+      ]
     },
     {
       "key": 950541075498,
@@ -1126,7 +1697,18 @@
       "nation_name": "England",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 263011,
+      "rareflag": 0,
+      "club": 116012,
+      "face": [
+        81,
+        81,
+        81,
+        84,
+        52,
+        64
+      ]
     },
     {
       "key": 949776462082,
@@ -1144,7 +1726,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 271446,
+      "rareflag": 0,
+      "club": 116325,
+      "face": [
+        85,
+        80,
+        81,
+        86,
+        47,
+        60
+      ]
     },
     {
       "key": 950283183694,
@@ -1157,7 +1750,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50606840,
+      "rareflag": 150,
+      "club": 1808,
+      "face": [
+        61,
+        66,
+        65,
+        68,
+        86,
+        85
+      ]
     },
     {
       "key": 951362162714,
@@ -1170,7 +1774,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 245824,
+      "rareflag": 0,
+      "club": 116017,
+      "face": [
+        84,
+        85,
+        80,
+        83,
+        19,
+        81
+      ]
     },
     {
       "key": 945698229184,
@@ -1186,7 +1801,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 277954,
+      "rareflag": 0,
+      "club": 45,
+      "face": [
+        85,
+        81,
+        79,
+        85,
+        59,
+        70
+      ]
     },
     {
       "key": 248148,
@@ -1214,7 +1840,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 248148,
+      "rareflag": 0,
+      "club": 1,
+      "face": [
+        65,
+        71,
+        82,
+        80,
+        80,
+        75
+      ]
     },
     {
       "key": 949775704840,
@@ -1227,7 +1864,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 240130,
+      "rareflag": 0,
+      "club": 243,
+      "face": [
+        79,
+        54,
+        71,
+        72,
+        85,
+        82
+      ]
     },
     {
       "key": 943283319652,
@@ -1243,7 +1891,18 @@
       "nation_name": "France",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 265905,
+      "rareflag": 0,
+      "club": 116033,
+      "face": [
+        90,
+        79,
+        72,
+        86,
+        45,
+        69
+      ]
     },
     {
       "key": 949775579188,
@@ -1273,7 +1932,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 272163,
+      "rareflag": 0,
+      "club": 131125,
+      "face": [
+        89,
+        77,
+        80,
+        84,
+        65,
+        77
+      ]
     },
     {
       "key": 950541075497,
@@ -1343,7 +2013,18 @@
       "nation_name": "France",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50575715,
+      "rareflag": 150,
+      "club": 5,
+      "face": [
+        86,
+        46,
+        63,
+        69,
+        84,
+        83
+      ]
     },
     {
       "key": 948296960677,
@@ -1356,7 +2037,18 @@
       "nation_name": "Netherlands",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 231447,
+      "rareflag": 0,
+      "club": 52,
+      "face": [
+        86,
+        83,
+        73,
+        85,
+        38,
+        68
+      ]
     },
     {
       "key": 951362162727,
@@ -1397,7 +2089,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 253124,
+      "rareflag": 0,
+      "club": 10,
+      "face": [
+        87,
+        70,
+        80,
+        79,
+        78,
+        75
+      ]
     },
     {
       "key": 950312262373,
@@ -1414,7 +2117,18 @@
       "nation_name": "Netherlands",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50596100,
+      "rareflag": 87,
+      "club": 1913,
+      "face": [
+        88,
+        82,
+        80,
+        83,
+        60,
+        74
+      ]
     },
     {
       "key": 951681889909,
@@ -1456,7 +2170,18 @@
       "nation_name": "England",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50575350,
+      "rareflag": 150,
+      "club": 131682,
+      "face": [
+        91,
+        58,
+        76,
+        83,
+        81,
+        79
+      ]
     },
     {
       "key": 951681755750,
@@ -1484,7 +2209,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50588596,
+      "rareflag": 150,
+      "club": 1,
+      "face": [
+        84,
+        82,
+        81,
+        85,
+        41,
+        74
+      ]
     },
     {
       "key": 952483441318,
@@ -1516,7 +2252,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 279812,
+      "rareflag": 0,
+      "club": 116309,
+      "face": [
+        72,
+        72,
+        79,
+        82,
+        55,
+        56
+      ]
     },
     {
       "key": 951681889907,
@@ -1531,7 +2278,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50558720,
+      "rareflag": 0,
+      "club": 116312,
+      "face": [
+        79,
+        81,
+        77,
+        82,
+        38,
+        74
+      ]
     },
     {
       "key": 950080377972,
@@ -1546,7 +2304,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 212194,
+      "rareflag": 0,
+      "club": 245,
+      "face": [
+        69,
+        77,
+        83,
+        84,
+        45,
+        69
+      ]
     },
     {
       "key": 950297281628,
@@ -1559,7 +2328,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 244257,
+      "rareflag": 0,
+      "club": 1824,
+      "face": [
+        80,
+        83,
+        67,
+        81,
+        44,
+        76
+      ]
     },
     {
       "key": 945728107042,
@@ -1575,7 +2355,18 @@
       "nation_name": "France",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50573500,
+      "rareflag": 0,
+      "club": 32,
+      "face": [
+        94,
+        69,
+        76,
+        85,
+        44,
+        59
+      ]
     },
     {
       "key": 950277341165,
@@ -1593,7 +2384,18 @@
       "nation_name": "France",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 265861,
+      "rareflag": 0,
+      "club": 132370,
+      "face": [
+        87,
+        79,
+        78,
+        83,
+        53,
+        66
+      ]
     },
     {
       "key": 952483155580,
@@ -1607,7 +2409,18 @@
       "nation_name": "England",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50538165,
+      "rareflag": 0,
+      "club": 7,
+      "face": [
+        69,
+        76,
+        82,
+        86,
+        53,
+        67
+      ]
     },
     {
       "key": 949775505773,
@@ -1620,7 +2433,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50574680,
+      "rareflag": 87,
+      "club": 461,
+      "face": [
+        78,
+        83,
+        74,
+        79,
+        55,
+        81
+      ]
     },
     {
       "key": 950318449982,
@@ -1633,7 +2457,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 275771,
+      "rareflag": 0,
+      "club": 1925,
+      "face": [
+        74,
+        83,
+        67,
+        75,
+        44,
+        85
+      ]
     },
     {
       "key": 950297281627,
@@ -1646,7 +2481,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50568258,
+      "rareflag": 0,
+      "club": 1745,
+      "face": [
+        85,
+        82,
+        59,
+        81,
+        41,
+        74
+      ]
     },
     {
       "key": 952483441319,
@@ -1660,7 +2506,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50564798,
+      "rareflag": 0,
+      "club": 116310,
+      "face": [
+        71,
+        52,
+        74,
+        74,
+        82,
+        73
+      ]
     },
     {
       "key": 50553308,
@@ -1689,7 +2546,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 274780,
+      "rareflag": 0,
+      "club": 116327,
+      "face": [
+        86,
+        81,
+        75,
+        82,
+        43,
+        74
+      ]
     },
     {
       "key": 950312475213,
@@ -1702,7 +2570,18 @@
       "nation_name": "Belgium",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 192505,
+      "rareflag": 0,
+      "club": 326,
+      "face": [
+        77,
+        82,
+        75,
+        73,
+        41,
+        78
+      ]
     },
     {
       "key": 950068752757,
@@ -1715,7 +2594,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 271860,
+      "rareflag": 0,
+      "club": 115995,
+      "face": [
+        79,
+        80,
+        78,
+        84,
+        48,
+        81
+      ]
     },
     {
       "key": 950283479975,
@@ -1728,7 +2618,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 239301,
+      "rareflag": 0,
+      "club": 11,
+      "face": [
+        66,
+        59,
+        76,
+        75,
+        82,
+        75
+      ]
     },
     {
       "key": 950283479974,
@@ -1742,7 +2643,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 272224,
+      "rareflag": 0,
+      "club": 116343,
+      "face": [
+        78,
+        74,
+        77,
+        76,
+        78,
+        87
+      ]
     },
     {
       "key": 950091690628,
@@ -1757,7 +2669,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 67349814,
+      "rareflag": 0,
+      "club": 110374,
+      "face": [
+        72,
+        82,
+        82,
+        83,
+        63,
+        68
+      ]
     },
     {
       "key": 950395590055,
@@ -1770,7 +2693,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 237673,
+      "rareflag": 0,
+      "club": 116303,
+      "face": [
+        80,
+        80,
+        79,
+        85,
+        41,
+        82
+      ]
     },
     {
       "key": 945126793795,
@@ -1783,7 +2717,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50552469,
+      "rareflag": 87,
+      "club": 450,
+      "face": [
+        74,
+        35,
+        65,
+        73,
+        82,
+        83
+      ]
     },
     {
       "key": 950290693315,
@@ -1796,7 +2741,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 260592,
+      "rareflag": 0,
+      "club": 11,
+      "face": [
+        85,
+        82,
+        67,
+        78,
+        46,
+        77
+      ]
     },
     {
       "key": 951357722225,
@@ -1812,7 +2768,18 @@
       "nation_name": "France",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 264862,
+      "rareflag": 0,
+      "club": 73,
+      "face": [
+        74,
+        72,
+        80,
+        84,
+        48,
+        62
+      ]
     },
     {
       "key": 951362162721,
@@ -1826,7 +2793,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 255475,
+      "rareflag": 0,
+      "club": 449,
+      "face": [
+        85,
+        81,
+        79,
+        82,
+        48,
+        71
+      ]
     },
     {
       "key": 952483936134,
@@ -1841,7 +2819,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 254817,
+      "rareflag": 0,
+      "club": 237,
+      "face": [
+        85,
+        69,
+        76,
+        81,
+        71,
+        75
+      ]
     },
     {
       "key": 951362162713,
@@ -1855,7 +2844,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 269701,
+      "rareflag": 0,
+      "club": 21,
+      "face": [
+        90,
+        60,
+        76,
+        83,
+        73,
+        59
+      ]
     },
     {
       "key": 950525182676,
@@ -1898,7 +2898,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 227387,
+      "rareflag": 0,
+      "club": 116302,
+      "face": [
+        83,
+        74,
+        78,
+        82,
+        69,
+        56
+      ]
     },
     {
       "key": 951681755745,
@@ -1911,7 +2922,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 263139,
+      "rareflag": 0,
+      "club": 66,
+      "face": [
+        78,
+        76,
+        83,
+        82,
+        24,
+        82
+      ]
     },
     {
       "key": 951681889911,
@@ -1926,7 +2948,18 @@
       "nation_name": "France",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 220814,
+      "rareflag": 0,
+      "club": 73,
+      "face": [
+        71,
+        52,
+        72,
+        71,
+        82,
+        75
+      ]
     },
     {
       "key": 951099339125,
@@ -1955,7 +2988,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 226979,
+      "rareflag": 0,
+      "club": 115997,
+      "face": [
+        63,
+        48,
+        65,
+        63,
+        83,
+        78
+      ]
     },
     {
       "key": 952483936132,
@@ -1969,7 +3013,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 193747,
+      "rareflag": 0,
+      "club": 240,
+      "face": [
+        50,
+        72,
+        84,
+        77,
+        76,
+        77
+      ]
     },
     {
       "key": 950525182670,
@@ -1998,7 +3053,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 207410,
+      "rareflag": 0,
+      "club": 10,
+      "face": [
+        57,
+        74,
+        80,
+        81,
+        73,
+        68
+      ]
     },
     {
       "key": 952483155575,
@@ -2014,7 +3080,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 247394,
+      "rareflag": 0,
+      "club": 18,
+      "face": [
+        69,
+        79,
+        83,
+        84,
+        63,
+        70
+      ]
     },
     {
       "key": 950318449981,
@@ -2043,7 +3120,18 @@
       "nation_name": "England",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50605894,
+      "rareflag": 87,
+      "club": 13,
+      "face": [
+        72,
+        70,
+        81,
+        80,
+        80,
+        73
+      ]
     },
     {
       "key": 951362162722,
@@ -2070,7 +3158,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 167495,
+      "rareflag": 0,
+      "club": 21,
+      "face": [
+        80,
+        80,
+        87,
+        78,
+        31,
+        82
+      ]
     },
     {
       "key": 951681755743,
@@ -2084,7 +3183,18 @@
       "nation_name": "Belgium",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 257057,
+      "rareflag": 0,
+      "club": 2,
+      "face": [
+        73,
+        68,
+        74,
+        74,
+        81,
+        82
+      ]
     },
     {
       "key": 952483441313,
@@ -2097,7 +3207,18 @@
       "nation_name": "Netherlands",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 263798,
+      "rareflag": 0,
+      "club": 106,
+      "face": [
+        81,
+        79,
+        77,
+        83,
+        54,
+        81
+      ]
     },
     {
       "key": 951357722224,
@@ -2124,7 +3245,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 258601,
+      "rareflag": 0,
+      "club": 1925,
+      "face": [
+        80,
+        67,
+        76,
+        81,
+        78,
+        72
+      ]
     },
     {
       "key": 949775478170,
@@ -2139,7 +3271,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50561297,
+      "rareflag": 87,
+      "club": 481,
+      "face": [
+        81,
+        67,
+        77,
+        78,
+        77,
+        82
+      ]
     },
     {
       "key": 951362162716,
@@ -2152,7 +3295,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 256261,
+      "rareflag": 0,
+      "club": 13,
+      "face": [
+        70,
+        47,
+        70,
+        71,
+        82,
+        80
+      ]
     },
     {
       "key": 950541012660,
@@ -2179,7 +3333,18 @@
       "nation_name": "Netherlands",
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 258498,
+      "rareflag": 0,
+      "club": 1808,
+      "face": [
+        80,
+        77,
+        81,
+        84,
+        50,
+        81
+      ]
     },
     {
       "key": 951681889912,
@@ -2194,7 +3359,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 268889,
+      "rareflag": 0,
+      "club": 243,
+      "face": [
+        86,
+        66,
+        77,
+        80,
+        75,
+        81
+      ]
     },
     {
       "key": 949776064745,
@@ -2208,7 +3384,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50608343,
+      "rareflag": 3,
+      "club": 144,
+      "face": [
+        74,
+        71,
+        80,
+        78,
+        77,
+        83
+      ]
     },
     {
       "key": 946457454064,
@@ -2223,7 +3410,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 50610821,
+      "rareflag": 3,
+      "club": 110374,
+      "face": [
+        80,
+        78,
+        79,
+        83,
+        53,
+        70
+      ]
     },
     {
       "key": 944133002286,
@@ -2239,7 +3437,18 @@
       "nation_name": null,
       "loan": false,
       "owned": true,
-      "price": null
+      "price": null,
+      "def_id": 67354218,
+      "rareflag": 3,
+      "club": 1878,
+      "face": [
+        78,
+        73,
+        81,
+        81,
+        62,
+        70
+      ]
     },
     {
       "key": 188567,

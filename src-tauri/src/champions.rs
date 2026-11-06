@@ -106,6 +106,10 @@ pub struct Match {
     /// A score read once that jumped (not one goal): taken when the next look reads it again.
     #[serde(skip)]
     pub candidate: Option<[u8; 2]>,
+    /// The score before the last goal taken: read again twice, that goal was a misread and is taken
+    /// back (a replay of a recording: one frame of "1-1" in a long "0-1" made seven goals).
+    #[serde(skip)]
+    pub before_goal: Option<[u8; 2]>,
     /// Started without its kit selection / versus card being read: the Champions hub was the last
     /// mode screen before the match. Only the hub can make it count – never kept unconfirmed.
     #[serde(skip_serializing_if = "std::ops::Not::not")]
@@ -704,7 +708,10 @@ fn read_result_words(words: &[Word], frame: Option<&Frame>) -> Option<Card> {
             })
             .max()
     };
-    Some(Card { sides, score: sc, win, coins: above("Coins"), sp: above("SP") })
+    // "51,986" for 1,986: the coin icon read as a digit in front (replay of a recording, 2026-11-05).
+    // One match never pays 30,000 coins (15,973 has been seen) – such a reading loses its first digit.
+    let coins = above("Coins").map(|c| if c >= 30_000 { c.to_string()[1..].parse().unwrap_or(c) } else { c });
+    Some(Card { sides, score: sc, win, coins, sp: above("SP") })
 }
 
 /// Everything recognisable on a whole-frame read (in a menu or the half-resolution looks in a match).
@@ -865,6 +872,11 @@ impl Data {
                 m.seen = now;
                 m.home.abbr.get_or_insert(b.home_abbr.clone());
                 m.away.abbr.get_or_insert(b.away_abbr.clone());
+                // another board read as the scoreboard ("DFC 0-1 VISA" – an advertising board) is not
+                // this match's score
+                if !m.home.abbr.as_ref().is_some_and(|a| same_abbr(a, &b.home_abbr)) || !m.away.abbr.as_ref().is_some_and(|a| same_abbr(a, &b.away_abbr)) {
+                    return self != &before;
+                }
                 m.extra_time |= b.extra_time;
                 let minute = b.minute.or(m.last.map(|l| l[0])).unwrap_or(0);
                 let prev = m.last.map(|l| [l[1] as u8, l[2] as u8]).unwrap_or([0, 0]);
@@ -873,8 +885,14 @@ impl Data {
                 let goal = (next[0] == prev[0] + 1 && next[1] == prev[1]) || (next[1] == prev[1] + 1 && next[0] == prev[0]);
                 if goal {
                     m.timeline.push([minute, next[0] as u16, next[1] as u16]);
+                    m.before_goal = Some(prev);
                 }
                 let twice = m.candidate == Some(next);
+                // the score before the last goal, read twice again: that goal was a misread
+                if twice && m.before_goal == Some(next) && m.timeline.last().is_some_and(|g| [g[1] as u8, g[2] as u8] == prev) {
+                    m.timeline.pop();
+                    m.before_goal = None;
+                }
                 if goal || next == prev || twice {
                     m.last = Some([minute, next[0] as u16, next[1] as u16]);
                     m.candidate = None;
@@ -924,9 +942,22 @@ impl Data {
                 if c.score.is_some() {
                     m.score = c.score;
                 }
+                // the final score is the truth: no goal beyond it, each goal one more than the last
+                if let Some([fh, fa]) = c.score {
+                    let mut prev = [0u16, 0];
+                    m.timeline.retain(|g| {
+                        let ok = g[1] <= fh as u16 && g[2] <= fa as u16 && ((g[1] == prev[0] + 1 && g[2] == prev[1]) || (g[2] == prev[1] + 1 && g[1] == prev[0]));
+                        if ok {
+                            prev = [g[1], g[2]];
+                        }
+                        ok
+                    });
+                }
                 m.card_win = c.win.or(m.card_win);
-                m.coins = c.coins.or(m.coins);
-                m.sp = c.sp.or(m.sp);
+                // coins and SP count up on the card (750 → 986 → 1,986) and a thin "1" can drop out of one
+                // reading: the highest reading is the award
+                m.coins = c.coins.max(m.coins);
+                m.sp = c.sp.max(m.sp);
                 m.paused_at = None;
                 // the opponent's record is shown, the user's is not
                 match (c.sides[0].record.is_some(), c.sides[1].record.is_some()) {
@@ -1279,8 +1310,21 @@ fn merge(mut base: Data, other: Data) -> Data {
 /// stroke the OCR drops) is recognised from its ink.
 pub fn board_from_frame(f: &Frame) -> Option<Board> {
     let (ox, oy, s) = f.content_box();
-    let words = f.ocr_words_in(ox + 60.0 * s, oy + 30.0 * s, 300.0 * s, 140.0 * s, 2, None).ok()?;
-    if let Some(b) = read_board(&words) {
+    let mut words = f.ocr_words_in(ox + 60.0 * s, oy + 30.0 * s, 300.0 * s, 140.0 * s, 2, None).ok()?;
+    // the round marker in front of a team (replay of a recording, 2026-11-05: "OARZ" for ARZ) is not
+    // part of its abbreviation – and the word's box starts after it
+    for w in &mut words {
+        let c: Vec<char> = w.text.chars().collect();
+        if c.len() == 4 && matches!(c[0], 'O' | 'o' | '0' | '°') && c[1..].iter().all(|c| c.is_ascii_uppercase()) {
+            w.text = c[1..].iter().collect();
+            w.x += w.w / 4.0;
+            w.w *= 0.75;
+        }
+    }
+    if let Some(mut b) = read_board(&words) {
+        if let Some(m) = clock_minute_fix(f, &words) {
+            b.minute = m;
+        }
         return Some(b);
     }
     // the two abbreviation words, top and bottom
@@ -1293,9 +1337,13 @@ pub fn board_from_frame(f: &Frame) -> Option<Board> {
     let (top, bottom) = (abbrs[0], abbrs[1]);
     let h = top.h.max(bottom.h);
     // each row's score: a number read on its row, else a lone "1" from the ink of its cell
+    let read_on = |a: &Word| words.iter().filter(|w| (cy(w) - cy(a)).abs() < h * 0.6 && w.x > a.x + h * 3.0).find_map(|w| num(&w.text).map(|n| (n, w.x)));
+    // the score column: where the other row's score was read (both cells sit in one column), else a
+    // fixed step right of the abbreviation
+    let column = [top, bottom].iter().find_map(|a| read_on(a)).map(|(_, x)| x - h * 0.4);
     let row_score = |a: &Word| -> Option<u8> {
-        let read = words.iter().filter(|w| (cy(w) - cy(a)).abs() < h * 0.6 && w.x > a.x + h * 3.0).find_map(|w| num(&w.text));
-        read.map(|n| n as u8).filter(|n| *n < 40).or_else(|| lone_one(f, (a.x + h * 5.0, a.y - h * 0.2, h * 2.0, h * 1.4)).then_some(1))
+        let read = read_on(a).map(|(n, _)| n);
+        read.map(|n| n as u8).filter(|n| *n < 40).or_else(|| lone_one(f, (column.unwrap_or(a.x + h * 5.0), a.y - h * 0.2, h * 2.0, h * 1.4)).then_some(1))
     };
     let pair = [row_score(top)?, row_score(bottom)?];
     let refs: Vec<&Word> = words.iter().collect();
@@ -1306,7 +1354,34 @@ pub fn board_from_frame(f: &Frame) -> Option<Board> {
             clock(&joined).map(|m| (m, r.iter().any(|w| w.text == "ET")))
         })
         .map_or((None, false), |(m, e)| (Some(m), e));
+    let minute = clock_minute_fix(f, &words).unwrap_or(minute);
     Some(Board { home_abbr: top.text.clone(), away_abbr: bottom.text.clone(), home: pair[0], away: pair[1], minute, extra_time: et || minute.is_some_and(|m| m > 96) })
+}
+
+/// The match clock always shows two minute digits ("06:21"), so a one-digit minute is a digit the
+/// OCR dropped – the thin "1" (replay of a recording, 2026-11-05: "10:36" read as "0:36", 12' as 2').
+/// A lone "1" in the ink just left of the reading makes it 1x; otherwise the minute is not known
+/// (never a wrong one: "41:" read as "4:" must not be 4' or 14'). None = the reading is fine.
+fn clock_minute_fix(f: &Frame, words: &[Word]) -> Option<Option<u16>> {
+    // the clock's row, as read (one word "06:21" or split "0", "6:21" / "5:", "12")
+    let refs: Vec<&Word> = words.iter().collect();
+    let row = rows(&refs).into_iter().find(|r| clock(&r.iter().map(|w| w.text.as_str()).collect::<String>()).is_some())?;
+    let joined: String = row.iter().map(|w| w.text.as_str()).collect();
+    let digits = joined.split(':').next()?.chars().filter(|c| c.is_ascii_digit()).count();
+    // one word that is a whole clock ("14:22") wins over the row (a stray "1" from the badge next to it
+    // made "114")
+    if let Some(w) = row.iter().find(|w| clock(&w.text).is_some() && w.text.split(':').next().is_some_and(|m| m.chars().filter(|c| c.is_ascii_digit()).count() >= 2)) {
+        return Some(clock(&w.text));
+    }
+    let m = clock(&joined)?;
+    // the whole row has both digits ("1" + "0:36" split in two words): the row's minute
+    if digits >= 2 {
+        return Some(Some(m));
+    }
+    let first = &row[0];
+    let cw = first.w / first.text.chars().count().max(1) as f32;
+    let one = lone_one(f, (first.x - cw * 1.3, first.y - first.h * 0.15, cw * 1.3, first.h * 1.3));
+    Some(one.then_some(10 + m))
 }
 
 /// A lone "1" in a score cell: Windows OCR drops it (one thin stroke), so it is recognised from
@@ -1659,6 +1734,27 @@ mod tests {
         assert_eq!(m.len(), 1);
         assert_eq!(m[0].outcome, Some(Outcome::Win));
         assert!(!m[0].hub_only);
+    }
+
+    /// From a recording (2026-11-06): one frame of "1-1" in a long "0-1", a flicker back to the
+    /// score before, an advertising board read as the away team – one goal stays, at its minute.
+    #[test]
+    fn a_flickering_score_keeps_only_the_real_goals() {
+        let mut d = Data::default();
+        d.observe(Seen::KitChampions, 0);
+        let b = |h: u8, a: u8, min: u16, away: &str| Seen::Board(Board { home_abbr: "DFC".into(), away_abbr: away.into(), home: h, away: a, minute: Some(min), extra_time: false });
+        let mut seen: Vec<Seen> = [(0, 0, 0), (0, 0, 10), (0, 1, 46), (0, 1, 47), (0, 1, 49), (1, 1, 50), (0, 1, 50), (0, 1, 51), (0, 1, 52), (1, 1, 56), (0, 1, 56), (0, 1, 57)].into_iter().map(|(h, a, min)| b(h, a, min, "FCB")).collect();
+        seen.extend([b(1, 1, 58, "VISA"), b(0, 1, 59, "FCB"), b(1, 1, 75, "FCB"), b(1, 1, 76, "FCB")]);
+        for (t, s) in seen.into_iter().enumerate() {
+            d.observe(s, 1 + t as u64);
+        }
+        assert_eq!(d.pending.as_ref().unwrap().timeline, vec![[46, 0, 1], [75, 1, 1]]);
+        // a last misread just before full time is taken out by the result card
+        d.observe(b(2, 1, 90, "FCB"), 100);
+        let mut card = Card::default();
+        card.score = Some([1, 1]);
+        d.observe(Seen::Result(card), 101);
+        assert_eq!(d.pending.as_ref().unwrap().timeline, vec![[46, 0, 1], [75, 1, 1]]);
     }
 
     #[test]

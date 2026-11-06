@@ -6,7 +6,8 @@ description = "FC-Tracker's Gallery model for the browser version: the app's own
 publish = false
 
 [lib]
-crate-type = ["cdylib"]
+# cdylib: the browser build; rlib: fct-api (server/) runs the same club-sync merge natively
+crate-type = ["cdylib", "rlib"]
 path = "src/lib.rs"
 
 [dependencies]

@@ -1,10 +1,15 @@
-import { useEffect, useState } from "react";
+import { Children, cloneElement, useEffect, useLayoutEffect, useState, type ReactElement, type ReactNode } from "react";
 import { events, type ToastPayload } from "./api";
 import { compact, num } from "./format";
 import { t, useLocale, type MessageKey } from "./i18n";
 import { Gem } from "./icons";
 import { useTheme } from "./theme";
+import { Rank, Score } from "./ui";
+import { rankFor, REWARDS } from "./championsData";
 import "./overlay.css";
+
+/** dev preview: `?view=toast&demo=…&secs=8` draws the timer line of an 8 s notice */
+const devSecs = import.meta.env.DEV ? Number(new URLSearchParams(location.search).get("secs")) || 0 : 0;
 
 const signed = (n: number) => (n > 0 ? "+" : n < 0 ? "−" : "±") + num(Math.abs(n));
 
@@ -24,13 +29,55 @@ export default function Toast() {
     };
   }, []);
 
+  useFitToast(toast);
   if (!toast) return null;
+  const el = toastElement(toast);
+  // the timer line (mockup 08): only when the app said how long the notice stays – a notice that
+  // waits for something (a sync, a sign-in) has no timer
+  const secs = (toast as { secs?: number }).secs ?? devSecs;
+  if (!secs || secs > 60) return el;
+  const timer = (
+    <span key="toast-time" className="toast-time" aria-hidden="true">
+      <i style={{ animationDuration: `${secs}s` }} />
+    </span>
+  );
+  return cloneElement(el, undefined, ...Children.toArray((el.props as { children?: ReactNode }).children), timer);
+}
 
+/**
+ * Rule 10 (every size, every language): the toast is click-through, so no tooltip can show a cut
+ * text – it must fit. Step by step until nothing is cut: a smaller title (fit-1, fit-2), then the
+ * title on two lines and the line wrapping (fit-3).
+ */
+const FIT = ["fit-1", "fit-2", "fit-3"];
+function useFitToast(toast: ToastPayload | null) {
+  useLayoutEffect(() => {
+    const root = document.querySelector<HTMLElement>(".toast");
+    if (!root) return;
+    const cut = () =>
+      [...root.querySelectorAll<HTMLElement>(".toast-title, .toast-title > span, .toast-line")].some((e) => e.scrollWidth > e.clientWidth + 1) ||
+      [...root.querySelectorAll<HTMLElement>(".toast-body")].some((b) => b.scrollHeight > b.clientHeight + 1);
+    const fit = () => {
+      root.classList.remove(...FIT);
+      for (const step of FIT) {
+        if (!cut()) return;
+        root.classList.remove(...FIT);
+        root.classList.add(step);
+      }
+    };
+    fit();
+    // the display font may arrive after the first paint: measure again then
+    document.fonts?.ready.then(fit).catch(() => {});
+  }, [toast]);
+}
+
+/** The lower-third for one notice: a solid tag, the title, one line (mockup 08). */
+function toastElement(toast: ToastPayload): ReactElement {
   if (toast.kind === "better") {
     const b = toast.better;
     return (
       <div className="toast better" key={`better-${toast.set_key}-${b.best}`}>
-        <span className="toast-mark better" aria-hidden="true" />
+        <span className="toast-mark better" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.5 8.4l3 3 6-6.6" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="square" /></svg></span>
         <div className="toast-body">
           <p className="toast-title">
             {t("toast.betterTitle", { set: toast.set_name })}
@@ -47,7 +94,7 @@ export default function Toast() {
   if (toast.kind === "optimized") {
     return (
       <div className="toast better" key={`optimized-${toast.set_key}-${toast.total}`}>
-        <span className="toast-mark better" aria-hidden="true" />
+        <span className="toast-mark better" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.5 8.4l3 3 6-6.6" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="square" /></svg></span>
         <div className="toast-body">
           <p className="toast-title">
             {t("toast.optimizedTitle", { set: toast.set_name })}
@@ -64,7 +111,7 @@ export default function Toast() {
     const agrees = a.model_exact && a.model_delta === a.ingame_delta && a.ingame_delta >= 0;
     return (
       <div className="toast" key={`${a.set_key}-${a.ingame_delta}`}>
-        <span className="toast-mark" aria-hidden="true" />
+        <span className="toast-mark" aria-hidden="true"><i className="dot" /></span>
         <div className="toast-body">
           <p className="toast-title">
             {t("toast.swapTitle", { set: a.set_name })}
@@ -94,7 +141,7 @@ export default function Toast() {
   if (toast.kind === "autocomplete") {
     return (
       <div className="toast better" key="autocomplete">
-        <span className="toast-mark better" aria-hidden="true" />
+        <span className="toast-mark better" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.5 8.4l3 3 6-6.6" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="square" /></svg></span>
         <div className="toast-body">
           <p className="toast-title">{t("toast.autoTitle")}</p>
           <p className="toast-line">{toast.set_name ? t("toast.autoLine", { set: toast.set_name }) : t("toast.autoLineNoSet")}</p>
@@ -106,7 +153,7 @@ export default function Toast() {
   if (toast.kind === "fill") {
     return (
       <div className="toast better" key={`fill-${toast.set_name}`}>
-        <span className="toast-mark better" aria-hidden="true" />
+        <span className="toast-mark better" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.5 8.4l3 3 6-6.6" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="square" /></svg></span>
         <div className="toast-body">
           <p className="toast-title">{t(toast.count === 1 ? "fill.titleOne" : "fill.title", { set: toast.set_name, count: toast.count })}</p>
           <p className="toast-line">
@@ -124,15 +171,30 @@ export default function Toast() {
     const outcome = toast.outcome ? t(`champs.short.${toast.outcome}`) : "";
     return (
       <div className={`toast read ${toast.outcome === "win" ? "best" : ""}`} key={`champs-${toast.n}`} role="status">
-        <span className="toast-mark read" aria-hidden="true" />
+        <span className="toast-mark read" aria-hidden="true">
+          <Score a={toast.wins} b={toast.losses} />
+        </span>
         <div className="toast-body">
-          <p className="toast-title">{t("champs.toastTitle", { n: toast.n ?? "?" })}</p>
-          <p className="toast-line">
-            {[`${outcome} ${score}${toast.aet ? ` ${t("champs.aet")}` : ""}`, toast.opponent, toast.when_left ? t("champs.whenLeft", { score: `${toast.when_left[0]}–${toast.when_left[1]}`, minute: toast.minute ?? 0 }) : null]
+          {toast.outcome === "win" && rankFor(toast.wins) ? (
+            // a win (08): the rank it reached, with the shield, and what that rank pays
+            <>
+              <p className="toast-title toast-rank">
+                <Rank i={toast.wins - 1} got />
+                <span>{t("v2panel.toast.winRank", { rank: rankFor(toast.wins) ?? "" })}</span>
+              </p>
+              <p className="toast-line">
+                {t("v2panel.toast.winLine", { n: toast.n ?? "?", coins: num(REWARDS[toast.wins - 1].coins), tokens: REWARDS[toast.wins - 1].tokens })}
+              </p>
+            </>
+          ) : (
+            <p className="toast-title">{t("champs.toastTitle", { n: toast.n ?? "?" })}</p>
+          )}
+          {toast.outcome !== "win" && <p className="toast-line">
+            {[`${outcome} ${score}${toast.aet ? ` ${t("champs.aet")}` : ""}`, toast.when_left ? t("champs.whenLeft", { score: `${toast.when_left[0]}–${toast.when_left[1]}`, minute: toast.minute ?? 0 }) : null]
               .filter(Boolean)
               .join(" · ")}
-          </p>
-          <p className="toast-line">{t("champs.toastRecord", { wins: toast.wins, losses: toast.losses, left: toast.remaining })}</p>
+          </p>}
+          {toast.outcome !== "win" && <p className="toast-line">{t("champs.toastRecord", { wins: toast.wins, losses: toast.losses, left: toast.remaining })}</p>}
         </div>
       </div>
     );
@@ -141,7 +203,7 @@ export default function Toast() {
   if (toast.kind === "welcome") {
     return (
       <div className="toast read best" key="welcome" role="status">
-        <span className="toast-mark read" aria-hidden="true" />
+        <span className="toast-mark read" aria-hidden="true"><i className="dot" /></span>
         <div className="toast-body">
           <p className="toast-title">{t("toast.welcome")}</p>
           <p className="toast-line">{t("toast.welcomeLine", { count: num(toast.players) })}</p>
@@ -153,7 +215,7 @@ export default function Toast() {
   if (toast.kind === "squads") {
     return (
       <div className="toast read best" key="squads" role="status">
-        <span className="toast-mark read" aria-hidden="true" />
+        <span className="toast-mark read" aria-hidden="true"><i className="dot" /></span>
         <div className="toast-body">
           <p className="toast-title">{t("squads.notice.title", { event: toast.event })}</p>
           <p className="toast-line">{t("squads.notice.line")}</p>
@@ -164,17 +226,16 @@ export default function Toast() {
 
   if (toast.kind === "squads-swap") {
     return (
-      <div className="toast read best" key="squads-swap" role="status">
-        <span className="toast-mark read" aria-hidden="true" />
+      <div className="toast read" key="squads-swap" role="status">
+        <span className="toast-mark read" aria-hidden="true"><span className="num">{t("v2panel.matchTag", { n: toast.played + 1 })}</span></span>
         <div className="toast-body">
-          <p className="toast-title">{t("squads.toast.swapTitle", { count: toast.played })}</p>
-          {toast.swaps.slice(0, 3).map((w, i) => (
-            <p className="toast-line" key={i}>
-              {w.out ? t("squads.plan.swap", { out: w.out, in: w.in, pos: w.pos }) : t("squads.plan.in", { in: w.in, pos: w.pos })}
-              {w.buy ? ` · ${t("squads.toast.buy")}` : ""}
-            </p>
-          ))}
-          <p className="toast-line">{t("squads.toast.check")}</p>
+          {/* 08: one title, the changes on one line (out → in · out → in) */}
+          <p className="toast-title">{t("v2panel.toast.changes", { count: toast.swaps.length })}</p>
+          <p className="toast-line" title={t("squads.toast.check")}>
+            {toast.swaps
+              .map((w) => (w.out ? `${w.out} → ${w.in}` : t("squads.plan.in", { in: w.in, pos: w.pos })) + (w.buy ? ` (${t("squads.toast.buy")})` : ""))
+              .join(" · ")}
+          </p>
         </div>
       </div>
     );
@@ -183,7 +244,7 @@ export default function Toast() {
   if (toast.kind === "squads-match") {
     return (
       <div className="toast read" key="squads-match" role="status">
-        <span className="toast-mark read" aria-hidden="true" />
+        <span className="toast-mark read" aria-hidden="true"><i className="dot" /></span>
         <div className="toast-body">
           <p className="toast-title">{t("squads.toast.matchTitle", { count: toast.played })}</p>
           <p className="toast-line">{toast.next != null && toast.next > 0 ? t("squads.toast.next", { count: toast.next }) : t("squads.toast.keep")}</p>
@@ -197,7 +258,7 @@ export default function Toast() {
   if (toast.kind === "squad-changes") {
     return (
       <div className="toast read best" key={`squad-changes-${toast.done}`} role="status">
-        <span className="toast-mark read" aria-hidden="true" />
+        <span className="toast-mark read" aria-hidden="true"><span className="num">{t("v2panel.matchTag", { n: toast.counted + 1 })}</span></span>
         <div className="toast-body">
           <p className="toast-title">{toast.swaps.length ? t("squadchg.title", { done: toast.done ?? "" }) : t("squadchg.keepTitle", { done: toast.done ?? "" })}</p>
           {toast.swaps.slice(0, 4).map((w, i) => (
@@ -216,7 +277,7 @@ export default function Toast() {
   if (toast.kind === "objectives-read") {
     return (
       <div className="toast read" key={`objectives-read-${toast.event}`} role="status">
-        <span className="toast-mark read" aria-hidden="true" />
+        <span className="toast-mark read" aria-hidden="true"><i className="dot" /></span>
         <div className="toast-body">
           <p className="toast-title">{t("objread.notice.title", { event: toast.event })}</p>
           <p className="toast-line">{t("objread.notice.line", { count: toast.count })}</p>
@@ -230,7 +291,7 @@ export default function Toast() {
     const line = toast.cap ? t("rules.notice.cap", { rating: toast.cap[0], count: toast.cap[1] }) : toast.min != null && toast.max != null ? t("rules.notice.range", { min: toast.min, max: toast.max }) : toast.min != null ? t("rules.notice.min", { min: toast.min }) : toast.max != null ? t("rules.notice.max", { max: toast.max }) : t("rules.notice.any");
     return (
       <div className="toast read best" key={`rules-${toast.event}`} role="status">
-        <span className="toast-mark read" aria-hidden="true" />
+        <span className="toast-mark read" aria-hidden="true"><i className="dot" /></span>
         <div className="toast-body">
           <p className="toast-title">{t("rules.notice.title", { event: toast.event.replace(/(^| )(\S)/g, (_m, a: string, c: string) => a + c.toUpperCase()) })}</p>
           <p className="toast-line">{line}</p>
@@ -243,7 +304,7 @@ export default function Toast() {
   if (toast.kind === "evo") {
     return (
       <div className="toast read" key={`evo-${toast.evo}-${toast.active}`} role="status">
-        <span className="toast-mark read" aria-hidden="true" />
+        <span className="toast-mark read" aria-hidden="true"><i className="dot" /></span>
         <div className="toast-body">
           <p className="toast-title">{t(toast.active ? "evo.notice.on" : "evo.notice.off", { evo: toast.evo, player: toast.player || toast.evo })}</p>
           <p className="toast-line">{t(toast.active ? "evo.notice.onLine" : "evo.notice.offLine")}</p>
@@ -255,11 +316,15 @@ export default function Toast() {
   // Match reminders: an evolution player to sub on (or one that has to start)
   if (toast.kind === "match-reminder") {
     return (
-      <div className="toast better" key={`match-reminder-${toast.at}`} role="status">
-        <span className="toast-mark better" aria-hidden="true" />
+      <div className={`toast better reminder ${toast.now ? "now" : ""}`} key={`match-reminder-${toast.at}`} role="status">
+        <span className="toast-mark better" aria-hidden="true">
+          {toast.at === 0 ? (toast.needs.every((n) => n.bench) ? "XI" : t("v2panel.tagEvo")) : `${toast.at}:00`}
+        </span>
         <div className="toast-body">
           <p className="toast-title">
-            {toast.now ? t("remind.title", { minute: toast.at }) : toast.at === 0 ? (toast.needs.every((n) => n.bench) ? t("remind.loadBench") : t("remind.loadTitle")) : t("remind.moment", { minute: toast.at })}
+            {toast.now && toast.needs.length === 1 && !toast.needs[0].bench && !toast.needs[0].start
+              ? t("v2panel.toast.subNow", { player: toast.needs[0].player })
+              : toast.now ? t("remind.title", { minute: toast.at }) : toast.at === 0 ? (toast.needs.every((n) => n.bench) ? t("remind.loadBench") : t("remind.loadTitle")) : t("remind.moment", { minute: toast.at })}
           </p>
           {toast.needs.slice(0, 3).map((n, i) => (
             <p className="toast-line" key={i}>
@@ -268,7 +333,9 @@ export default function Toast() {
                 : toast.now
                   ? n.bench
                     ? t("remind.subFor", { player: n.player, what: n.evo })
-                    : t("remind.subOn", { player: n.player, evo: n.evo, level: n.level, levels: n.levels })
+                    : toast.needs.length === 1
+                      ? t("squads.evo.level", { name: n.evo, level: n.level, levels: n.levels })
+                      : t("remind.subOn", { player: n.player, evo: n.evo, level: n.level, levels: n.levels })
                   : n.bench
                     ? t("remind.benchFor", { player: n.player, what: n.evo, minute: n.at })
                     : t("remind.bench", { player: n.player, evo: n.evo, minute: n.at })}
@@ -282,7 +349,7 @@ export default function Toast() {
   if (toast.kind === "recording") {
     return (
       <div className="toast better" key="recording" role="status">
-        <span className="toast-mark better" aria-hidden="true" />
+        <span className="toast-mark better" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.5 8.4l3 3 6-6.6" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="square" /></svg></span>
         <div className="toast-body">
           <p className="toast-title">{t("toast.recTitle")}</p>
           <p className="toast-line">{t("toast.recLine")}</p>
@@ -303,7 +370,7 @@ export default function Toast() {
             : t("progress.newItems");
     return (
       <div className="toast progress" key={`progress-${toast.what}-${toast.name ?? ""}`}>
-        <span className="toast-mark progress" aria-hidden="true" />
+        <span className="toast-mark progress" aria-hidden="true"><i className="bar loading"><i /></i></span>
         <div className="toast-body">
           <p className="toast-title">{title}</p>
           <p className="toast-line">{t(toast.what === "new_items" ? "progress.newItemsLine" : toast.what === "bidding" ? "progress.biddingLine" : "progress.setLine")}</p>
@@ -332,7 +399,7 @@ export default function Toast() {
               : t("read.setLine", { count: toast.cards });
     return (
       <div className={`toast read ${toast.state}`} key={`read-${toast.state}-${toast.set_name}`}>
-        <span className="toast-mark read" aria-hidden="true" />
+        <span className="toast-mark read" aria-hidden="true"><i className="dot" /></span>
         <div className="toast-body">
           <p className="toast-title">
             {title}
@@ -350,10 +417,18 @@ export default function Toast() {
       // Action needed: the sync can't start without a signed-in Web App.
       return (
         <div className="toast sync login" key="sync-login" role="alert">
-          <span className="toast-mark sync login" aria-hidden="true" />
+          <span className="toast-mark sync login" aria-hidden="true">
+            {toast.reason === "no_extension" ? (
+              <svg viewBox="0 0 16 16">
+                <path d="M8 2l6.5 11.5h-13z" fill="none" stroke="currentColor" strokeWidth="1.6" />
+                <path d="M8 6.5v3.4M8 11.3v.9" stroke="currentColor" strokeWidth="1.6" />
+              </svg>
+            ) : (
+              "!"
+            )}
+          </span>
           <div className="toast-body">
             <p className="toast-title">
-              <span className="toast-action">{t("toast.actionNeeded")}</span>
               {t(toast.reason === "no_extension" ? "toast.syncNoExtension" : "toast.syncLogin")}
             </p>
             <p className="toast-line">
@@ -368,7 +443,7 @@ export default function Toast() {
       // opens by itself)
       return (
         <div className="toast sync running" key="sync-suggest" role="status">
-          <span className="toast-mark sync running" aria-hidden="true" />
+          <span className="toast-mark sync running" aria-hidden="true"><i className="bar loading"><i /></i></span>
           <div className="toast-body">
             <p className="toast-title">{t("toast.syncSuggest")}</p>
             <p className="toast-line">{t("toast.syncSuggestLine")}</p>
@@ -379,7 +454,9 @@ export default function Toast() {
     const key = toast.state === "running" ? "syncRunning" : toast.state === "done" ? "syncDone" : "syncAborted";
     return (
       <div className={`toast sync ${toast.state}`} key={`sync-${toast.state}`}>
-        <span className={`toast-mark sync ${toast.state}`} aria-hidden="true" />
+        <span className={`toast-mark sync ${toast.state}`} aria-hidden="true">
+          {toast.state === "done" ? <svg viewBox="0 0 16 16"><path d="M3.5 8.4l3 3 6-6.6" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="square" /></svg> : toast.state === "running" ? (toast.phase === "club" && toast.count ? <span className="num">{toast.count}</span> : <i className="bar loading"><i /></i>) : "II"}
+        </span>
         <div className="toast-body">
           <p className="toast-title">{t(`toast.${key}` as MessageKey)}</p>
           <p className="toast-line">
@@ -403,7 +480,7 @@ export default function Toast() {
   const one = toast.cards.length === 1 ? toast.cards[0] : null;
   return (
     <div className={`toast ${upgraded.length ? "upgrade" : ""}`} key={top.map((c) => c.def_id).join("-")}>
-      <span className={`toast-mark ${upgraded.length ? "upgrade" : "pack"}`} aria-hidden="true" />
+      <span className={`toast-mark ${upgraded.length ? "upgrade" : "pack"}`} aria-hidden="true">{upgraded.length ? <span className="num">{t("v2panel.fo")}</span> : null}</span>
       <div className="toast-body">
         <p className="toast-title">
           {upgraded.length === 1

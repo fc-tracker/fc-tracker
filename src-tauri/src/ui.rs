@@ -96,7 +96,8 @@ pub fn place_overlay(win: &WebviewWindow, prefs: &UiPrefs) {
 /// The toast: a short card at the top centre, above FC 27's own navigation bar.
 pub fn place_toast(win: &WebviewWindow) {
     let Some((mx, my, mw, mh, scale)) = monitor_rect(win) else { return };
-    let (w, h) = (((640.0 * scale) as u32).min(mw), (92.0 * scale) as u32);
+    // slim (user 2026-11-05: "not that big in the game – like the earlier version")
+    let (w, h) = (((480.0 * scale) as u32).min(mw), (60.0 * scale) as u32);
     let _ = win.set_size(PhysicalSize::new(w, h));
     let _ = win.set_position(PhysicalPosition::new(mx + (mw as i32 - w as i32) / 2, my + (mh as f64 * 0.012) as i32));
 }

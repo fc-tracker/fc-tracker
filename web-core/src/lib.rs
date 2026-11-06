@@ -36,10 +36,22 @@ mod scan {
 }
 
 /// The browser's clock for the model's search budget (std's Instant panics in WebAssembly).
+/// Built natively (fct-api, server/) it is the system clock.
 mod clock {
+    #[cfg(target_arch = "wasm32")]
     #[link(wasm_import_module = "env")]
     extern "C" {
         fn now_ms() -> f64;
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn now() -> f64 {
+        unsafe { now_ms() }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn now() -> f64 {
+        std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs_f64() * 1000.0).unwrap_or(0.0)
     }
 
     #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
@@ -47,7 +59,7 @@ mod clock {
 
     impl Instant {
         pub fn now() -> Self {
-            Instant(unsafe { now_ms() })
+            Instant(now())
         }
     }
 
@@ -59,7 +71,7 @@ mod clock {
     }
 
     pub fn ms() -> u64 {
-        unsafe { now_ms() as u64 }
+        now() as u64
     }
 }
 
@@ -321,6 +333,16 @@ fn ingest_sync(w: &mut Web, sync: SyncData) -> Value {
             "fct://webapp/names" => w.names = Some(e.body.clone()),
             "fct://webapp/formations" => w.formations = Some(e.body.clone()),
             "fct://webapp/attributes" => w.attributes = Some(e.body.clone()),
+            // the balance the extension saw in the Web App's own responses before this sync began
+            // (usermassinfo at sign-in): {credits, at}
+            "fct://webapp/coins" => {
+                if let Some(c) = e.body.get("credits").and_then(Value::as_u64) {
+                    let t = e.body.get("at").and_then(Value::as_u64).unwrap_or(at);
+                    if w.coins.is_none_or(|[_, old]| t >= old) {
+                        w.coins = Some([c, t]);
+                    }
+                }
+            }
             _ => {}
         }
         let key = sync_data::endpoint_key(&e.url);
@@ -818,6 +840,8 @@ fn dispatch(req: Value) -> Result<Value, String> {
             "ingest_sync" => Ok(ingest_sync(&mut w, serde_json::from_value(arg("sync")).map_err(|e| e.to_string())?)),
             "gallery_sets_revision" => Ok(json!(gallery_sets::revision())),
             "use_gallery_sets" => Ok(json!(gallery_sets::use_remote(arg("json").as_str().unwrap_or_default())?)),
+            // the coin balance as last seen: {value, read_at} (ms) or null
+            "coins" => Ok(w.coins.map(|[value, read_at]| json!({ "value": value, "read_at": read_at })).unwrap_or(Value::Null)),
             "sync_filters" => Ok(json!(gallery_sets::sync_filters().into_iter().map(|(key, filter)| json!({ "key": key, "filter": filter })).collect::<Vec<_>>())),
             "observe_set" => Ok(observe_set(&mut w, serde_json::from_value(arg("read")).map_err(|e| e.to_string())?)),
             "observe_swap" => Ok(observe_swap(&mut w, serde_json::from_value(arg("read")).map_err(|e| e.to_string())?)),
@@ -869,4 +893,44 @@ pub extern "C" fn call(p: *const u8, len: usize) -> u64 {
     let out_ptr = boxed.as_mut_ptr();
     std::mem::forget(boxed);
     ((out_ptr as u64) << 32) | out_len as u64
+}
+
+/// A club sync an extension sent to the account (fct-api `POST /v1/club-sync`, used when no app
+/// receives it): the account's Gallery and Web App parts (decompressed JSON, either may be
+/// missing) are taken in, the sync is read exactly as FC-Tracker Web reads it, and both parts come
+/// back in their formats with a short summary. Keys this model doesn't know (the app's own
+/// snapshot fields) are kept as they were. Runs on a fresh model – nothing is shared between calls.
+pub fn merge_club_sync(gallery: Option<Value>, webapp: Option<Value>, sync: Value) -> Result<(Value, Value, Value), String> {
+    let saved = WEB.with(|cell| std::mem::take(&mut *cell.borrow_mut()));
+    let result = (|| {
+        if let Some(g) = gallery.clone().filter(Value::is_object) {
+            dispatch(json!({ "fn": "sync_import", "data": g, "replace": true }))?;
+        }
+        if let Some(w) = webapp.clone().filter(Value::is_object) {
+            dispatch(json!({ "fn": "webapp_import", "data": w, "replace": true }))?;
+        }
+        let summary = dispatch(json!({ "fn": "ingest_sync", "sync": sync }))?;
+        let overlay = |base: Option<Value>, new: Value| -> Value {
+            match (base.filter(Value::is_object), new) {
+                (Some(Value::Object(mut b)), Value::Object(n)) => {
+                    for (k, v) in n {
+                        b.insert(k, v);
+                    }
+                    Value::Object(b)
+                }
+                (_, n) => n,
+            }
+        };
+        let g = overlay(gallery, dispatch(json!({ "fn": "sync_export" }))?);
+        let w = overlay(webapp, dispatch(json!({ "fn": "webapp_export" }))?);
+        Ok((g, w, summary))
+    })();
+    WEB.with(|cell| *cell.borrow_mut() = saved);
+    result
+}
+
+/// The Web App searches a club sync runs for the Gallery (what the app's bridge serves at
+/// `/gallery-sets`) – fct-api serves them to an extension that has no app.
+pub fn sync_filters() -> Value {
+    json!(gallery_sets::sync_filters().into_iter().map(|(key, filter)| json!({ "key": key, "filter": filter })).collect::<Vec<_>>())
 }

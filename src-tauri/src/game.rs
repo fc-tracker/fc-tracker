@@ -380,8 +380,33 @@ fn reg_delete(subkey: &str, name: &str) {
 
 /// Opens a page of fc-tracker.com in the default browser (path like "/download").
 pub fn open_site(path: &str) -> Result<(), String> {
-    let path = if path.starts_with('/') && !path.contains("..") { path } else { "/" };
-    shell_open(&format!("https://www.fc-tracker.com{path}"))
+    shell_open(&site_url(path))
+}
+
+/// A page of fc-tracker.com – never another host. A fragment (`#handoff=<code>`, account.ts
+/// openSiteSignedIn) is kept: the browser never sends it to a server.
+fn site_url(path: &str) -> String {
+    let path = if path.starts_with('/') && !path.starts_with("//") && !path.contains("..") && !path.contains('\\') { path } else { "/" };
+    format!("https://www.fc-tracker.com{path}")
+}
+
+#[cfg(test)]
+mod site_url_tests {
+    #[test]
+    fn only_pages_of_the_site_keeping_the_hand_off_fragment() {
+        let code = "M".repeat(43);
+        assert_eq!(super::site_url(&format!("/dashboard#handoff={code}")), format!("https://www.fc-tracker.com/dashboard#handoff={code}"));
+        assert_eq!(super::site_url("/download"), "https://www.fc-tracker.com/download");
+        for bad in ["//evil.example.com/x", "https://evil.example.com", "/../x", "@evil.example.com", "/\\evil"] {
+            assert_eq!(super::site_url(bad), "https://www.fc-tracker.com/", "{bad}");
+        }
+    }
+}
+
+/// The release notes: every release on the public repo (built and attested there, CLAUDE.md "Release").
+pub const RELEASES_URL: &str = "https://github.com/fc-tracker/fc-tracker/releases";
+pub fn open_release_notes() -> Result<(), String> {
+    shell_open(RELEASES_URL)
 }
 
 /// Registers fctracker:// for this user (HKCU, no admin): the extension's "Open FC-Tracker"

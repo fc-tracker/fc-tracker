@@ -77,15 +77,17 @@ pub fn merge(base: &mut Snapshot, other: Snapshot) {
         base.first_owner_scanned.entry(k).or_insert(v);
     }
     base.owners_replayed &= other.owners_replayed;
+    // a wrong read the user took out on one device stays out on every device
+    base.removed_cards.extend(other.removed_cards.iter().copied());
     // Card database: union; "ever collected" can only become true.
     let newer_db = other.gallery_synced_at > base.gallery_synced_at;
     for (id, card) in other.gallery {
         match base.gallery.get_mut(&id) {
             Some(b) => {
                 let collected = b.collected || card.collected;
-                if newer_db {
-                    *b = card;
-                }
+                // field by field (user 2026-11-05: the dynamic images vanished again): the newer copy wins what it
+                // has, what it lacks (EA's art guid, face stats … a device that didn't read them) is kept
+                *b = if newer_db { card.merged_with(b) } else { b.clone().merged_with(&card) };
                 b.collected = collected;
             }
             None => {
@@ -194,5 +196,18 @@ mod tests {
         assert!(base.gallery[&1].collected && base.gallery[&2].collected);
         assert_eq!(base.set_obs["k"].unselected.iter().copied().collect::<Vec<_>>(), vec![7, 8]);
         assert_eq!(base.set_obs["k"].lineup_at, Some(5));
+    }
+    #[test]
+    fn a_newer_copy_never_wipes_eas_art_or_face_stats() {
+        let (mut base, mut other) = (Snapshot::default(), Snapshot::default());
+        base.gallery.insert(9, GalleryCard { def_id: 9, art: Some("guid".into()), face: vec![80, 80, 80, 80, 80, 80], ..Default::default() });
+        other.gallery_synced_at = Some(99);
+        other.gallery.insert(9, GalleryCard { def_id: 9, rating: Some(86), collected: true, ..Default::default() });
+        merge(&mut base, other);
+        let c = &base.gallery[&9];
+        assert_eq!(c.art.as_deref(), Some("guid"));
+        assert_eq!(c.face.len(), 6);
+        assert_eq!(c.rating, Some(86));
+        assert!(c.collected);
     }
 }

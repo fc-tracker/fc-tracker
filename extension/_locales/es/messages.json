@@ -201,5 +201,161 @@
         "content": "$1"
       }
     }
+  },
+  "v2_extension": {
+    "message": "—",
+    "description": "Marker: the keys after this one belong to the v2-extension session (brand v2, account, no sync without an owner)."
+  },
+  "popClubSync": {
+    "message": "Sincronización del club"
+  },
+  "popApp": {
+    "message": "La app"
+  },
+  "popAccount": {
+    "message": "Cuenta"
+  },
+  "stateAppClosed": {
+    "message": "App cerrada"
+  },
+  "subAppClosed": {
+    "message": "Tu sincronización se guarda aquí y pasa a la app la próxima vez que se abra."
+  },
+  "stateAccount": {
+    "message": "Sesión iniciada"
+  },
+  "subAccount": {
+    "message": "Abre la Web App: tu club se sincroniza solo con tu cuenta de FC-Tracker."
+  },
+  "subAccountPending": {
+    "message": "Tu última sincronización espera a la cuenta: se reenvía en menos de un minuto."
+  },
+  "stateNone": {
+    "message": "Aún sin sincronizar"
+  },
+  "subNone": {
+    "message": "Inicia sesión abajo o consigue la app: así tu club se sincroniza solo."
+  },
+  "subNoneApp": {
+    "message": "Conecta la app o inicia sesión: así tu club se sincroniza solo."
+  },
+  "accountViaApp": {
+    "message": "La app guarda tu club en $EMAIL$.",
+    "placeholders": {
+      "email": {
+        "content": "$1"
+      }
+    }
+  },
+  "accountAppKeeps": {
+    "message": "Tu club va a la app, y la app lo guarda en su cuenta."
+  },
+  "accountAppSignedOut": {
+    "message": "La app no tiene sesión iniciada: tu club se queda en este PC. Inicia sesión en la app para guardarlo en tu cuenta."
+  },
+  "accountAppLocal": {
+    "message": "Tu club va a la app de FC-Tracker en este PC."
+  },
+  "chipViaApp": {
+    "message": "Con la app"
+  },
+  "chipSignedIn": {
+    "message": "Conectado"
+  },
+  "accountSignedInAs": {
+    "message": "Sesión iniciada como"
+  },
+  "accountPushed": {
+    "message": "Guardado en tu cuenta $WHEN$",
+    "placeholders": {
+      "when": {
+        "content": "$1"
+      }
+    }
+  },
+  "signInWhy": {
+    "message": "¿No tienes la app en este PC? Inicia sesión con tu e-mail y tu sincronización se guarda en tu cuenta de FC-Tracker. Sin contraseña: te enviamos un código."
+  },
+  "emailPlaceholder": {
+    "message": "tu@e-mail.com"
+  },
+  "sendCode": {
+    "message": "Enviar código"
+  },
+  "codeSentTo": {
+    "message": "Hemos enviado un código de 6 dígitos a $EMAIL$. Vale 10 minutos.",
+    "placeholders": {
+      "email": {
+        "content": "$1"
+      }
+    }
+  },
+  "verifyCode": {
+    "message": "Iniciar sesión"
+  },
+  "otherEmail": {
+    "message": "Usar otro e-mail"
+  },
+  "signOut": {
+    "message": "Cerrar sesión"
+  },
+  "sendingCode": {
+    "message": "Enviando el código …"
+  },
+  "verifying": {
+    "message": "Comprobando el código …"
+  },
+  "signingOut": {
+    "message": "Cerrando sesión …"
+  },
+  "authError_email_invalid": {
+    "message": "Eso no es una dirección de e-mail."
+  },
+  "authError_code_invalid": {
+    "message": "Código incorrecto: revisa el e-mail e inténtalo de nuevo."
+  },
+  "authError_code_expired": {
+    "message": "El código ha caducado: pide uno nuevo."
+  },
+  "authError_rate_limited": {
+    "message": "Demasiados intentos: espera un minuto y vuelve a intentarlo."
+  },
+  "authError_offline": {
+    "message": "Sin conexión con FC-Tracker: revisa tu internet."
+  },
+  "authError_mail_failed": {
+    "message": "No se pudo enviar el e-mail: inténtalo de nuevo en un momento."
+  },
+  "authError_server": {
+    "message": "El servidor de FC-Tracker no respondió: inténtalo de nuevo en un momento."
+  },
+  "authError_signed_out": {
+    "message": "Se cerró tu sesión: vuelve a iniciarla."
+  },
+  "badgeSignInBtn": {
+    "message": "Iniciar sesión"
+  },
+  "badgeNoOwner": {
+    "message": "Inicia sesión en FC-Tracker o consigue la app: así tu club se sincroniza solo."
+  },
+  "badgePushing": {
+    "message": "Guardando tu club en tu cuenta …"
+  },
+  "badgePushed": {
+    "message": "Guardado en tu cuenta ✓ · $COUNT$ cartas de la Galería",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "badgePushedPlain": {
+    "message": "Guardado en tu cuenta ✓"
+  },
+  "badgePushFailed": {
+    "message": "No se pudo llegar a tu cuenta: la sincronización se guarda y se reenvía en menos de un minuto."
+  },
+  "badgeSignedOut": {
+    "message": "Se cerró tu sesión: haz clic en el icono de FC-Tracker y vuelve a iniciarla."
   }
 }

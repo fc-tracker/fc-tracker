@@ -21,6 +21,16 @@ import { applySaved, savedSquads, savedWrittenAt, type SavedSquad } from "./save
 const API = "https://api.fc-tracker.com";
 const SYNC_EVERY = 3 * 60 * 1000;
 const META = "fct.sync.part.";
+/** Dev preview only (src/devMock.ts): `?mock=account-out | account-code | account-in | account-conflict` serves the
+ *  account offline – sign-in, the code step, devices, export, delete and the conflict dialog without the server. */
+const ACCOUNT_MOCK = (() => {
+  // also a built FC-Tracker Web served on this PC (`serve site/dist`): the dashboard's `?mock` = signed in
+  const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+  if (!(import.meta.env.DEV || local) || "__TAURI_INTERNALS__" in window) return null;
+  const m = new URLSearchParams(location.search).get("mock");
+  if (m === "" && location.pathname.includes("dashboard")) return "account-in";
+  return m && m.startsWith("account") ? m : null;
+})();
 
 export type User = {
   id: string;
@@ -35,7 +45,7 @@ export type User = {
   verified?: boolean;
   avatar_url?: string | null;
 };
-export type Device = { id: string; name: string; kind: string; created_at: string; last_seen: string; this: boolean };
+export type Device = { id: string; name: string; kind: string; created_at: string; last_seen: string; this: boolean; version?: string | null };
 export type Part = "gallery" | "webapp" | "champions" | "settings" | "saved";
 /** Local and account copies of a part both changed since they last agreed. */
 export type Conflict = { part: Part; cloudAt: number; cloudDevice: string | null; localAt: number };
@@ -53,9 +63,14 @@ let secret: Secret | null = null;
 
 function emit(patch: Partial<AccountState>) {
   state = { ...state, ...patch };
+  // the window that keeps the account hands the profile to the others (the overlay, the side panel)
+  if (started && !IS_WEB && !ACCOUNT_MOCK && "user" in patch) void api.setAccountUser(patch.user ?? null).catch(() => {});
   listeners.forEach((l) => l(state));
 }
 const setSync = (s: Partial<SyncState>) => emit({ sync: { ...state.sync, ...s } });
+
+/** The account state now, outside React (FC-Tracker Web's hand-off with the extension). */
+export const accountState = (): AccountState => state;
 
 export function useAccount(): AccountState {
   const [s, set] = useState(state);
@@ -170,6 +185,7 @@ async function saveSecret(s: Secret | null) {
 
 /** A request to the API; throws the error code (string). */
 async function call<T>(method: string, path: string, body?: unknown, auth = true): Promise<T> {
+  if (ACCOUNT_MOCK) return (await import("./devMock")).mockAccountCall(method, path, body) as T;
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (auth) headers.Authorization = `Bearer ${await token()}`;
   let r: Response;
@@ -187,24 +203,70 @@ async function call<T>(method: string, path: string, body?: unknown, auth = true
   return json as T;
 }
 
+/* Staying signed in (user 2026-11-05: "click to the main menu and back and you're signed out"): the server rotates
+   the refresh token on every use and signs the device out when an old one comes back (a copied token). So a token is
+   renewed once at a time – one renewal per page (a shared promise), one per browser (a lock across the tabs: the
+   site's /web and the dashboard share this origin's sign-in) – and the access token (15 min) is kept with the
+   sign-in, so a page opened again doesn't renew at all (no renewal cut off by leaving the page). */
+const ACCESS_KEY = "fct.account.access";
+const fresh = (a: { token: string; until: number } | null) => !!a && a.until > Date.now() + 30_000;
+function keepAccess(a: { token: string; until: number } | null) {
+  access = a;
+  if (IS_WEB) store.set(ACCESS_KEY, a ? JSON.stringify(a) : null);
+}
+function keptAccess(): { token: string; until: number } | null {
+  if (!IS_WEB) return null;
+  try {
+    const a = JSON.parse(store.get(ACCESS_KEY) ?? "null");
+    return a && typeof a.token === "string" && typeof a.until === "number" ? a : null;
+  } catch {
+    return null;
+  }
+}
+let renewing: Promise<string> | null = null;
+
 /** A valid access token (a new one from the refresh token when the last one is about to end). */
 async function token(): Promise<string> {
-  if (access && access.until > Date.now() + 30_000) return access.token;
+  if (fresh(access)) return access!.token;
+  const kept = keptAccess();
+  if (fresh(kept)) return (access = kept)!.token;
   if (!secret) throw "signed_out";
-  const r = await call<{ access: string; refresh: string; expires_in: number }>("POST", "/v1/auth/refresh", { refresh: secret.refresh }, false).catch(
+  renewing ??= (IS_WEB && navigator.locks ? navigator.locks.request("fct.account.renew", renew) : renew()).finally(() => (renewing = null));
+  return renewing;
+}
+
+async function renew(): Promise<string> {
+  // another tab may have renewed while this one waited for the lock: its tokens are the ones to use
+  if (IS_WEB) {
+    const kept = keptAccess();
+    const raw = await api.accountSecret().catch(() => null);
+    // signed out in another tab: here too
+    if (!raw) {
+      await signedOutHere();
+      throw "signed_out";
+    }
+    try {
+      secret = JSON.parse(raw) as Secret;
+    } catch {}
+    if (fresh(kept)) return (access = kept)!.token;
+  }
+  if (!secret) throw "signed_out";
+  // the app tells the account its version (the dashboard shows it on the device); the web page has none to tell
+  const version = IS_WEB ? undefined : await api.appVersion().catch(() => undefined);
+  const r = await call<{ access: string; refresh: string; expires_in: number }>("POST", "/v1/auth/refresh", { refresh: secret.refresh, version }, false).catch(
     async (e) => {
       if (e === "signed_out") await signedOutHere();
       throw e;
     },
   );
-  await saveSecret({ ...secret, refresh: r.refresh });
-  access = { token: r.access, until: Date.now() + r.expires_in * 1000 };
+  await saveSecret({ ...secret!, refresh: r.refresh });
+  keepAccess({ token: r.access, until: Date.now() + r.expires_in * 1000 });
   return r.access;
 }
 
 /** The server ended this device's sign-in (signed out elsewhere, or the token was copied). */
 async function signedOutHere() {
-  access = null;
+  keepAccess(null);
   await saveSecret(null);
   emit({ status: "out", user: null, sync: { phase: "idle", at: null, error: null, conflicts: [] } });
 }
@@ -232,10 +294,73 @@ export async function verifyCode(email: string, code: string): Promise<User> {
   // a new sign-in compares everything with the account afresh (it may be another account)
   clearMeta();
   await saveSecret({ refresh: r.refresh, email: r.user.email });
-  access = { token: r.access, until: Date.now() + r.expires_in * 1000 };
+  keepAccess({ token: r.access, until: Date.now() + r.expires_in * 1000 });
   emit({ status: "in", user: r.user });
   void syncNow();
   return r.user;
+}
+
+/** Opens a page of fc-tracker.com from the app, signed in: a one-time hand-off code (60 s, one use) in the
+ *  URL's fragment – never a query, so it never reaches a server log – that the page redeems for its own web
+ *  device. The app's refresh token never leaves the app. Signed out, or offline: the page as it is. */
+export async function openSiteSignedIn(path: string): Promise<void> {
+  // FC-Tracker Web: the tab opens at once (a later window.open would be blocked), the code follows – the dashboard
+  // lives on its own origin (dashboard.fc-tracker.com), so this page's sign-in doesn't reach it by itself
+  if (IS_WEB) {
+    const w = window.open("about:blank", "_blank");
+    if (!w) return;
+    w.opener = null;
+    let code = "";
+    if (state.status === "in") code = await call<{ code: string }>("POST", "/v1/auth/handoff").then((r) => `#handoff=${r.code}`, () => "");
+    w.location.href = path + code;
+    return;
+  }
+  let fragment = "";
+  if (state.status === "in") {
+    try {
+      fragment = `#handoff=${(await call<{ code: string }>("POST", "/v1/auth/handoff")).code}`;
+    } catch {
+      /* offline or rate limited: the page asks for a sign-in instead */
+    }
+  }
+  await api.openSite(path + fragment);
+}
+
+let handoff: "redeeming" | "failed" | null = null;
+/** The page was opened from the app with a hand-off code: "redeeming" while it signs in, "failed" when the
+ *  code had expired or was used (the page then shows the e-mail sign-in with a reason). */
+export const handoffState = () => handoff;
+
+/** Takes `#handoff=<code>` off the URL at once (it must not stay in the history or be bookmarked). */
+function takeHandoff(): string | null {
+  if (!IS_WEB) return null;
+  const m = /^#handoff=([A-Za-z0-9_-]{43})$/.exec(location.hash);
+  if (!m) return null;
+  history.replaceState(history.state, "", location.pathname + location.search);
+  return m[1];
+}
+
+async function redeemHandoff(code: string): Promise<boolean> {
+  handoff = "redeeming";
+  emit({});
+  try {
+    const r = await call<{ access: string; refresh: string; expires_in: number; user: User }>(
+      "POST",
+      "/v1/auth/handoff/redeem",
+      { code, name: deviceName() },
+      false,
+    );
+    clearMeta();
+    await saveSecret({ refresh: r.refresh, email: r.user.email });
+    keepAccess({ token: r.access, until: Date.now() + r.expires_in * 1000 });
+    handoff = null;
+    emit({ status: "in", user: r.user });
+    void syncNow();
+    return true;
+  } catch {
+    handoff = "failed";
+    return false;
+  }
 }
 
 export async function signOut(): Promise<void> {
@@ -277,6 +402,19 @@ export async function removeAvatar(): Promise<User> {
 export const syncedParts = () => call<{ parts: Record<string, CloudPart> }>("GET", "/v1/sync").then((r) => r.parts);
 
 export const devices = () => call<{ devices: Device[] }>("GET", "/v1/me/devices").then((r) => r.devices);
+
+/** Share links (dashboard, server share.rs): a public read-only copy of an objective squad – never coins or ids. */
+export type ShareInfo = { id: string; kind: string; title: string | null; created_at: string; views: number };
+export type SharedSquad = { id: string; kind: string; data: SharePayload; created_at: string; by: string | null; views: number };
+export type ShareSlot = { art?: string | null; pos: string; name: string; rating: number; positions?: string[]; rareflag?: number | null; def_id?: number | null; nation?: number | null; league?: number | null; club?: number | null; owned?: boolean };
+export type SharePayload = { title: string; event: string; place: string; formation: string; chem: number; counted: number; slots: ShareSlot[]; objectives: { name: string; text: string; target: number }[] };
+export const createShare = (data: SharePayload) => call<{ id: string }>("POST", "/v1/share", { kind: "squad", data }).then((r) => r.id);
+export const myShares = () => call<{ shares: ShareInfo[] }>("GET", "/v1/me/shares").then((r) => r.shares);
+export const deleteShare = (id: string) => call("DELETE", `/v1/share/${encodeURIComponent(id)}`);
+/** Public – no account needed (the /s/<id> page). */
+export const getShare = (id: string) => call<SharedSquad>("GET", `/v1/share/${encodeURIComponent(id)}`, undefined, false);
+/** The public address of a share. */
+export const shareUrl = (id: string) => `https://www.fc-tracker.com/s/${id}`;
 export const revokeDevice = (id: string) => call("DELETE", `/v1/me/devices/${id}`);
 
 /** Everything the server holds about the account, saved as a file. */
@@ -347,13 +485,29 @@ async function syncPart(p: PartDef, info: CloudPart | undefined): Promise<Confli
     await take(p, { version: cloud.version, data: cloud.data }, p.takeReplaces);
     return null;
   }
-  pending.set(p.name, { version: cloud.version, data: cloud.data });
-  return { part: p.name, cloudAt: cloud.written_at ?? cloud.updated_at ?? 0, cloudDevice: info?.device ?? null, localAt: local.writtenAt };
+  // both changed since they last matched: combine them by itself and send the result back (user 2026-11-05: "nobody
+  // knows what to pick – we handle it, everything just stays up to date"). Parts that merge losslessly (Gallery, Web
+  // App, Champions, saved squads) are merged; a whole-value part (Settings) keeps the newest write.
+  if (p.takeReplaces) {
+    const cloudAt = cloud.written_at ?? cloud.updated_at ?? 0;
+    if (cloudAt > local.writtenAt) await take(p, { version: cloud.version, data: cloud.data }, true);
+    else await push(p, local, cloud.version);
+    return null;
+  }
+  await p.write(cloud.data, false);
+  const merged = await p.read();
+  if (merged) await push(p, merged, cloud.version);
+  else saveMeta(p.name, { v: cloud.version, fp: null });
+  return null;
 }
 
 let syncing: Promise<void> | null = null;
 /** Compares every part with the account's and brings the two together (see the top). */
 export function syncNow(): Promise<void> {
+  if (ACCOUNT_MOCK) {
+    if (state.status === "in" && state.sync.phase !== "conflict") setSync({ phase: "idle", at: Date.now() - 4 * 60_000, error: null });
+    return Promise.resolve();
+  }
   if (syncing) return syncing;
   syncing = run().finally(() => (syncing = null));
   return syncing;
@@ -423,6 +577,23 @@ export function syncSoon(ms = 20_000) {
 
 /** At start: the saved sign-in, the profile, then the sync every few minutes and after every
  *  Web App sync. */
+/** The windows that don't keep the account (the overlay, the side panel): they show the same account as the launcher –
+ *  signed in per Credential Manager, the profile the launcher read – and follow every change at once. They never call
+ *  the server or refresh the token themselves (one window keeps the account, so a token is never refreshed twice). */
+let following = false;
+export async function followAccount(): Promise<void> {
+  if (following || started || IS_WEB) return;
+  following = true;
+  const show = (v: { signed_in: boolean; user: unknown | null }) => {
+    if (started) return;
+    emit({ status: v.signed_in ? "in" : "out", user: v.signed_in ? ((v.user as User | null) ?? null) : null });
+  };
+  void events.onAccountChanged(show);
+  // the dev preview's ?mock= states: the launcher's own path
+  if (ACCOUNT_MOCK) return startAccount();
+  show(await api.accountView().catch(() => ({ signed_in: false, user: null })));
+}
+
 export async function startAccount(): Promise<void> {
   if (started) return;
   started = true;
@@ -442,6 +613,14 @@ export async function startAccount(): Promise<void> {
     void events.onSyncDone(() => syncSoon(2_000));
     void events.onChampions(() => syncSoon(60_000));
   }
+  if (ACCOUNT_MOCK) {
+    const m = await import("./devMock");
+    if (ACCOUNT_MOCK === "account-in" || ACCOUNT_MOCK === "account-conflict") secret = { refresh: "mock", email: m.mockAccountUser.email };
+    if (ACCOUNT_MOCK === "account-conflict") emit({ sync: { phase: "conflict", at: null, error: null, conflicts: m.mockAccountConflicts() } });
+  }
+  // opened from the app (openSiteSignedIn): already signed in here = keep that; else the code signs this page in
+  const code = takeHandoff();
+  if (code && !secret && (await redeemHandoff(code))) return;
   if (!secret) return emit({ status: "out" });
   emit({ status: "in" });
   try {

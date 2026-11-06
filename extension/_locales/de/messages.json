@@ -201,5 +201,161 @@
         "content": "$1"
       }
     }
+  },
+  "v2_extension": {
+    "message": "—",
+    "description": "Marker: the keys after this one belong to the v2-extension session (brand v2, account, no sync without an owner)."
+  },
+  "popClubSync": {
+    "message": "Club-Sync"
+  },
+  "popApp": {
+    "message": "Die App"
+  },
+  "popAccount": {
+    "message": "Konto"
+  },
+  "stateAppClosed": {
+    "message": "App geschlossen"
+  },
+  "subAppClosed": {
+    "message": "Dein Sync wird hier aufbewahrt und beim nächsten Start an die App übergeben."
+  },
+  "stateAccount": {
+    "message": "Angemeldet"
+  },
+  "subAccount": {
+    "message": "Öffne die Web App – dein Club wird von selbst mit deinem FC-Tracker-Konto synchronisiert."
+  },
+  "subAccountPending": {
+    "message": "Dein letzter Sync wartet auf das Konto – er wird innerhalb einer Minute erneut gesendet."
+  },
+  "stateNone": {
+    "message": "Noch kein Sync"
+  },
+  "subNone": {
+    "message": "Melde dich unten an oder hol dir die App – dann synchronisiert sich dein Club von selbst."
+  },
+  "subNoneApp": {
+    "message": "Verbinde die App oder melde dich an – dann synchronisiert sich dein Club von selbst."
+  },
+  "accountViaApp": {
+    "message": "Die App speichert deinen Club bei $EMAIL$.",
+    "placeholders": {
+      "email": {
+        "content": "$1"
+      }
+    }
+  },
+  "accountAppKeeps": {
+    "message": "Dein Club geht an die App, und die App speichert ihn in ihrem Konto."
+  },
+  "accountAppSignedOut": {
+    "message": "Die App ist nicht angemeldet – dein Club bleibt auf diesem PC. Melde dich in der App an, um ihn im Konto zu speichern."
+  },
+  "accountAppLocal": {
+    "message": "Dein Club geht an die FC-Tracker-App auf diesem PC."
+  },
+  "chipViaApp": {
+    "message": "Über die App"
+  },
+  "chipSignedIn": {
+    "message": "Angemeldet"
+  },
+  "accountSignedInAs": {
+    "message": "Angemeldet als"
+  },
+  "accountPushed": {
+    "message": "Zuletzt im Konto gespeichert: $WHEN$",
+    "placeholders": {
+      "when": {
+        "content": "$1"
+      }
+    }
+  },
+  "signInWhy": {
+    "message": "Keine App auf diesem PC? Melde dich mit deiner E-Mail an, dann wird dein Club-Sync in deinem FC-Tracker-Konto gespeichert. Kein Passwort – wir schicken dir einen Code."
+  },
+  "emailPlaceholder": {
+    "message": "deine@e-mail.de"
+  },
+  "sendCode": {
+    "message": "Code senden"
+  },
+  "codeSentTo": {
+    "message": "Wir haben einen 6-stelligen Code an $EMAIL$ geschickt. Er gilt 10 Minuten.",
+    "placeholders": {
+      "email": {
+        "content": "$1"
+      }
+    }
+  },
+  "verifyCode": {
+    "message": "Anmelden"
+  },
+  "otherEmail": {
+    "message": "Andere E-Mail verwenden"
+  },
+  "signOut": {
+    "message": "Abmelden"
+  },
+  "sendingCode": {
+    "message": "Code wird gesendet …"
+  },
+  "verifying": {
+    "message": "Code wird geprüft …"
+  },
+  "signingOut": {
+    "message": "Abmelden …"
+  },
+  "authError_email_invalid": {
+    "message": "Das ist keine E-Mail-Adresse."
+  },
+  "authError_code_invalid": {
+    "message": "Falscher Code – prüfe die E-Mail und versuch es noch einmal."
+  },
+  "authError_code_expired": {
+    "message": "Der Code ist abgelaufen – fordere einen neuen an."
+  },
+  "authError_rate_limited": {
+    "message": "Zu viele Versuche – warte eine Minute und versuch es erneut."
+  },
+  "authError_offline": {
+    "message": "Keine Verbindung zu FC-Tracker – prüfe dein Internet."
+  },
+  "authError_mail_failed": {
+    "message": "Die E-Mail konnte nicht gesendet werden – versuch es gleich noch einmal."
+  },
+  "authError_server": {
+    "message": "Der FC-Tracker-Server hat nicht geantwortet – versuch es gleich noch einmal."
+  },
+  "authError_signed_out": {
+    "message": "Du wurdest abgemeldet – melde dich erneut an."
+  },
+  "badgeSignInBtn": {
+    "message": "Anmelden"
+  },
+  "badgeNoOwner": {
+    "message": "Melde dich bei FC-Tracker an oder hol dir die App – dann synchronisiert sich dein Club von selbst."
+  },
+  "badgePushing": {
+    "message": "Dein Club wird im Konto gespeichert …"
+  },
+  "badgePushed": {
+    "message": "Im Konto gespeichert ✓ · $COUNT$ Gallery-Karten",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "badgePushedPlain": {
+    "message": "Im Konto gespeichert ✓"
+  },
+  "badgePushFailed": {
+    "message": "Dein Konto war nicht erreichbar – der Sync wird aufbewahrt und innerhalb einer Minute erneut gesendet."
+  },
+  "badgeSignedOut": {
+    "message": "Du wurdest abgemeldet – klick auf das FC-Tracker-Symbol und melde dich erneut an."
   }
 }

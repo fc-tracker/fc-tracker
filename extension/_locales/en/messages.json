@@ -201,5 +201,161 @@
         "content": "$1"
       }
     }
+  },
+  "v2_extension": {
+    "message": "—",
+    "description": "Marker: the keys after this one belong to the v2-extension session (brand v2, account, no sync without an owner)."
+  },
+  "popClubSync": {
+    "message": "Club sync"
+  },
+  "popApp": {
+    "message": "The app"
+  },
+  "popAccount": {
+    "message": "Account"
+  },
+  "stateAppClosed": {
+    "message": "App closed"
+  },
+  "subAppClosed": {
+    "message": "Your sync is kept here and handed to the app the next time it runs."
+  },
+  "stateAccount": {
+    "message": "Signed in"
+  },
+  "subAccount": {
+    "message": "Open the Web App – your club syncs to your FC-Tracker account by itself."
+  },
+  "subAccountPending": {
+    "message": "Your last sync is waiting for the account – it is sent again within a minute."
+  },
+  "stateNone": {
+    "message": "Not syncing yet"
+  },
+  "subNone": {
+    "message": "Sign in below, or get the app – then your club syncs by itself."
+  },
+  "subNoneApp": {
+    "message": "Connect the app or sign in – then your club syncs by itself."
+  },
+  "accountViaApp": {
+    "message": "The app keeps your club on $EMAIL$.",
+    "placeholders": {
+      "email": {
+        "content": "$1"
+      }
+    }
+  },
+  "accountAppKeeps": {
+    "message": "Your club goes to the app, and the app keeps it on its account."
+  },
+  "accountAppSignedOut": {
+    "message": "The app isn't signed in – your club stays on this PC. Sign in in the app to keep it on your account."
+  },
+  "accountAppLocal": {
+    "message": "Your club goes to the FC-Tracker app on this PC."
+  },
+  "chipViaApp": {
+    "message": "Via the app"
+  },
+  "chipSignedIn": {
+    "message": "Signed in"
+  },
+  "accountSignedInAs": {
+    "message": "Signed in as"
+  },
+  "accountPushed": {
+    "message": "Last saved to your account $WHEN$",
+    "placeholders": {
+      "when": {
+        "content": "$1"
+      }
+    }
+  },
+  "signInWhy": {
+    "message": "No app on this PC? Sign in with your e-mail and your club sync is kept on your FC-Tracker account. No password – we send a code."
+  },
+  "emailPlaceholder": {
+    "message": "your@e-mail.com"
+  },
+  "sendCode": {
+    "message": "Send code"
+  },
+  "codeSentTo": {
+    "message": "We sent a 6-digit code to $EMAIL$. It works for 10 minutes.",
+    "placeholders": {
+      "email": {
+        "content": "$1"
+      }
+    }
+  },
+  "verifyCode": {
+    "message": "Sign in"
+  },
+  "otherEmail": {
+    "message": "Use another e-mail"
+  },
+  "signOut": {
+    "message": "Sign out"
+  },
+  "sendingCode": {
+    "message": "Sending the code …"
+  },
+  "verifying": {
+    "message": "Checking the code …"
+  },
+  "signingOut": {
+    "message": "Signing out …"
+  },
+  "authError_email_invalid": {
+    "message": "That isn't an e-mail address."
+  },
+  "authError_code_invalid": {
+    "message": "Wrong code – check the e-mail and try again."
+  },
+  "authError_code_expired": {
+    "message": "The code has expired – send a new one."
+  },
+  "authError_rate_limited": {
+    "message": "Too many tries – wait a minute and try again."
+  },
+  "authError_offline": {
+    "message": "No connection to FC-Tracker – check your internet."
+  },
+  "authError_mail_failed": {
+    "message": "The e-mail couldn't be sent – try again in a moment."
+  },
+  "authError_server": {
+    "message": "FC-Tracker's server didn't answer – try again in a moment."
+  },
+  "authError_signed_out": {
+    "message": "You were signed out – sign in again."
+  },
+  "badgeSignInBtn": {
+    "message": "Sign in"
+  },
+  "badgeNoOwner": {
+    "message": "Sign in to FC-Tracker or get the app – then your club syncs by itself."
+  },
+  "badgePushing": {
+    "message": "Saving your club to your account …"
+  },
+  "badgePushed": {
+    "message": "Saved to your account ✓ · $COUNT$ Gallery cards",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "badgePushedPlain": {
+    "message": "Saved to your account ✓"
+  },
+  "badgePushFailed": {
+    "message": "Your account couldn't be reached – the sync is kept and sent again within a minute."
+  },
+  "badgeSignedOut": {
+    "message": "You were signed out – click the FC-Tracker icon and sign in again."
   }
 }

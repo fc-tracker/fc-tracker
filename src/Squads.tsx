@@ -9,10 +9,22 @@ import { api, events, formatAge, IS_WEB, type SquadSeen } from "./api";
 import { num } from "./format";
 import { Flag } from "./flags";
 import { t, type MessageKey } from "./i18n";
-import { defaultSquadPrefs, pitchRows, type ClubEntry, type EventPlan, type GetOption, type Mode, type ObjectiveView, type ReqView, type SessionItem, type BenchPick, type MatchBrief, type BriefTask, type SessionEvo, type SessionPlan, type SlotView, type SquadPrefs, type SquadView, type SquadsView, sameMode } from "./squadsData";
+import { useSessionPick } from "./panelShare";
+import { defaultSquadPrefs, pitchRows, type ClubEntry, type EventPlan, type GetOption, type Mode, type ObjectiveView, type ReqView, type SessionItem, type MatchBrief, type BriefTask, type SessionPlan, type SlotView, type SquadPrefs, type SquadView, type SquadsView, sameMode } from "./squadsData";
 import { removeSquad, saveSquad, useSavedSquads } from "./savedSquads";
 import { voteAvailability } from "./objectives";
-import { PadButton, usePadLayout } from "./padGlyphs";
+import { fold } from "./search";
+import { Bar, Chem, FaceChip, FutCard, Keycap, Switch, Tag, stripRef, type FutCardData } from "./ui";
+
+/** a squad slot as an EA card (its art from the plan: rarity, club, face stats – older plans draw the plain outline) */
+const slotCard = (s: SlotView): FutCardData => ({
+  name: s.generic ? t("squads.slot.eg", { name: s.name }) : s.name || "?",
+  rating: s.rating, position: s.positions?.[0] ?? s.pos, rareflag: s.rareflag ?? null, defId: s.def_id,
+  positions: s.positions, face: s.face ?? null, nation: s.nation || null, league: s.league || null, club: s.club || null,
+  foot: s.foot === 2 ? "L" : s.foot === 1 ? "R" : null, weakFoot: s.weak_foot || null, skillMoves: s.skill_moves || null, meta: s.strength,
+  firstOwner: !!s.first_owner,
+  actionGuid: s.art ?? null,
+});
 
 /** What the squad views may change (the overlay and the side panel; none in read-only views). */
 type Edit = { prefs: SquadPrefs; onPrefs: (p: SquadPrefs) => void; club: ClubEntry[] };
@@ -30,7 +42,8 @@ function LockButton({ e, event }: { e: Pick<EventPlan, "id" | "title" | "squad" 
   const same = !!locked && locked.formation === e.squad.formation && keys.every((k) => locked.keys.includes(k));
   return (
     <button
-      className={`cat-tab sq-lock-btn ${same ? "active" : ""}`}
+      data-f
+      className={same ? "btn btn-secondary ring sq-lock-btn" : "btn btn-primary sq-lock-btn"}
       aria-pressed={same}
       onClick={() => {
         if (same) return edit.onPrefs({ ...edit.prefs, locked: null });
@@ -38,6 +51,7 @@ function LockButton({ e, event }: { e: Pick<EventPlan, "id" | "title" | "squad" 
         edit.onPrefs({ ...edit.prefs, locked: { event, title: e.title, formation: e.squad!.formation, keys, at: Date.now() } });
       }}
     >
+      <Keycap ps="✕" xb="A" kb="Enter" />
       {same ? t("squads.lock.locked") : t("squads.lock.lock")}
     </button>
   );
@@ -60,63 +74,28 @@ function LockBar() {
   );
 }
 
-/** A club player for a position (Change on a card): the strongest first, searchable. */
-function ChangePicker({ pos, out, inXi, xiNames, onPick, onSkip, onClose, step }: { pos: string; out: string; inXi: number[]; xiNames: string[]; onPick: (c: ClubEntry) => void; onSkip: () => void; onClose: () => void; step?: string }) {
-  const edit = useContext(EditCtx);
-  const [q, setQ] = useState("");
-  if (!edit) return null;
-  const fold = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-  const words = fold(q).split(/\s+/).filter(Boolean);
-  const ex = new Set(edit.prefs.exclude ?? []);
-  const list = edit.club
-    .filter((c) => c.owned && c.positions.includes(pos) && !inXi.includes(c.key) && !xiNames.includes(c.name) && !ex.has(c.key))
-    .filter((c) => words.every((w) => fold(c.name).includes(w) || String(c.rating) === w))
-    // the meta rating in this position first (the rating where it isn't known)
-    .sort((a, b) => (b.meta?.[pos] ?? b.rating) - (a.meta?.[pos] ?? a.rating))
-    .slice(0, 60);
-  return (
-    <div className="sq-detail sq-picker" role="dialog" aria-label={t("squads.change.title", { name: out, pos })}>
-      <header>
-        <b>{t("squads.change.title", { name: out, pos })}</b>
-        {step && <small className="sq-muted">{step}</small>}
-        <button className="sq-close" onClick={onClose} aria-label={t("squads.close")}>
-          ✕
-        </button>
-      </header>
-      <input className="sq-search" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("squads.change.search")} aria-label={t("squads.change.search")} autoFocus />
-      <ul className="sq-club-list">
-        {list.map((c) => (
-          <li key={c.key}>
-            <button onClick={() => onPick(c)}>
-              <b className="sq-club-rating">{c.rating}</b>
-              <Flag nation={c.nation} name={c.nation_name} size={16} />
-              <span className="sq-club-name">{c.name}</span>
-              <small className="sq-club-pos">{c.positions.join(" · ")}</small>
-              {c.meta?.[pos] != null ? <small className="sq-meta" title={t("squads.detail.rating")}>{c.meta[pos].toFixed(1)}</small> : c.loan ? <small className="sq-loan-tag">{t("squads.loan")}</small> : <small />}
-              <span className="sq-club-mark" aria-hidden="true">→</span>
-            </button>
-          </li>
-        ))}
-        {list.length === 0 && <li className="sq-muted">{t("squads.change.none", { pos })}</li>}
-      </ul>
-      <div className="sq-picker-foot">
-        <button className="cat-tab" onClick={onSkip}>
-          {t("squads.change.leaveOut", { name: out })}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/** "Put back" for the cards the user left out. */
 function LeftOut() {
   const edit = useContext(EditCtx);
   const ex = edit?.prefs.exclude ?? [];
-  if (!edit || ex.length === 0) return null;
+  const sw = edit?.prefs.swaps ?? [];
+  const pins = edit?.prefs.pins ?? [];
+  if (!edit || ex.length + sw.length + pins.length === 0) return null;
   const byKey = new Map(edit.club.map((c) => [c.key, c]));
   return (
     <p className="sq-leftout">
-      <span className="sq-choice-label">{t("squads.change.leftOut")}</span>
+      {sw.length > 0 && <span className="sq-choice-label">{t("v2.sq.swapped")}</span>}
+      {sw.map((w) => (
+        <button key={`${w.key}-${w.pos}`} className="sq-chip" onClick={() => edit.onPrefs({ ...edit.prefs, swaps: sw.filter((x) => x !== w) })} title={t("squads.change.putBack")}>
+          {byKey.get(w.key)?.name ?? `#${w.key}`} · {w.pos} <span aria-hidden="true">↺</span>
+        </button>
+      ))}
+      {pins.length > 0 && <span className="sq-choice-label">{t("v2.sq.picked")}</span>}
+      {pins.map((w) => (
+        <button key={`p${w.key}-${w.pos}`} className="sq-chip" onClick={() => edit.onPrefs({ ...edit.prefs, pins: pins.filter((x) => x !== w) })} title={t("squads.change.putBack")}>
+          {byKey.get(w.key)?.name ?? `#${w.key}`} · {w.pos} <span aria-hidden="true">↺</span>
+        </button>
+      ))}
+      {ex.length > 0 && <span className="sq-choice-label">{t("squads.change.leftOut")}</span>}
       {ex.map((k) => (
         <button key={k} className="sq-chip" onClick={() => edit.onPrefs({ ...edit.prefs, exclude: ex.filter((x) => x !== k) })} title={t("squads.change.putBack")}>
           {byKey.get(k)?.name ?? `#${k}`} <span aria-hidden="true">↺</span>
@@ -127,6 +106,88 @@ function LeftOut() {
 }
 
 /** Saved objective squads (kept on the account too): what to build, what's still to buy. */
+/** One saved squad as a small card. The XI shows in a popover after a short hover or on keyboard focus, and closes on
+ *  leave / blur / Esc / a click – never stuck open. × removes it, always in reach. */
+function SavedCard({ s }: { s: ReturnType<typeof useSavedSquads>[number] }) {
+  const [open, setOpen] = useState(false);
+  const timer = useRef(0);
+  const show = () => {
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => setOpen(true), 280);
+  };
+  // never over the card's own × (user 2026-11-05): the popover closes while the pointer is on it and opens again off it
+  const onMove = (e: React.MouseEvent) => {
+    const onX = !!(e.target as HTMLElement).closest(".sq-saved-x");
+    if (onX) {
+      if (open || timer.current) hide();
+      timer.current = 0;
+    } else if (!open && !timer.current) show();
+  };
+  const hide = () => {
+    window.clearTimeout(timer.current);
+    setOpen(false);
+  };
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+  const toBuy = s.slots.filter((x) => !x.owned);
+  const cost = toBuy.reduce((sum, x) => sum + (x.price ?? 0), 0);
+  const top = [...s.slots].sort((x, y) => y.rating - x.rating);
+  const face = (x: (typeof s.slots)[number]): FutCardData => ({ name: x.name, rating: x.rating, position: x.pos, defId: x.def_id });
+  const rows = pitchRows(s.slots as unknown as SlotView[]) as unknown as (typeof s.slots)[];
+  return (
+    <li
+      className={`sq-saved-card panel ring m ${open ? "open" : ""}`}
+      tabIndex={0}
+      aria-label={`${s.event} · ${s.formation}`}
+      onMouseMove={onMove}
+      onMouseLeave={() => (hide(), (timer.current = 0))}
+      onFocus={(e) => e.currentTarget.matches(":focus-visible") && setOpen(true)}
+      onBlur={hide}
+      onClick={hide}
+      onKeyDown={(e) => e.key === "Escape" && (e.stopPropagation(), hide())}
+    >
+      <header>
+        <b className="sq-saved-f">{s.formation}</b>
+        <span className="chip line ring" title={t("squads.savedMeta", { formation: s.formation, met: s.met, reqs: s.reqs, when: formatAge(s.saved_at) })}>
+          <b className="num">{s.met}</b>/{s.reqs}
+        </span>
+        <button
+          className="sq-saved-x"
+          onClick={(e) => {
+            e.stopPropagation();
+            removeSquad(s.id);
+          }}
+          aria-label={t("squads.savedRemove")}
+          title={t("squads.savedRemove")}
+        >
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="square" /></svg>
+        </button>
+      </header>
+      <span className="sq-saved-ev ellip" title={s.event}>{s.event}</span>
+      <span className="sq-saved-faces">
+        {top.slice(0, 4).map((x, i) => (
+          <FaceChip key={i} card={face(x)} s={34} pos={x.pos} />
+        ))}
+        {s.slots.length > 4 && <span className="faint t-13">+{s.slots.length - 4}</span>}
+      </span>
+      <span className="sq-saved-foot faint t-12 ellip">
+        {formatAge(s.saved_at)}
+        {toBuy.length > 0 && <> · {t("squads.savedToBuy", { count: toBuy.length, coins: num(cost) })}</>}
+      </span>
+      {open && (
+        <div className="sq-saved-pop panel ring tier-dense" role="tooltip">
+          {rows.map((row, k) => (
+            <span key={k} className="sq-saved-line">
+              {row.map((x, i) => (
+                <FaceChip key={i} card={face(x)} s={40} pos={x.pos} />
+              ))}
+            </span>
+          ))}
+        </div>
+      )}
+    </li>
+  );
+}
+
 export function SavedSquads({ limit }: { limit?: number }) {
   const list = useSavedSquads();
   const shown = limit ? list.slice(0, limit) : list;
@@ -136,32 +197,10 @@ export function SavedSquads({ limit }: { limit?: number }) {
       {shown.length === 0 ? (
         <p className="sq-muted">{t("squads.savedEmpty")}</p>
       ) : (
-        <ul>
-          {shown.map((s) => {
-            const toBuy = s.slots.filter((x) => !x.owned);
-            const cost = toBuy.reduce((sum, x) => sum + (x.price ?? 0), 0);
-            return (
-              <li key={s.id}>
-                <div className="sq-saved-head">
-                  <b>{s.event}</b>
-                  <small className="sq-muted">
-                    {t("squads.savedMeta", { formation: s.formation, met: s.met, reqs: s.reqs, when: formatAge(s.saved_at) })}
-                  </small>
-                  <button className="sq-saved-x" onClick={() => removeSquad(s.id)} aria-label={t("squads.savedRemove")} title={t("squads.savedRemove")}>
-                    ×
-                  </button>
-                </div>
-                <p className="sq-saved-xi">
-                  {s.slots.map((x, i) => (
-                    <span key={i} className={x.owned ? "" : "buy"}>
-                      <small>{x.pos}</small> {x.name} <b>{x.rating}</b>
-                    </span>
-                  ))}
-                </p>
-                {toBuy.length > 0 && <small className="sq-muted">{t("squads.savedToBuy", { count: toBuy.length, coins: num(cost) })}</small>}
-              </li>
-            );
-          })}
+        <ul className="sq-saved-grid">
+          {shown.map((s) => (
+            <SavedCard key={s.id} s={s} />
+          ))}
         </ul>
       )}
     </section>
@@ -244,6 +283,27 @@ function watchPlanInputs() {
   void events.onSyncDone(stale);
 }
 
+/** EA's team rating (FUT): the XI's total plus every rating above the average, divided by the players, rounded down. */
+export const teamRating = (rs: number[]) => {
+  if (!rs.length) return 0;
+  const total = rs.reduce((a, r) => a + r, 0);
+  const avg = total / rs.length;
+  return Math.floor((total + rs.reduce((a, r) => a + Math.max(0, r - avg), 0)) / rs.length);
+};
+
+const PLAN_EVENT = "fct:squads-plan";
+/** The first session's objective count from the last plan built (the overlay slab's "Objectives 22"); null until a
+ *  plan exists – it never builds one itself. */
+export function usePlanCount(): number | null {
+  const [n, setN] = useState<number | null>(cachedPlan?.combos[0]?.counted ?? null);
+  useEffect(() => {
+    const on = () => setN(cachedPlan?.combos[0]?.counted ?? null);
+    window.addEventListener(PLAN_EVENT, on);
+    return () => window.removeEventListener(PLAN_EVENT, on);
+  }, []);
+  return n;
+}
+
 export function useSquads(): [SquadsView | null, boolean, (p: SquadPrefs) => void] {
   const [view, setView] = useState<SquadsView | null>(cachedPlan);
   const [busy, setBusy] = useState(cachedPlan == null);
@@ -256,6 +316,7 @@ export function useSquads(): [SquadsView | null, boolean, (p: SquadPrefs) => voi
         cachedAt = Date.now();
         planStale = false;
         setView(v);
+        window.dispatchEvent(new window.Event(PLAN_EVENT));
       })
       .catch(() => {})
       .finally(() => setBusy(false));
@@ -404,8 +465,8 @@ function MustPick({ view, prefs, onChange }: { view: SquadsView; prefs: SquadPre
     const id = window.setTimeout(() => api.squadsSearch(q).then(setFound).catch(() => setFound([])), 250);
     return () => window.clearTimeout(id);
   }, [q]);
-  const fold = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-  const words = fold(q).split(/\s+/).filter(Boolean);
+  // forgiving search: Etoo finds Eto'o, Gross finds Gro\u00df (src/search.ts)
+  const words = fold(q).split(" ").filter(Boolean);
   // filters (user 2026-11-03: "no filters, nothing"): position group, min rating, owned / to get
   const [group, setGroup] = useState<keyof typeof POS_GROUPS | "all">("all");
   const [minR, setMinR] = useState(0);
@@ -519,45 +580,81 @@ function Choice<T>({ label, options, value, onPick }: { label: string; options: 
 }
 
 function Settings({ prefs, onChange, formations }: { prefs: SquadPrefs; onChange: (p: SquadPrefs) => void; formations: string[] }) {
-  // the older single pick counts as one of the preferred ones
-  const picked = Array.from(new Set([...(prefs.formations ?? []), ...(prefs.formation ? [prefs.formation] : [])]));
-  const toggle = (f: string) => onChange({ ...prefs, formation: null, formations: picked.includes(f) ? picked.filter((x) => x !== f) : [...picked, f] });
+  // the older single pick counts as one of the ranked ones
+  const ranked = Array.from(new Set([...(prefs.formations ?? []), ...(prefs.formation ? [prefs.formation] : [])]));
+  const setRanked = (list: string[]) => onChange({ ...prefs, formation: null, formations: list });
+  const move = (i: number, d: number) => {
+    const j = i + d;
+    if (j < 0 || j >= ranked.length) return;
+    const next = [...ranked];
+    [next[i], next[j]] = [next[j], next[i]];
+    setRanked(next);
+  };
+  const rest = formations.filter((f) => !ranked.includes(f));
   return (
-    <div className="sq-settings" role="group" aria-label={t("squads.settings")}>
-      <Choice label={t("squads.goal.label")} options={GOALS.map(([v, k]) => [v, t(k)])} value={prefs.goal ?? "progress"} onPick={(goal) => onChange({ ...prefs, goal })} />
-      <Choice<string>
-        label={t("squads.chemPreset.label")}
-        options={[
-          ["balanced", t("squads.chemMode.balanced")],
-          ["30", t("squads.chemMode.30")],
-          ["33", t("squads.chemMode.33")],
-        ]}
-        value={prefs.chem_mode ?? "balanced"}
-        onPick={(chem_mode) => onChange({ ...prefs, chem_mode })}
-      />
-      <small className="sq-muted sq-setting-hint">{t(`squads.chemMode.${prefs.chem_mode === "30" || prefs.chem_mode === "33" ? prefs.chem_mode : "balanced"}Hint` as MessageKey)}</small>
-      <Choice label={t("squads.buys.label")} options={BUYS.map(([v, k]) => [v, t(k)])} value={prefs.max_buys === undefined ? 3 : prefs.max_buys} onPick={(max_buys) => onChange({ ...prefs, max_buys })} />
-      <div className="sq-choice sq-formations" role="group" aria-label={t("squads.formations.label")}>
-        <span className="sq-choice-label">{t("squads.formations.label")}</span>
-        <button className={`cat-tab ${picked.length === 0 ? "active" : ""}`} aria-pressed={picked.length === 0} onClick={() => onChange({ ...prefs, formation: null, formations: [] })}>
-          {t("squads.formations.all")}
-        </button>
-        {formations.map((f) => (
-          <button key={f} className={`cat-tab ${picked.includes(f) ? "active" : ""}`} aria-pressed={picked.includes(f)} onClick={() => toggle(f)}>
-            {f}
-          </button>
-        ))}
+    <div className="sq-settings panel ring tier-dense" role="group" aria-label={t("squads.settings")}>
+      <div className="sq-set-col">
+        <Choice label={t("squads.goal.label")} options={GOALS.map(([v, k]) => [v, t(k)])} value={prefs.goal ?? "progress"} onPick={(goal) => onChange({ ...prefs, goal })} />
+        <Choice<string>
+          label={t("squads.chemPreset.label")}
+          options={[
+            ["balanced", t("squads.chemMode.balanced")],
+            ["30", t("squads.chemMode.30")],
+            ["33", t("squads.chemMode.33")],
+          ]}
+          value={prefs.chem_mode ?? "balanced"}
+          onPick={(chem_mode) => onChange({ ...prefs, chem_mode })}
+        />
+        <small className="sq-muted sq-setting-hint">{t(`squads.chemMode.${prefs.chem_mode === "30" || prefs.chem_mode === "33" ? prefs.chem_mode : "balanced"}Hint` as MessageKey)}</small>
+        <Choice label={t("squads.buys.label")} options={BUYS.map(([v, k]) => [v, t(k)])} value={prefs.max_buys === undefined ? 3 : prefs.max_buys} onPick={(max_buys) => onChange({ ...prefs, max_buys })} />
+        <div className="sq-set-switches">
+          {!IS_WEB && (
+            <label className="sq-set-switch">
+              <Switch on={prefs.track !== false} onChange={(track) => onChange({ ...prefs, track })} label={t("squads.track")} />
+              <span>{t("squads.track")}</span>
+            </label>
+          )}
+        </div>
       </div>
-      {!IS_WEB && (
-        <label className="sq-check">
-          <input type="checkbox" checked={prefs.track !== false} onChange={(e) => onChange({ ...prefs, track: e.target.checked })} />
-          <span>{t("squads.track")}</span>
-        </label>
-      )}
-      <label className="sq-check">
-        <input type="checkbox" checked={prefs.hide_loans} onChange={(e) => onChange({ ...prefs, hide_loans: e.target.checked })} />
-        <span>{t("squads.hideLoans")}</span>
-      </label>
+      {/* formations: a ranked list the user orders – the first wins unless another is clearly better (squads.rs) */}
+      <div className="sq-set-col sq-formations" role="group" aria-label={t("squads.formations.label")}>
+        <span className="sq-choice-label">{t("squads.formations.label")}</span>
+        <small className="sq-muted">{ranked.length ? t("v2.sq.formRanked") : t("v2.sq.formAny")}</small>
+        <ol className="list sq-form-list">
+          {ranked.map((f, i) => (
+            <li key={f} className="lrow">
+              <span className="num sq-form-n">{i + 1}</span>
+              <b className="sq-form-name">{f}</b>
+              <span className="sq-form-acts">
+                <button className="btn btn-quiet btn-s" disabled={i === 0} onClick={() => move(i, -1)} aria-label={t("v2.sq.formUp", { f })} title={t("v2.sq.formUp", { f })}>
+                  ↑
+                </button>
+                <button className="btn btn-quiet btn-s" disabled={i === ranked.length - 1} onClick={() => move(i, 1)} aria-label={t("v2.sq.formDown", { f })} title={t("v2.sq.formDown", { f })}>
+                  ↓
+                </button>
+                <button className="btn btn-quiet btn-s" onClick={() => setRanked(ranked.filter((x) => x !== f))} aria-label={t("v2.sq.formRemove", { f })} title={t("v2.sq.formRemove", { f })}>
+                  ×
+                </button>
+              </span>
+            </li>
+          ))}
+        </ol>
+        <span className="sq-form-add">
+          <select className="sq-select" value="" aria-label={t("v2.sq.formAdd")} onChange={(e) => e.target.value && setRanked([...ranked, e.target.value])}>
+            <option value="">{t("v2.sq.formAdd")}</option>
+            {rest.map((f) => (
+              <option key={f} value={f}>
+                {f}
+              </option>
+            ))}
+          </select>
+          {ranked.length > 0 && (
+            <button className="btn btn-quiet btn-s" onClick={() => setRanked([])}>
+              {t("squads.formations.all")}
+            </button>
+          )}
+        </span>
+      </div>
     </div>
   );
 }
@@ -589,11 +686,33 @@ function gapLine(r: ReqView): string {
 }
 
 function Options({ r }: { r: ReqView }) {
+  // one compact line per unmet requirement; where to get it opens on click (user 2026-11-05: no wall of text)
+  const [open, setOpen] = useState(false);
+  // Include (user 2026-11-05): the option plays – a club card as "has to include", a card to get as one to buy
+  const edit = useContext(EditCtx);
+  const clubKey = (o: GetOption) => edit?.club.find((c) => c.owned && c.def_id === o.def_id)?.key ?? null;
+  const included = (o: GetOption) => {
+    const k = clubKey(o);
+    return k != null ? (edit?.prefs.must ?? []).includes(k) : (edit?.prefs.must_cards ?? []).includes(o.def_id);
+  };
+  const include = (o: GetOption) => {
+    if (!edit) return;
+    const k = clubKey(o);
+    const p = edit.prefs;
+    if (k != null) edit.onPrefs({ ...p, must: included(o) ? p.must.filter((x) => x !== k) : [...p.must, k], exclude: (p.exclude ?? []).filter((x) => x !== k) });
+    else edit.onPrefs({ ...p, must_cards: included(o) ? (p.must_cards ?? []).filter((x) => x !== o.def_id) : [...(p.must_cards ?? []), o.def_id] });
+  };
   if (r.met) return null;
   return (
-    <div className="sq-gap">
-      <small>{gapLine(r)}</small>
-      {r.options.length === 0 ? (
+    <div className={`sq-gap ${open ? "open" : ""}`}>
+      <button data-f className="sq-gap-line" aria-expanded={open} onClick={() => setOpen(!open)} title={gapLine(r)}>
+        <i className="dot warn" aria-hidden="true" />
+        <span className="ellip">{reqLabel(r)}</span>
+        <span className="faint t-12 nowrap">{r.options.length ? t("v2.sq.options", { count: r.options.length }) : t("v2.sq.noneClub")}</span>
+        <span className="sq-gap-caret" aria-hidden="true" />
+      </button>
+      {open && <small>{gapLine(r)}</small>}
+      {!open ? null : r.options.length === 0 ? (
         <p className="sq-muted">{t("squads.noOptions")}</p>
       ) : (
         <ul className="sq-options">
@@ -607,11 +726,16 @@ function Options({ r }: { r: ReqView }) {
                 {o.rating} · {o.pos}
               </span>
               <span className="sq-price">{o.price != null ? num(o.price) : o.source ?? (o.kind === OPTION_SEARCH ? t("squads.noPrice") : "")}</span>
+              {edit && !edit.prefs.locked && o.def_id > 0 && (
+                <button type="button" className={`btn btn-s ${included(o) ? "btn-secondary ring is-on" : "btn-secondary ring"} sq-include`} aria-pressed={included(o)} onClick={() => include(o)}>
+                  {included(o) ? t("v2.sq.included") : t("v2.sq.include")}
+                </button>
+              )}
             </li>
           ))}
         </ul>
       )}
-      {r.unpriced > 0 && <p className="sq-muted">{t("squads.unpriced", { count: r.unpriced })}</p>}
+      {open && r.unpriced > 0 && <p className="sq-muted">{t("squads.unpriced", { count: r.unpriced })}</p>}
     </div>
   );
 }
@@ -785,6 +909,105 @@ function ManagerLine({ sq }: { sq: SquadView }) {
   );
 }
 
+/** "Change players" (user 2026-11-04): the cards picked are swapped out of their slots – FC-Tracker re-solves, each
+ *  is replaced or moves, the rest adapts. Never a "has to include" (squads.rs SwapOut). */
+export const swapOut = (p: SquadPrefs, out: SlotView[]): SquadPrefs => {
+  const have = p.swaps ?? [];
+  const add = out.map((s) => ({ key: slotKey(s), pos: s.pos })).filter((w) => !have.some((x) => x.key === w.key && x.pos === w.pos));
+  return { ...p, swaps: [...have, ...add], must: p.must.filter((k) => !out.some((s) => slotKey(s) === k)) };
+};
+/** Swap to exactly this player (user 2026-11-05): `c` plays at `s`'s position, `s` leaves it, the rest re-solves. */
+export const swapTo = (p: SquadPrefs, s: SlotView, c: number): SquadPrefs => {
+  const out = swapOut(p, [s]);
+  return {
+    ...out,
+    // one pick per card: an older pick of either card goes; the new one is never left out or swapped from there
+    pins: [...(p.pins ?? []).filter((w) => w.key !== c && w.key !== slotKey(s)), { key: c, pos: s.pos }],
+    swaps: (out.swaps ?? []).filter((w) => !(w.key === c && w.pos === s.pos)),
+    exclude: (p.exclude ?? []).filter((k) => k !== c),
+  };
+};
+/** Leave cards out of every squad (the old "Change" without a pick). */
+const leaveOut = (p: SquadPrefs, out: SlotView[]): SquadPrefs => ({
+  ...p,
+  exclude: Array.from(new Set([...(p.exclude ?? []), ...out.map(slotKey)])),
+  must: p.must.filter((k) => !out.some((s) => slotKey(s) === k)),
+});
+
+/** The player opened on the pitch: shown in the middle column (mockup 06), where it can be swapped. */
+const SwapCtx = createContext<{ opened: SlotView | null; setOpened: (s: SlotView | null) => void }>({ opened: null, setOpened: () => {} });
+
+/** The opened player, in place of the objectives (mockup 06 "Change Lavelle · CAM"): who he is in this squad, the
+ *  club's strongest alternatives by meta, and Swap (FC-Tracker re-solves) or Leave out. */
+function SwapPanel({ s, e, onClose }: { s: SlotView; e: SquadSource; onClose: () => void }) {
+  const edit = useContext(EditCtx);
+  const canEdit = !!edit && !edit.prefs.locked && s.owned;
+  const inXi = new Set(e.squad?.slots.map(slotKey) ?? []);
+  const out = new Set(edit?.prefs.exclude ?? []);
+  const xiCards = new Set((e.squad?.slots ?? []).map((x) => `${x.name}|${x.rating}`));
+  const alts = (edit?.club ?? [])
+    // the XI by key – and by name + rating for plans that predate slot keys
+    .filter((c) => c.owned && !inXi.has(c.key) && !xiCards.has(`${c.name}|${c.rating}`) && !out.has(c.key) && c.positions.includes(s.pos))
+    .sort((a, b) => (b.meta?.[s.pos] ?? b.rating) - (a.meta?.[s.pos] ?? a.rating))
+    .slice(0, 8);
+  const card = (c: ClubEntry): FutCardData => ({ name: c.name, rating: c.rating, position: s.pos, rareflag: c.rareflag ?? null, defId: c.def_id ?? null, actionGuid: c.art ?? null });
+  // the player picked in the list (user 2026-11-05: "I must be able to change to exactly the player I want");
+  // none = Swap lets FC-Tracker choose
+  const [pick, setPick] = useState<number | null>(null);
+  const picked = alts.find((c) => c.key === pick) ?? null;
+  const swap = () => (edit!.onPrefs(picked ? swapTo(edit!.prefs, s, picked.key) : swapOut(edit!.prefs, [s])), onClose());
+  return (
+    <section className="panel ring tier-dense sq-colp sq-swap" aria-label={t("squads.change.title", { name: s.name, pos: s.pos })}>
+      <header>
+        <div>
+          <span className="h4 ellip" title={t("squads.change.title", { name: s.name, pos: s.pos })}>{t("squads.change.title", { name: s.name, pos: s.pos })}</span>
+          <span className="sq-muted">{t("v2.sq.candidates")}</span>
+        </div>
+        <button className="btn btn-quiet btn-s" onClick={onClose}>
+          <Keycap ps="○" xb="B" kb="Esc" />
+          {t("v2.sq.done")}
+        </button>
+      </header>
+      <div className="sq-colp-body">
+        <div className="list pick-list">
+          <button type="button" className={`lrow ${picked ? "" : "is-sel"}`} data-f aria-pressed={!picked} onClick={() => setPick(null)} title={t("v2.sq.autoHint")}>
+            <FaceChip card={slotCard(s)} s={44} pos={s.pos} />
+            <span className="col" style={{ gap: 2 }}>
+              <b className="strong">{s.name}</b>
+              <span className="faint t-13">{t("v2.sq.inXi", { count: s.counts_for.length })}</span>
+            </span>
+            <span className="num t-20">{s.strength.toFixed(1)}</span>
+          </button>
+          {alts.map((c) => (
+            <button type="button" key={c.key} className={`lrow ${pick === c.key ? "is-sel" : ""}`} data-f aria-pressed={pick === c.key} disabled={!canEdit} onClick={() => setPick(c.key)} onDoubleClick={() => canEdit && (edit!.onPrefs(swapTo(edit!.prefs, s, c.key)), onClose())}>
+              <FaceChip card={card(c)} s={44} pos={s.pos} />
+              <span className="col" style={{ gap: 2 }}>
+                <b className="strong">{c.name}</b>
+                <span className="faint t-13">{c.positions.join(" · ")}</span>
+              </span>
+              <span className="num t-20">{c.meta?.[s.pos] != null ? c.meta[s.pos].toFixed(1) : c.rating}</span>
+            </button>
+          ))}
+          {alts.length === 0 && <p className="sq-muted">{t("squads.change.none", { pos: s.pos })}</p>}
+        </div>
+        {/* what this card is in the squad: rating there, bio, chemistry, what it counts for */}
+        <CardDetail s={s} e={e} onClose={onClose} />
+      </div>
+      {canEdit && (
+        <footer className="sq-swap-foot">
+          <button className="btn btn-secondary ring btn-s" onClick={() => (edit!.onPrefs(leaveOut(edit!.prefs, [s])), onClose())}>
+            {t("v2.sq.leaveOut")}
+          </button>
+          <button className="btn btn-primary btn-s" onClick={swap} title={picked ? undefined : t("v2.sq.autoHint")}>
+            <Keycap ps="✕" xb="A" kb="Enter" />
+            {picked ? t("v2.sq.swapTo", { name: picked.name }) : t("v2.sq.swap")}
+          </button>
+        </footer>
+      )}
+    </section>
+  );
+}
+
 /** The XI on a pitch, attack at the top; a card opens its details. */
 /** A card on the bench: an evolution player or one for objectives a sub does. */
 interface BenchCard {
@@ -805,119 +1028,236 @@ export function benchOf(s: SessionPlan): BenchCard[] {
   return [...evos, ...picks];
 }
 
+/** How much one pitch line overlaps the next, as a share of a card's height (FUT's formation view). */
+const OVERLAP = 0.16;
+/** Two lines whose cards never meet sideways interleave this far (a share of a card). */
+const INTERLEAVE = 0.5;
+
 export function Pitch({ e, compact = false, bench = [] }: { e: SquadSource; compact?: boolean; bench?: BenchCard[] }) {
   const subs = useContext(SubCtx);
   const minutes = bench.map((b) => subs.minute(b.key));
   const same = minutes.every((m) => m === minutes[0]);
-  const [open, setOpen] = useState<number | null>(null);
+  const swapCtx = useContext(SwapCtx);
+  const open = swapCtx.opened ? slotKey(swapCtx.opened) : null;
+  const setOpen = (s: SlotView | null) => swapCtx.setOpened(s);
   const edit = useContext(EditCtx);
-  // "Change players": several cards ticked, then left out or changed one by one
+  const pitchRef = useRef<HTMLDivElement | null>(null);
+  const [cardW, setCardW] = useState(96);
+  const lines = e.squad ? pitchRows(e.squad.slots).filter((r) => r.length) : [];
+  const widest = Math.max(1, ...lines.map((r) => r.length));
+  useEffect(() => {
+    const el = pitchRef.current;
+    if (!el || compact) return;
+    const lastW = { current: 0 };
+    const settle = { current: 0 };
+    const fit = () => {
+      // the largest card at which every line fits (user 2026-11-05: no empty bands): a card is 1.389 × its width
+      // + 14 px for the foot tag, lines overlap by OVERLAP of a card like FUT's pitch; the pitch's padding holds the
+      // facts bands (top: legend · formation + chemistry, bottom: rating · meta · changes | Change players)
+      const cs = getComputedStyle(el);
+      const W = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      const n = Math.max(1, lines.length);
+      const byW = W / widest - 14;
+      // lines that share no horizontal room interleave (FUT staggers its lines): the overlap between two lines is
+      // OVERLAP of a card when any of their cards would touch, else up to INTERLEAVE – measured on the cards' centres
+      const k = el.clientWidth / (el.getBoundingClientRect().width || el.clientWidth);
+      const left = el.getBoundingClientRect().left;
+      const lineEls = Array.from(el.querySelectorAll<HTMLElement>(":scope > .sq-line"));
+      const centres = lineEls.map((l) => Array.from(l.children).map((c) => { const r = c.getBoundingClientRect(); return (r.left + r.width / 2 - left) * k; }));
+      const touch = (i: number, w: number) => centres[i].some((x) => centres[i + 1].some((y) => Math.abs(x - y) < w + 10));
+      const shares = (w: number) => centres.slice(1).map((_, i) => (touch(i, w) ? OVERLAP : INTERLEAVE));
+      const size = (pt: number, pb: number) => {
+        let w = byW;
+        for (let i = 0; i < 3; i++) {
+          const cardH = (el.clientHeight - pt - pb) / (n - shares(w).reduce((a, b) => a + b, 0));
+          w = Math.round(Math.max(44, Math.min(150, (cardH - 14) / 1.389, byW)));
+        }
+        return w;
+      };
+      // a band (facts / legend / Change players) sits in the corners beside the first or last line when they are
+      // free at that card size – the outer card of a line of k leaves (W / (k + 1) − w / 2)
+      const free = (k: number, w: number) => W / (k + 1) - w / 2 - 8;
+      const bandW = (sel: string) => Math.max(0, ...Array.from(el.querySelectorAll<HTMLElement>(sel)).map((x) => x.offsetWidth));
+      const top = Math.max(bandW(".sq-pitch-band.top > :first-child"), bandW(".sq-pitch-band.top > .sq-pitch-facts"));
+      const foot = Math.max(bandW(".sq-pitch-band.foot > :first-child"), bandW(".sq-pitch-band.foot > .sq-foot-acts"));
+      const first = lines[0]?.length ?? 1, last = lines[lines.length - 1]?.length ?? 1;
+      let pt = 52, pb = 60;
+      for (let i = 0; i < 2; i++) {
+        const w = size(pt, pb);
+        pt = top && top > free(first, w) ? 52 : 14;
+        pb = foot && foot > free(last, w) ? 60 : 14;
+      }
+      const w = size(pt, pb);
+      el.style.paddingTop = `${pt}px`;
+      el.style.paddingBottom = `${pb}px`;
+      setCardW(w);
+      // the cards' centres move a little with their size: measure once more after they re-render
+      if (w !== lastW.current && settle.current++ < 3) requestAnimationFrame(fit);
+      lastW.current = w;
+      const H = w * 1.389 + 14;
+      shares(w).forEach((sh, i) => lineEls[i + 1]?.style.setProperty("margin-top", `${-Math.round(H * sh)}px`));
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [lines.length, widest, compact]);
+  // "Change players": several cards picked, then swapped (FC-Tracker re-solves) or left out
   const [multi, setMulti] = useState(false);
   const [ticked, setTicked] = useState<number[]>([]);
-  const [queue, setQueue] = useState<SlotView[]>([]);
-  const [draft, setDraft] = useState<SquadPrefs | null>(null);
   const sq = e.squad;
   useEffect(() => {
-    setOpen(null);
     setMulti(false);
     setTicked([]);
-    setQueue([]);
-    setDraft(null);
   }, [e.id]);
+  // a swap / leave-out re-solves the squad: the pitch says so until the new plan arrives (every wait visible)
+  const [rebuilding, setRebuilding] = useState(false);
+  useEffect(() => setRebuilding(false), [sq]);
+  useEffect(() => {
+    if (!rebuilding) return;
+    const id = window.setTimeout(() => setRebuilding(false), 20_000);
+    return () => window.clearTimeout(id);
+  }, [rebuilding]);
   if (!sq) return <p className="sq-muted">{t("squads.noSquad")}</p>;
-  const shown = sq.slots.find((s) => s.def_id === open) ?? null;
   const canEdit = !!edit && !edit.prefs.locked;
-  const inXi = sq.slots.map(slotKey);
-  // a change: the old card left out of every squad, the new one has to play
-  const swap = (p: SquadPrefs, out: SlotView, inn: ClubEntry | null): SquadPrefs => {
-    const k = slotKey(out);
-    const exclude = Array.from(new Set([...(p.exclude ?? []), k])).filter((x) => !inn || x !== inn.key);
-    const must = p.must.filter((x) => x !== k);
-    if (inn && inn.owned && !must.includes(inn.key)) must.push(inn.key);
-    const must_cards = inn && !inn.owned ? Array.from(new Set([...p.must_cards, inn.key])) : p.must_cards;
-    return { ...p, exclude, must, must_cards };
-  };
   const finish = (p: SquadPrefs) => {
+    setRebuilding(true);
     edit?.onPrefs(p);
-    setQueue([]);
-    setDraft(null);
     setMulti(false);
     setTicked([]);
-  };
-  const next = (p: SquadPrefs) => {
-    const rest = queue.slice(1);
-    if (rest.length === 0) return finish(p);
-    setDraft(p);
-    setQueue(rest);
+    setOpen(null);
   };
   const ticks = sq.slots.filter((s) => ticked.includes(slotKey(s)));
+  const clubOf = (k: number) => edit?.club.find((c) => c.key === k);
   return (
     <div className={`sq-squad ${compact ? "compact" : ""}`}>
-      <div className="sq-squad-head">
-        <b>{sq.formation}</b>
-        <span className={sq.chem >= sq.chem_target ? "ok" : "short"}>{t("squads.chem", { chem: sq.chem, target: sq.chem_target })}</span>
-        <span>
-          <span className="sq-gem" aria-hidden="true" />
-          {t("squads.avg", { value: sq.strength.toFixed(1) })}
-        </span>
-        {sq.changes != null && !compact && <span>{t("squads.changes", { count: sq.changes })}</span>}
-        {sq.buys > 0 && <span className="short">{sq.cost > 0 ? t("squads.buysCost", { count: sq.buys, coins: num(sq.cost) }) : t("squads.buysCount", { count: sq.buys })}</span>}
-        {canEdit && (
-          <button className={`sq-change-btn ${multi ? "active" : ""}`} aria-pressed={multi} onClick={() => (setMulti(!multi), setTicked([]), setOpen(null))}>
-            {multi ? t("squads.change.cancel") : t("squads.change.players")}
-          </button>
-        )}
-      </div>
-      {multi && (
-        <div className="sq-multibar" role="toolbar" aria-label={t("squads.change.players")}>
-          <small>{ticks.length ? t("squads.change.ticked", { count: ticks.length }) : t("squads.change.tickHint")}</small>
-          <button className="cat-tab" disabled={!ticks.length} onClick={() => finish(ticks.reduce((p, s) => swap(p, s, null), edit!.prefs))}>
-            {t("squads.change.leaveOutN", { count: ticks.length })}
-          </button>
-          <button className="cat-tab active" disabled={!ticks.length} onClick={() => (setDraft(edit!.prefs), setQueue(ticks))}>
-            {t("squads.change.changeN", { count: ticks.length })}
-          </button>
-        </div>
-      )}
       {sq.must_missing.length > 0 && <p className="sq-muted warn">{t("squads.must.missing", { names: sq.must_missing.join(", ") })}</p>}
-      <div className="sq-pitch">
+      <div className={`sq-pitch ${multi ? "changing" : ""} ${rebuilding ? "rebuilding" : ""}`} ref={pitchRef} aria-busy={rebuilding}>
+        {/* Change players and its bar live inside the pitch, along its foot – never over a card */}
+        {!compact && (
+          <>
+            <div className="sq-pitch-band top" aria-hidden={multi || undefined}>
+              {!multi && (
+                <span className="sq-legend" title={t("v2.sq.legendRule")}>
+                  <span>
+                    <Chem n={3} /> {t("v2.sq.legendChem")}
+                  </span>
+                  <span>
+                    <b className="cnt">#</b> {t("v2.sq.legendCounts")}
+                  </span>
+                </span>
+              )}
+              <span className="sq-pitch-facts">
+                <span className="chip line ring">{sq.formation}</span>
+                <span className={`chip line ring ${sq.chem >= sq.chem_target ? "" : "warn"}`}>{t("squads.chem", { chem: sq.chem, target: 33 })}</span>
+              </span>
+            </div>
+            {!multi && (
+              <div className="sq-pitch-band foot">
+                <span className="sq-pitch-facts">
+                  <span className="chip line ring" title={t("v2.sq.ratingHint")}>
+                    {t("v2.sq.rating")} <b className="num">{teamRating(sq.slots.map((x) => x.rating))}</b>
+                  </span>
+                  <span className="chip line ring" title={t("squads.detail.rating")}>
+                    {t("v2.sq.meta")} <b className="num">{sq.strength.toFixed(1)}</b>
+                  </span>
+                  {sq.changes != null && <span className="chip line ring">{t("squads.changes", { count: sq.changes })}</span>}
+                  {sq.buys > 0 && <span className="chip accent-soft ring">{sq.cost > 0 ? t("squads.buysCost", { count: sq.buys, coins: num(sq.cost) }) : t("squads.buysCount", { count: sq.buys })}</span>}
+                </span>
+                {canEdit && (
+                  <span className="row sq-foot-acts" style={{ gap: 8 }}>
+                    {/* Reroll (user 2026-11-05): a fresh solve, not a pile of swaps – the swaps are reset and the next-best
+                        formation's squad comes in (squads.rs reroll) */}
+                    <button data-f className="btn btn-s btn-secondary ring sq-reroll-btn" onClick={() => edit!.onPrefs({ ...edit!.prefs, swaps: [], reroll: (edit!.prefs.reroll ?? 0) + 1 })} title={t("v2.sq.rerollHint")}>
+                      {t("v2.sq.reroll")}
+                    </button>
+                    <button data-f className="btn btn-s btn-secondary ring sq-change-btn" aria-pressed={false} onClick={() => (setMulti(true), setTicked([]), setOpen(null))}>
+                      <Keycap ps="□" xb="X" kb="I" />
+                      {t("squads.change.players")}
+                    </button>
+                  </span>
+                )}
+              </div>
+            )}
+          </>
+        )}
+        {compact && (
+        <div className="sq-squad-head">
+          <b>{sq.formation}</b>
+          <span className={sq.chem >= sq.chem_target ? "ok" : "short"}>{t("squads.chem", { chem: sq.chem, target: 33 })}</span>
+          <span>
+            <span className="sq-gem" aria-hidden="true" />
+            {t("squads.avg", { value: sq.strength.toFixed(1) })}
+          </span>
+          {sq.changes != null && !compact && <span>{t("squads.changes", { count: sq.changes })}</span>}
+          {sq.buys > 0 && <span className="short">{sq.cost > 0 ? t("squads.buysCost", { count: sq.buys, coins: num(sq.cost) }) : t("squads.buysCount", { count: sq.buys })}</span>}
+          {canEdit && (
+            !multi && (
+              <button data-f className="btn btn-s btn-secondary ring sq-change-btn" aria-pressed={false} onClick={() => (setMulti(true), setTicked([]), setOpen(null))}>
+                <Keycap ps="□" xb="X" kb="I" />
+                {t("squads.change.players")}
+              </button>
+            )
+          )}
+        </div>
+        )}
+        {multi && (
+          <div className="sq-multibar" role="toolbar" aria-label={t("squads.change.players")}>
+            <span className="sq-multibar-text">
+              <b>{ticks.length ? t("squads.change.ticked", { count: ticks.length }) : t("squads.change.tickHint")}</b>
+              <small>{t("v2.sq.swapHint")}</small>
+            </span>
+            <button className="btn btn-quiet btn-s" onClick={() => (setMulti(false), setTicked([]))}>
+              <Keycap ps="○" xb="B" kb="Esc" />
+              {t("squads.change.cancel")}
+            </button>
+            <button className="btn btn-secondary ring btn-s" disabled={!ticks.length} onClick={() => finish(leaveOut(edit!.prefs, ticks))}>
+              {t("squads.change.leaveOutN", { count: ticks.length })}
+            </button>
+            <button className={`btn btn-s ${ticks.length ? "btn-primary" : "btn-disabled"}`} disabled={!ticks.length} onClick={() => finish(swapOut(edit!.prefs, ticks))}>
+              <Keycap ps="✕" xb="A" kb="Enter" />
+              {t("v2.sq.swapN", { count: ticks.length })}
+            </button>
+          </div>
+        )}
+        {rebuilding && (
+          <div className="sq-rebuild" role="status">
+            <span className="sq-rebuild-mark">FC-Tracker</span>
+            <span className="ml-loading">{t("v2.sq.rebuilding")}</span>
+          </div>
+        )}
         {pitchRows(sq.slots).map((row, k) => (
           <div className="sq-line" key={k}>
             {row.map((s) => (
               <button
                 key={`${s.pos}-${s.def_id}`}
-                className={`sq-card ${s.counts_for.length ? "counts" : ""} ${s.must ? "must" : ""} ${!s.owned ? "buy" : ""} ${s.out_of_position ? "oop" : ""} ${open === s.def_id ? "open" : ""} ${multi && ticked.includes(slotKey(s)) ? "ticked" : ""}`}
+                data-f
+                className={`sq-card ${s.counts_for.length ? "counts" : ""} ${s.must ? "must" : ""} ${!s.owned ? "buy" : ""} ${s.out_of_position ? "oop" : ""} ${open === slotKey(s) ? "open" : ""} ${multi && ticked.includes(slotKey(s)) ? "ticked" : ""}`}
                 title={s.counts_for.map((i) => reqLabel(e.reqs[i])).join(" · ")}
-                aria-expanded={multi ? undefined : open === s.def_id}
+                aria-expanded={multi ? undefined : open === slotKey(s)}
                 aria-pressed={multi ? ticked.includes(slotKey(s)) : undefined}
                 onClick={() =>
                   multi
                     ? setTicked((cur) => (cur.includes(slotKey(s)) ? cur.filter((k) => k !== slotKey(s)) : [...cur, slotKey(s)]))
-                    : setOpen(open === s.def_id ? null : s.def_id)
+                    : setOpen(open === slotKey(s) ? null : s)
                 }
               >
                 {multi && <span className="sq-tick" aria-hidden="true">{ticked.includes(slotKey(s)) ? "✓" : ""}</span>}
-                <span className="sq-card-top">
-                  <b>{s.rating}</b>
-                  <Flag nation={s.nation} name={s.nation_name} size={compact ? 14 : 18} />
-                  <span>{s.pos}</span>
+                <FutCard card={slotCard(s)} size={compact || cardW < 90 ? "mini" : "small"} w={compact ? 64 : cardW} pos={s.pos} toGet={!s.owned} />
+                {/* FUT: chemistry and what the card does sit on the card's foot */}
+                <span className="slot-tag" title={t("squads.detail.rating") + " " + s.strength.toFixed(1)}>
+                  <Chem n={s.chem} />
+                  {s.counts_for.length > 0 && (
+                    <>
+                      <i className="vr" />
+                      <span className="cnt">{s.counts_for.length}</span>
+                    </>
+                  )}
+                  {s.evo && <Tag title={s.evo}>{t("squads.evo.tag")}</Tag>}
+                  {s.loan && <Tag>{t("squads.loan")}</Tag>}
+                  {s.out_of_position && <Tag tone="warn">{t("squads.slot.oop")}</Tag>}
+                  {!s.owned && <Tag tone="accent">{slotKind(s)}</Tag>}
                 </span>
-                <span className="sq-name">{s.generic ? t("squads.slot.eg", { name: s.name }) : s.name || "?"}</span>
-                {/* FC-Tracker's meta rating for the slot (the card's in-game strength there) */}
-                <span className="sq-meta" title={t("squads.detail.rating")} aria-label={`${t("squads.detail.rating")} ${s.strength.toFixed(1)}`}>
-                  <span className="sq-gem" aria-hidden="true" />
-                  {s.strength.toFixed(1)}
-                </span>
-                {!compact && !s.generic && <Bio s={s} />}
-                <span className="sq-chem-dots" aria-label={t("squads.cardChem", { chem: s.chem })}>
-                  {[0, 1, 2].map((d) => (
-                    <i key={d} className={d < s.chem ? "on" : ""} />
-                  ))}
-                </span>
-                {s.loan && <span className="sq-loan">{t("squads.loan")}</span>}
-                {s.out_of_position && <span className="sq-oop">{t("squads.slot.oop")}</span>}
-                {s.evo && <span className="sq-evo-tag" title={s.evo}>{t("squads.evo.tag")}</span>}
-                {!s.owned && <span className="sq-toget">{slotKind(s)}</span>}
               </button>
             ))}
           </div>
@@ -927,44 +1267,33 @@ export function Pitch({ e, compact = false, bench = [] }: { e: SquadSource; comp
         <div className="sq-bench-row" aria-label={t("squads.bench.label")}>
           <span className="sq-bench-label">{same ? t("squads.bench.title", { minute: minutes[0] }) : t("squads.bench.label")}</span>
           <div className="sq-line">
-            {bench.map((b, i) => (
-              <div key={i} className="sq-card bench" title={b.why}>
-                <span className="sq-card-top">
-                  <b>{b.rating || ""}</b>
-                  {b.nation > 0 && <Flag nation={b.nation} name={b.nation_name} size={compact ? 14 : 18} />}
-                  <span>{b.pos}</span>
-                </span>
-                <span className="sq-name">{b.name}</span>
-                {!compact && <small className="sq-bench-why">{b.why}</small>}
-                <SubMinute k={b.key} />
-              </div>
-            ))}
+            {bench.map((b, i) =>
+              compact ? (
+                <div key={i} className="sq-card bench" title={b.why}>
+                  <span className="sq-card-top">
+                    <b>{b.rating || ""}</b>
+                    {b.nation > 0 && <Flag nation={b.nation} name={b.nation_name} size={14} />}
+                    <span>{b.pos}</span>
+                  </span>
+                  <span className="sq-name">{b.name}</span>
+                  <SubMinute k={b.key} />
+                </div>
+              ) : (
+                <div key={i} className="sq-bench-chip" title={b.why}>
+                  <FaceChip card={{ name: b.name, rating: b.rating || null, position: b.pos, defId: clubOf(b.key)?.def_id ?? null, rareflag: clubOf(b.key)?.rareflag ?? null }} s={40} pos={b.pos} />
+                  <span className="col">
+                    <b className="strong ellip">{b.name}</b>
+                    <small className="muted ellip">{b.why}</small>
+                  </span>
+                  <SubMinute k={b.key} />
+                </div>
+              ),
+            )}
           </div>
         </div>
       )}
       {!compact && <ManagerLine sq={sq} />}
       <LeftOut />
-      {shown && !multi && (
-        <CardDetail
-          s={shown}
-          e={e}
-          onClose={() => setOpen(null)}
-          onChange={canEdit && shown.owned ? () => (setDraft(edit!.prefs), setQueue([shown]), setOpen(null)) : undefined}
-          onLeaveOut={canEdit && shown.owned ? () => (finish(swap(edit!.prefs, shown, null)), setOpen(null)) : undefined}
-        />
-      )}
-      {queue[0] && draft && (
-        <ChangePicker
-          pos={queue[0].pos}
-          out={queue[0].name}
-          inXi={inXi}
-          xiNames={sq.slots.map((s) => s.name)}
-          step={queue.length > 1 || ticks.length > 1 ? t("squads.change.step", { left: queue.length }) : undefined}
-          onPick={(c) => next(swap(draft, queue[0], c))}
-          onSkip={() => next(swap(draft, queue[0], null))}
-          onClose={() => (setQueue([]), setDraft(null))}
-        />
-      )}
     </div>
   );
 }
@@ -1182,7 +1511,7 @@ export function SessionList({ s, compact = false, elsewhere, texts = false }: { 
             <small className="sq-req warn">{t("squads.ask.waiting")}</small>
           ) : o.bench ? (
             <small className="sq-req">{t("squads.slot.bench")}</small>
-          ) : r ? (
+          ) : r && (texts || compact) ? (
             <small className="sq-req">
               {reqLabel(r)} · {t("squads.have", { have: Math.min(r.have, r.count), count: r.count })}
               {r.players.length > 0 && <> – {r.players.slice(0, 3).join(", ")}</>}
@@ -1200,6 +1529,7 @@ export function SessionList({ s, compact = false, elsewhere, texts = false }: { 
             {o.matches != null && o.counts && o.matches >= 0.5 && o.matches < 500 && <small>{t("squads.plan.about", { count: Math.max(1, Math.round(o.matches)) })}</small>}
           </span>
         )}
+        {!compact && <Bar value={o.target > 0 ? Math.min(1, o.progress / o.target) : 0} size="thin" tone={o.progress >= o.target ? "done" : "ink"} />}
       </li>
     );
   };
@@ -1225,55 +1555,7 @@ function sessionEvents(s: SessionPlan): number {
   return new Set(s.items.filter((x) => x.counts && !x.bonus).map((x) => x.event)).size;
 }
 
-/** "done here: Play 1, Scoring Success +11" – each name once (events share names like "Play 1"). */
-function Finishing({ names }: { names: string[] }) {
-  const once = Array.from(new Set(names));
-  return <small>{t("squads.plan.finishes", { names: once.slice(0, 4).join(", ") + (once.length > 4 ? ` +${once.length - 4}` : "") })}</small>;
-}
 
-/** The match plan: squads in turn, the changes between them, where the user is now. */
-function MatchPlan({ s, stage, onStage, quick, onPick }: { s: SessionPlan; stage: number; onStage: (k: number) => void; quick: SessionPlan[]; onPick: (id: number) => void }) {
-  if (s.stages.length === 0 && quick.length === 0) return null;
-  const next = s.played + 1;
-  return (
-    <section className="sq-plan" aria-label={t("squads.plan.title")}>
-      <h4>{t("squads.plan.title")}</h4>
-      {s.played > 0 && <p className="sq-muted">{t("squads.plan.played", { count: s.played })}</p>}
-      <ol>
-        {s.stages.map((st, k) => {
-          const now = st.from <= next && (st.to == null || next <= st.to);
-          return (
-            <li key={k} className={`${now ? "now" : ""} ${stage === k ? "open" : ""}`}>
-              {st.swaps.length > 0 && (
-                <div className="sq-plan-swap">
-                  <b>{t("squads.plan.after", { count: st.from - 1 })}</b>
-                  {st.swaps.map((w, i) => (
-                    <span key={i}>
-                      {w.out_name ? t("squads.plan.swap", { out: w.out_name, in: w.in_name, pos: w.pos }) : t("squads.plan.in", { in: w.in_name, pos: w.pos })}
-                      {!w.in_owned && <small> · {w.in_price != null ? t("squads.slot.buy", { price: num(w.in_price) }) : t("squads.slot.search")}</small>}
-                    </span>
-                  ))}
-                </div>
-              )}
-              <button className="sq-plan-stage" aria-pressed={stage === k} onClick={() => onStage(k)}>
-                <b>{st.to == null ? t("squads.plan.from", { from: st.from }) : st.from === st.to ? t("squads.plan.one", { n: st.from }) : t("squads.plan.range", { from: st.from, to: st.to })}</b>
-                {now && <span className="sq-now">{t("squads.plan.now")}</span>}
-                {st.finishing.length > 0 && <Finishing names={st.finishing} />}
-              </button>
-            </li>
-          );
-        })}
-      </ol>
-      {quick.map((q) => (
-        <button key={q.id} className="sq-plan-stage sq-plan-quick" onClick={() => onPick(q.id)}>
-          <b>{t("squads.plan.quick", { count: q.quick ?? 1, id: q.id })}</b>
-          <small>{q.items.filter((x) => x.counts).map((x) => x.name || x.text).join(", ")}</small>
-        </button>
-      ))}
-      <p className="sq-muted">{t("squads.plan.note")}</p>
-    </section>
-  );
-}
 
 /** The minute bench players are subbed on: Settings → Match reminders (70:00 by default). */
 function useSubAt(): number {
@@ -1323,36 +1605,7 @@ function SubMinute({ k }: { k: number }) {
   );
 }
 
-/** "4 matches in 8 days – 1 every 2nd day". */
-function pace(e: SessionEvo): string | null {
-  if (e.days_left == null || e.matches_left <= 0) return null;
-  const every = Math.floor(e.days_left / e.matches_left);
-  return every >= 2 ? t("squads.evo.paceEvery", { count: e.matches_left, days: e.days_left, every }) : t("squads.evo.pace", { count: e.matches_left, days: e.days_left });
-}
 
-/** Active evolutions a match here moves on too (user 2026-11-01): subbed on, or starting. */
-function EvoList({ s }: { s: SessionPlan }) {
-  const subs = useContext(SubCtx);
-  if (!s.evos?.length) return null;
-  return (
-    <section className="sq-evos" aria-label={t("squads.evo.title")}>
-      <h4>{t("squads.evo.title")}</h4>
-      <ul>
-        {s.evos.map((e, i) => (
-          <li key={i}>
-            <span>
-              <b>{e.player}</b> <span className="sq-muted">{t("squads.evo.level", { name: e.name, level: e.level, levels: e.levels })}</span>
-            </span>
-            <small>
-              {e.in_xi ? (e.start ? t("squads.evo.starts") : t("squads.evo.inXi")) : t("squads.evo.bench", { minute: subs.minute(e.key) })} · {e.progress}/{e.target}
-            </small>
-            {pace(e) && <small className="sq-muted">{pace(e)}</small>}
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
 
 /** The bench (user 2026-11-01): club cards subbed on late for objectives a sub does – only where
  *  they open something the XI doesn't. */
@@ -1360,6 +1613,35 @@ function EvoList({ s }: { s: SessionPlan }) {
 function RushCard({ s, compact = false }: { s: SessionPlan; compact?: boolean }) {
   const p = s.rush;
   if (!p) return <p className="sq-muted">{t("squads.rush.none")}</p>;
+  // the big card (user 2026-11-05) and what he is in for: the session's objectives he moves on
+  const card: FutCardData = { name: p.name, rating: p.rating, position: p.positions?.[0] ?? p.pos, positions: p.positions, rareflag: p.rareflag ?? null, defId: p.def_id || null, nation: p.nation || null, league: p.league || null, club: p.club || null, face: p.face?.length === 6 ? p.face : null, firstOwner: !!p.first_owner, actionGuid: p.art ?? null };
+  const why = s.items.filter((x) => x.counts && !x.bonus);
+  if (!compact && p.def_id)
+    return (
+      <div className="sq-squad sq-rush big">
+        <span className="sq-bench-label">{t("squads.rush.title")}</span>
+        <div className="sq-rush-stage">
+          <FutCard card={card} size="full" w={260} toGet={!p.owned} />
+          <div className="sq-rush-why">
+            <b className="h3">{p.name}</b>
+            <span className="dv-small">
+              {p.rating} · {p.pos}
+              {p.evo ? ` · ${p.evo}` : ""}
+            </span>
+            {!p.owned && <small className="sq-bench-why">{p.price != null ? t("squads.slot.buy", { price: num(p.price) }) : t("squads.rush.search")}</small>}
+            <span className="eyebrow">{t("squads.rush.why", { count: why.length })}</span>
+            <ul className="sq-rush-list">
+              {why.slice(0, 8).map((x, i) => (
+                <li key={i}>
+                  <b>{x.name || x.event_title}</b>
+                  <span className="faint">{x.progress}/{x.target}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    );
   return (
     <div className={`sq-squad sq-rush ${compact ? "compact" : ""}`}>
       <span className="sq-bench-label">{t("squads.rush.title")}</span>
@@ -1387,28 +1669,6 @@ function Lineup({ s, shown, compact = false }: { s: SessionPlan; shown: SquadSou
   return <Pitch e={shown} compact={compact} bench={benchOf(s)} />;
 }
 
-function BenchList({ s }: { s: SessionPlan }) {
-  const subs = useContext(SubCtx);
-  const bench: BenchPick[] = s.bench ?? [];
-  if (!bench.length) return null;
-  return (
-    <section className="sq-evos sq-bench" aria-label={t("squads.bench.label")}>
-      <h4>{t("squads.bench.label")}</h4>
-      <ul>
-        {bench.map((b, i) => (
-          <li key={i}>
-            <span>
-              <Flag nation={b.nation} name={b.nation_name} size={14} /> <b>{b.name}</b> <span className="sq-muted">{b.rating} {b.pos}</span>
-            </span>
-            <small>
-              {t("squads.evo.bench", { minute: subs.minute(b.key) })} · {t("squads.bench.for", { names: b.objectives.slice(0, 3).join(", ") + (b.objectives.length > 3 ? ` +${b.objectives.length - 3}` : "") })}
-            </small>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
 
 /** Why this squad, in one line: what it clears, what it costs, what it gave up. */
 function Why({ s }: { s: SessionPlan }) {
@@ -1424,10 +1684,33 @@ function Why({ s }: { s: SessionPlan }) {
 
 /** The sessions as tabs, the picked one (or the first) open: where, the plan, the XI, what counts. */
 function Sessions({ view, prefs, onPrefs }: { view: SquadsView; prefs: SquadPrefs; onPrefs: (p: SquadPrefs) => void }) {
-  const [picked, setPicked] = useState<number | null>(null);
+  // the session shown is the side panel's too (T24): a pick in either window shows in the other
+  const [picked, setPicked] = useSessionPick(view);
+  const [opened, setOpened] = useState<SlotView | null>(null);
+  // one view (user 2026-11-04): the session fills the window to its bottom edge; pitch and columns size inside it
+  const artRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const art = artRef.current;
+    const wrap = art?.closest<HTMLElement>(".detail-wrap");
+    if (!art || !wrap) return;
+    const fit = () => {
+      const top = art.getBoundingClientRect().top - wrap.getBoundingClientRect().top + wrap.scrollTop;
+      art.style.height = `${Math.max(360, wrap.clientHeight - top - 4)}px`;
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(wrap);
+    window.addEventListener("resize", fit);
+    return () => (ro.disconnect(), window.removeEventListener("resize", fit));
+  });
+  useEffect(() => setOpened(null), [picked, view.read_at]);
+  useEffect(() => {
+    const close = () => setOpened(null);
+    window.addEventListener("fct:squads-back", close);
+    return () => window.removeEventListener("fct:squads-back", close);
+  }, []);
   const [stage, setStage] = useState(0);
   const [texts, setTexts] = useFlag("fct.squads.texts", false);
-  useEffect(() => setPicked(null), [view.primary, view.prefs.place?.kind]);
   const list = view.combos;
   const s = list.find((x) => x.id === picked) ?? list[0];
   // L1 / R1 (Q / E) step through the squad tabs, like the game's own sub-tabs
@@ -1446,6 +1729,10 @@ function Sessions({ view, prefs, onPrefs }: { view: SquadsView; prefs: SquadPref
   // the stage being played now opens first
   const nowStage = s ? Math.max(0, s.stages.findIndex((st) => st.from <= s.played + 1 && (st.to == null || s.played + 1 <= st.to))) : 0;
   useEffect(() => setStage(nowStage), [s?.id, nowStage, s?.stages.length]);
+  // the picked session tab stays in view between the pinned Q and E
+  useEffect(() => {
+    document.querySelector(`.sq-sessions [data-sid="${s?.id}"]`)?.scrollIntoView({ inline: "nearest", block: "nearest" });
+  }, [s?.id]);
   if (!s) return view.needs_sync ? null : <p className="sq-muted">{t("squads.play.none")}</p>;
   const place = placeLabel(s.place, s.place_name);
   const quick = list.filter((x) => x.quick != null);
@@ -1456,59 +1743,87 @@ function Sessions({ view, prefs, onPrefs }: { view: SquadsView; prefs: SquadPref
   const shown = st ? { id: s.id * 100 + stage, reqs: st.reqs, squad: st.squad } : s;
   return (
     <>
-      {list.length > 1 && (
-        <nav className="sq-sessions" aria-label={t("squads.play.sessions")}>
-          <PadHint ids={["l1"]} keys="Q" />
-          {list.map((x) => (
-            <button key={x.id} className={`sq-event-tab ${x.id === s.id ? "active" : ""}`} aria-pressed={x.id === s.id} title={x.quick != null ? undefined : placeLabel(x.place, x.place_name)} onClick={() => setPicked(x.id)}>
-              <span className="sq-event-name">
-                {x.id}. {x.quick != null ? t("squads.play.quickTab", { count: x.quick }) : placeLabel(x.place, x.place_name)}
-              </span>
-              <small className={x.counted > 0 ? "ok" : ""}>{t("squads.play.objectives", { count: x.counted })}</small>
-            </button>
-          ))}
-          <PadHint ids={["r1"]} keys="E" />
-        </nav>
-      )}
-      <article className="sq-event sq-session">
-        <header className="sq-event-head">
-          <div>
-            <h3>{s.quick != null ? t("squads.play.quickTitle", { count: s.quick }) : t(s.rules_unread ? "squads.play.sessionUnread" : s.rush_format ? "squads.play.sessionRush" : "squads.play.session", { place })}</h3>
-            <Why s={s} />
-          </div>
-          <LockButton e={{ id: s.id, title: `${place} · ${s.title}`, squad: shown.squad, reqs: shown.reqs }} event={s.primary ?? s.items[0]?.event ?? 0} />
-          <div className="sq-score">
-            <b className="ok">{s.counted}</b>
-            <small>{t("squads.play.objectivesShort")}</small>
-          </div>
-        </header>
-        <LockBar />
-        {s.rush_format && <p className="sq-muted">{t("squads.play.rush")}</p>}
-        {s.rules && <p className="sq-rules">{t("squads.rules.chip", { range: `${s.rules.min_rating ?? 40}–${s.rules.max_rating ?? 99}` })}</p>}
-        <AskCards s={s} prefs={prefs} onPrefs={onPrefs} />
-        <div className="sq-split">
-          <div className="sq-col">
-            <BriefFold s={s} />
-            <MatchPlan s={s} stage={stage} onStage={setStage} quick={s.id === list[0].id ? quick : []} onPick={setPicked} />
-            <EvoList s={s} />
-            <BenchList s={s} />
-            <div className="sq-texts-toggle">
-              <button className="cat-tab" aria-pressed={texts} onClick={() => setTexts(!texts)}>
-                {t(texts ? "squads.texts.hide" : "squads.texts.show")}
+      {/* the session tabs (L2/R2) get the full row – the squad's facts sit on the pitch (user 2026-11-05) */}
+      <div className="sq-toprow">
+        {list.length > 1 && (
+          <div className="cat-row sq-sessions-row">
+            <PadHint ids={["l2"]} keys="Q" />
+            <nav className="cat-tabs sq-sessions segs-bar" ref={stripRef} aria-label={t("squads.play.sessions")}>
+            {list.map((x) => (
+              <button key={x.id} data-sid={x.id} className={`seg ring ${x.id === s.id ? "is-on" : ""}`} aria-pressed={x.id === s.id} title={(x.quick != null ? "" : placeLabel(x.place, x.place_name) + " · ") + t("squads.play.objectives", { count: x.counted })} onClick={() => setPicked(x.id)}>
+                <span className="ellip">
+                  {x.id}. {x.quick != null ? t("squads.play.quickTab", { count: x.quick }) : placeLabel(x.place, x.place_name)}
+                </span>
+                <b>{x.counted}</b>
               </button>
-            </div>
-            <SessionList s={s} texts={texts} elsewhere={s.id === list[0].id ? elsewhere : undefined} />
+            ))}
+            </nav>
+            <PadHint ids={["r2"]} keys="E" />
           </div>
-          <div className="sq-col">
+        )}
+      </div>
+      <SwapCtx.Provider value={{ opened, setOpened }}>
+      <article className="sq-event sq-session sq-v2" ref={artRef}>
+        <div className="sq-main">
+          <section className="sq-pitch-col">
+            <header className="sq-pitch-head">
+              <div className="sq-pitch-title">
+                <h3 className="h1">
+                  {s.quick != null
+                    ? t("squads.play.quickTitle", { count: s.quick })
+                    : s.rules_unread
+                      ? t("squads.play.sessionUnread", { place })
+                      : t("v2.sq.headline", { count: s.counted })}
+                </h3>
+                <span className="sq-pitch-sub">
+                  {s.quick == null && !s.rules_unread && (s.rush_format ? t("squads.play.sessionRush", { place }) : place)}
+                  {" · "}
+                  <Why s={s} />
+                </span>
+              </div>
+              <LockButton e={{ id: s.id, title: `${place} · ${s.title}`, squad: shown.squad, reqs: shown.reqs }} event={s.primary ?? s.items[0]?.event ?? 0} />
+            </header>
+            <LockBar />
+            {s.rush_format && <p className="sq-muted">{t("squads.play.rush")}</p>}
+            {s.rules && <p className="sq-rules">{t("squads.rules.chip", { range: `${s.rules.min_rating ?? 40}–${s.rules.max_rating ?? 99}` })}</p>}
+            <AskCards s={s} prefs={prefs} onPrefs={onPrefs} />
             <Lineup s={s} shown={shown} />
-            {s.squad && gaps(s.reqs, asked(s))
-              .filter((r) => !(s.id === list[0].id && quick.some((q) => q.reqs.some((x) => x.met && reqLabel(x) === reqLabel(r)))))
-              .map((r, i) => (
-                <Options key={i} r={r} />
-              ))}
-          </div>
+          </section>
+          {opened ? (
+            <SwapPanel s={opened} e={shown} onClose={() => setOpened(null)} />
+          ) : (
+          <section className="panel ring tier-dense sq-colp">
+            <header>
+              <div>
+                <span className="h4">{t("v2.sq.inSession")}</span>
+                <span className="sq-muted">{t("squads.play.objectives", { count: s.counted })}</span>
+              </div>
+              <b className="num sq-colp-n">{s.counted}</b>
+            </header>
+            <div className="sq-colp-body">
+              <div className="sq-texts-toggle">
+                <button className="btn btn-quiet btn-s" aria-pressed={texts} onClick={() => setTexts(!texts)}>
+                  {t(texts ? "squads.texts.hide" : "squads.texts.show")}
+                </button>
+              </div>
+              {/* what the squad can't meet yet, and where to get it – at the top of the objectives (one view: not under the pitch) */}
+              {s.squad && gaps(s.reqs, asked(s))
+                .filter((r) => !(s.id === list[0].id && quick.some((q) => q.reqs.some((x) => x.met && reqLabel(x) === reqLabel(r)))))
+                .map((r, i) => (
+                  <Options key={i} r={r} />
+                ))}
+              <SessionList s={s} texts={texts} elsewhere={s.id === list[0].id ? elsewhere : undefined} />
+            </div>
+            <footer className="sq-colp-foot">
+              <Keycap ps="↓" xb="↓" kb="↓" />
+              {t("v2.sq.showing", { shown: s.items.filter((x) => !x.bonus).length, total: s.items.length, done: s.items.filter((x) => x.progress >= x.target).length })}
+            </footer>
+          </section>
+          )}
+          <BriefColumn s={s} stage={stage} onStage={setStage} quick={s.id === list[0].id ? quick : []} onPick={setPicked} />
         </div>
       </article>
+      </SwapCtx.Provider>
       {s.id === list[0].id && view.apart.length > 0 && (
         <details className="sq-apart">
           <summary>{t("squads.play.apart", { place, count: view.apart.length })}</summary>
@@ -1546,7 +1861,7 @@ function Notes({ view, busy }: { view: SquadsView; busy: boolean }) {
 }
 
 /** Every event (in EA's categories) with its checklist – mark done by hand. */
-function AllEvents({ view, prefs, onPrefs, filter }: { view: SquadsView; prefs: SquadPrefs; onPrefs: (p: SquadPrefs) => void; filter: Filter }) {
+function AllEvents({ view, prefs, onPrefs, filter, onFilter }: { view: SquadsView; prefs: SquadPrefs; onPrefs: (p: SquadPrefs) => void; filter: Filter; onFilter: (f: Filter) => void }) {
   const [current, pick] = useEventChoice(view);
   const list = filtered(view.events, filter);
   const e = current && list.some((x) => x.id === current.id) ? current : list[0] ?? null;
@@ -1559,6 +1874,7 @@ function AllEvents({ view, prefs, onPrefs, filter }: { view: SquadsView; prefs: 
           <h3 className="sq-section-title">{t("squads.allEvents")}</h3>
           <small className="sq-muted">{t("squads.allEventsCount", { count: list.length })}</small>
         </button>
+        <FilterChips value={filter} onPick={onFilter} view={view} />
         {open && list.length > 0 && <EventSelect list={list} value={e?.id ?? null} label={t("squads.events")} onPick={(id) => id != null && pick(id)} />}
       </div>
       {open && (e ? <Event e={e} prefs={prefs} onPrefs={onPrefs} /> : <p className="sq-muted">{t("squads.filter.empty")}</p>)}
@@ -1572,33 +1888,27 @@ export default function Squads() {
   const [filter, setFilter] = useFilter();
   if (!view) return <PlanSkeleton />;
   const prefs = view.prefs ?? defaultSquadPrefs;
-  const formations = Array.from(new Set(FORMATIONS.concat(view.combos.flatMap((c) => (c.squad ? [c.squad.formation] : [])))));
+  const formations = Array.from(new Set(FORMATIONS.concat((view.combos ?? []).flatMap((c) => (c.squad ? [c.squad.formation] : [])))));
   return (
     <EditCtx.Provider value={{ prefs, onPrefs: setPrefs, club: view.club }}>
     <SubProvider prefs={prefs} onPrefs={setPrefs}>
     <section className="sq">
-      <header className="sq-head">
-        <div>
-          <h2 className="sq-title">{t("squads.title")}</h2>
-          <small className="sq-muted">
-            {busy ? <span className="ml-loading inline">{t("squads.building", { count: view.club_players })}</span> : view.read_at ? t("squads.read", { age: formatAge(view.read_at) }) : t("squads.notYet")} · {t("squads.ratingBeta")}
+      <header className="sq-head" title={view.read_at ? t("squads.read", { age: formatAge(view.read_at) }) : t("squads.notYet")}>
+        {busy && (
+          <small className="sq-muted sq-read">
+            <span className="ml-loading inline">{t("squads.building", { count: view.club_players })}</span>
           </small>
-        </div>
-        <button className={`cat-tab ${settings ? "active" : ""}`} aria-expanded={settings} onClick={() => setSettings(!settings)}>
+        )}
+        {!view.needs_sync && <PlayPick view={view} prefs={prefs} onPrefs={setPrefs} filter={filter} />}
+        <button className={`btn btn-s btn-secondary ring ${settings ? "is-on" : ""}`} aria-expanded={settings} onClick={() => setSettings(!settings)} title={t("squads.ratingBeta")}>
           {t("squads.settings")} · {t(GOALS.find(([g]) => g === (prefs.goal ?? "progress"))?.[1] ?? "squads.goal.progress")}
         </button>
       </header>
       {settings && <Settings prefs={prefs} onChange={setPrefs} formations={formations} />}
-      {!view.needs_sync && view.club.length > 0 && <MustPick view={view} prefs={prefs} onChange={setPrefs} />}
       <Notes view={view} busy={busy} />
-      {!view.needs_sync && (
-        <div className="sq-toolbar">
-          <PlayPick view={view} prefs={prefs} onPrefs={setPrefs} filter={filter} />
-          <FilterChips value={filter} onPick={setFilter} view={view} />
-        </div>
-      )}
       <Sessions view={view} prefs={prefs} onPrefs={setPrefs} />
-      {view.events.length > 0 && <AllEvents view={view} prefs={prefs} onPrefs={setPrefs} filter={filter} />}
+      {!view.needs_sync && view.club.length > 0 && <MustPick view={view} prefs={prefs} onChange={setPrefs} />}
+      {view.events.length > 0 && <AllEvents view={view} prefs={prefs} onPrefs={setPrefs} filter={filter} onFilter={setFilter} />}
       <SavedSquads />
     </section>
     </SubProvider>
@@ -1639,34 +1949,232 @@ const ANYONE_SHOWN = 4;
 /** The match brief (user 2026-11-01): before the match in broad strokes, in it something specific
  *  to go for, by player. In a match only the second half shows. */
 /** A controller hint next to a tab row: PlayStation / Xbox glyphs with a controller, keys without. */
-function PadHint({ ids, keys }: { ids: ("l1" | "r1" | "left" | "right")[]; keys: string }) {
-  const { layout, controller } = usePadLayout();
+const PAD_NAMES: Record<string, [string, string]> = { l1: ["L1", "LB"], r1: ["R1", "RB"], l2: ["L2", "LT"], r2: ["R2", "RT"], left: ["←", ""], right: ["→", ""] };
+/** PlayStation first, then Xbox (layout kept for callers that pass one) */
+function PadHint({ ids, keys }: { ids: ("l1" | "r1" | "l2" | "r2" | "left" | "right")[]; keys: string }) {
   return (
     <span className="sq-pad-hint" aria-hidden="true">
-      {controller ? ids.map((id) => <PadButton key={id} id={id} layout={layout} size={16} />) : <kbd>{keys}</kbd>}
+      {ids.map((id, i) => <Keycap key={id} ps={PAD_NAMES[id][0]} xb={PAD_NAMES[id][1] || PAD_NAMES[id][0]} kb={i === 0 ? keys : undefined} />)}
     </span>
   );
 }
 
-/** The full overlay: the match brief folded to one line (it lives in the side panel – double-tap
- *  View); opened once, it stays open for this viewer (user 2026-11-02: "not shown by default"). */
-function BriefFold({ s }: { s: SessionPlan }) {
-  const [open, setOpen] = useFlag("fct.brief.open", false);
-  const seen = useSquadSeen();
-  const b = s.brief;
-  if (!b) return null;
-  const tasks = b.players.reduce((n, p) => n + p.tasks.length, 0) + b.anyone.length;
-  const check = seen?.complete && s.squad ? (seen.missing.length === 0 ? t("brief.check.ok") : t("brief.check.change", { count: seen.missing.length })) : null;
+
+/** A task with a requirement on the doer as one line – "Score from outside the box · with a 4★ weak foot player · 2 left" –
+ *  and, opened (click / ✕ on the focused line), who in the XI can do it, attackers first. Never one player named for it. */
+function ReqTaskLine({ x, s }: { x: BriefTask; s: SessionPlan }) {
+  const [open, setOpen] = useState(false);
+  const r = x.req != null ? s.reqs[x.req] : undefined;
+  const who = x.who ?? [];
   return (
-    <section className={open ? "sq-brief-fold open" : "sq-brief-fold"}>
-      <button className="sq-fold" aria-expanded={open} onClick={() => setOpen(!open)}>
-        <span className="sq-fold-mark" aria-hidden="true" />
-        <b>{t("brief.title")}</b>
-        <small>{t("brief.fold", { steps: b.before.length, tasks })}</small>
-        {check && <small className={seen?.missing.length ? "sq-check" : "sq-check ok"}>{check}</small>}
-        {!open && !IS_WEB && <small className="sq-muted sq-fold-where">{t("brief.foldWhere")}</small>}
+    <div className={`brief-req ${open ? "open" : ""}`}>
+      <button type="button" data-f className="bl brief-req-line" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <span className="ic">{t("v2.sq.tagReq")}</span>
+        <span className="ellip" title={r ? `${x.text} · ${reqLabel(r)}` : x.text}>
+          <b className="strong">{x.text}</b>
+          {r && <span className="muted"> · {reqLabel(r)}</span>}
+        </span>
+        <span className="t-13 muted nowrap">
+          <b className="num t-15">{x.left}</b> {t("v2.sq.left")}
+          <span className="sq-gap-caret" aria-hidden="true" />
+        </span>
       </button>
-      {open && <MatchBriefView s={s} />}
+      {open && (
+        <ul className="brief-req-who">
+          {who.length === 0 && <li className="muted t-13">{t("v2.sq.reqNobody")}</li>}
+          {who.map((w, i) => (
+            <li key={i}>
+              <span className="tag">{w.pos}</span>
+              <span className="strong">{w.name}</span>
+              {w.bench && <span className="faint t-12">{t("v2.sq.tagSub")}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/** The match brief column of the Objectives screen (mockup 06), always open: before the match (XI, buys, kits, TIFOs,
+ *  the bench), what each player has to do with how many are left, the squad changes as objectives finish (a stage
+ *  opens on the pitch when picked), and the evolutions with their sub-on minute. Real plan data only. */
+function BriefColumn({ s, stage, onStage, quick, onPick }: { s: SessionPlan; stage: number; onStage: (k: number) => void; quick: SessionPlan[]; onPick: (id: number) => void }) {
+  const subs = useContext(SubCtx);
+  const edit = useContext(EditCtx);
+  const seen = useSquadSeen();
+  const bench = benchOf(s);
+  const b = s.brief;
+  const byKey = new Map((edit?.club ?? []).map((c) => [c.key, c]));
+  const ready = !!seen?.complete && seen.missing.length === 0;
+  const tag = (x: NonNullable<SessionPlan["brief"]>["before"][number]): [string, string] => {
+    if (x.kind === "squad" || x.kind === "ready") return ["XI", ""];
+    if (x.kind === "buy" || x.kind === "rush_buy") return [t("v2.sq.tagBuy"), "buy"];
+    if (x.kind === "use") return [/tifo/i.test(x.text) ? "TIFO" : t("v2.sq.tagKit"), ""];
+    if (x.kind === "bench") return [t("v2.sq.tagSub"), ""];
+    if (x.kind === "rush") return ["RUSH", ""];
+    if (x.kind === "unread") return ["!", "warn"];
+    return [t("v2.sq.tagRule"), ""];
+  };
+  const before = (x: NonNullable<SessionPlan["brief"]>["before"][number]) => {
+    switch (x.kind) {
+      case "squad":
+        return (
+          <>
+            <span>{t("v2.sq.formation", { formation: x.text })}</span>
+            {x.count != null && (
+              <span className="faint t-13 nowrap">
+                <b className="num">{x.count}</b> {t("v2.sq.changes")}
+              </span>
+            )}
+          </>
+        );
+      case "ready":
+        return <span>{t("brief.ready", { formation: x.text })}</span>;
+      case "buy":
+      case "rush_buy":
+        return (
+          <>
+            <span>
+              {t("v2.sq.buy")} <b className="strong">{x.text}</b>
+            </span>
+            {x.count != null ? (
+              <span className="row nowrap" style={{ gap: 6 }}>
+                <i className="coin" />
+                <b className="num">{num(x.count)}</b>
+              </span>
+            ) : (
+              <span className="faint t-13">{t("squads.slot.search")}</span>
+            )}
+          </>
+        );
+      case "use":
+        return <span>{x.text}</span>;
+      case "bench":
+        return <span>{bench.map((p) => `${p.name} ${subs.minute(p.key)}:00`).join(", ") || x.text}</span>;
+      case "rush":
+        return <span>{t("brief.rush", { card: x.text })}</span>;
+      case "rules":
+        return <span>{t("brief.rules", { range: x.text })}</span>;
+      case "cap":
+        return <span>{t("brief.cap", { rating: x.text, count: x.count ?? 1 })}</span>;
+      case "unread":
+        return <span>{t("brief.unread", { event: x.text })}</span>;
+    }
+  };
+  const evos = s.evos ?? [];
+  return (
+    <section className="panel ring sq-colp sq-briefcol" aria-label={t("brief.title")}>
+      <header>
+        <div>
+          <span className="h4">{t("brief.title")}</span>
+          <span className="faint t-13">
+            {t("v2.sq.alsoPanel")} <Keycap ps="Create ×2" xb="View ×2" kb="Ctrl+Shift+M" />
+          </span>
+        </div>
+        {ready && <span className="chip done">{t("v2.sq.ready")}</span>}
+      </header>
+      <div className="sq-colp-body">
+        {b && b.before.length > 0 && (
+          <div className="brief-sec">
+            <span className="eyebrow">{t("brief.before")}</span>
+            {b.before.map((x, i) => {
+              const [label, tone] = tag(x);
+              return (
+                <div key={i} className="bl">
+                  <span className={`ic ${tone}`}>{label}</span>
+                  {before(x)}
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {b && (b.players.length > 0 || b.anyone.length > 0 || (b.reqs?.length ?? 0) > 0) && (
+          <div className="brief-sec">
+            <span className="eyebrow">{t("v2.sq.yourPlayers")}</span>
+            {(b.reqs ?? []).map((x, k) => (
+              <ReqTaskLine key={`req-${k}`} x={x} s={s} />
+            ))}
+            {b.players.flatMap((p) =>
+              p.tasks.map((x, k) => (
+                <div key={`${p.name}-${k}`} className="bl">
+                  <span className="ic">{k === 0 ? p.pos : ""}</span>
+                  <span className="ellip" title={x.text}>
+                    {k === 0 && <b className="strong">{p.name}</b>}
+                    {k === 0 ? " · " : ""}
+                    <span className="muted">{x.text}</span>
+                  </span>
+                  <span className="t-13 muted nowrap">
+                    <b className="num t-15">{x.left}</b> {t("v2.sq.left")}
+                  </span>
+                </div>
+              )),
+            )}
+            {b.anyone.slice(0, ANYONE_SHOWN).map((x, k) => (
+              <div key={`any-${k}`} className="bl">
+                <span className="ic">{t("v2.sq.tagAny")}</span>
+                <span className="ellip" title={x.text}>
+                  {x.text}
+                </span>
+                <span className="t-13 muted nowrap">
+                  <b className="num t-15">{x.left}</b> {t("v2.sq.left")}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+        {!b && <p className="sq-muted">{t("brief.nothing")}</p>}
+        {(s.stages.length > 1 || quick.length > 0) && (
+          <div className="brief-sec">
+            <span className="eyebrow">{t("v2.sq.changesAsDone")}</span>
+            {s.stages.map((st, k) => (
+              <button key={k} data-f className={`stage-line ${stage === k ? "is-sel" : ""}`} onClick={() => onStage(k)} aria-pressed={stage === k}>
+                <span className="when">{st.to == null ? t("squads.plan.from", { from: st.from }) : st.from === st.to ? t("squads.plan.one", { n: st.from }) : t("squads.plan.range", { from: st.from, to: st.to })}</span>
+                <span className="col" style={{ gap: 4 }}>
+                  {st.swaps.length === 0 ? (
+                    <span className="muted">{t("v2.sq.thisXi")}</span>
+                  ) : (
+                    st.swaps.map((w, i) => (
+                      <span key={i} className="swap">
+                        {w.out_name && <span className="muted">{w.out_name}</span>}
+                        {w.out_name && <span aria-hidden="true">→</span>}
+                        <b className="strong">{w.in_name}</b>
+                        <span className="tag">{w.pos}</span>
+                      </span>
+                    ))
+                  )}
+                </span>
+              </button>
+            ))}
+            {quick.map((q) => (
+              <button key={q.id} className="stage-line" onClick={() => onPick(q.id)}>
+                <span className="when">{q.id}.</span>
+                <span className="muted">{t("squads.plan.quick", { count: q.quick ?? 1, id: q.id })}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        {evos.length > 0 && (
+          <div className="brief-sec">
+            <span className="eyebrow">{t("v2.sq.evosSub")}</span>
+            {evos.map((e, i) => {
+              const c = byKey.get(e.key);
+              const card: FutCardData = { name: e.player, rating: e.rating ?? c?.rating ?? null, position: e.pos ?? c?.positions[0] ?? null, rareflag: c?.rareflag ?? null, defId: c?.def_id ?? null };
+              const minute = e.start ? null : subs.minute(e.key);
+              return (
+                <div key={i} className="evo">
+                  <FaceChip card={card} s={44} pos={e.pos} />
+                  <span className="col" style={{ gap: 3, minWidth: 0 }}>
+                    <b className="strong t-15">{e.player}</b>
+                    <span className="muted t-13 ellip">{t("v2.sq.evoLine", { evo: e.name, level: e.level, levels: e.levels, count: e.matches_left })}</span>
+                  </span>
+                  {minute != null ? <span className="tag accent"><b className="num">{minute}:00</b></span> : <span className="tag ink">XI</span>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <p className="sq-muted t-12">{t("squads.plan.note")}</p>
+      </div>
     </section>
   );
 }
@@ -1754,7 +2262,10 @@ export function MatchBriefView({ s, inMatch = false }: { s: SessionPlan; inMatch
         </>
       )}
       <h4>{t("brief.during")}</h4>
-      {b.players.length === 0 && b.anyone.length === 0 && <p className="sq-muted">{t("brief.nothing")}</p>}
+      {b.players.length === 0 && b.anyone.length === 0 && !b.reqs?.length && <p className="sq-muted">{t("brief.nothing")}</p>}
+      {(b.reqs ?? []).map((x, k) => (
+        <ReqTaskLine key={`req-${k}`} x={x} s={s} />
+      ))}
       <ul className="sq-brief-players">
         {b.players.map((p, i) => (
           <li key={i}>

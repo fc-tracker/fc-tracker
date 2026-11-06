@@ -176,3 +176,45 @@ mod tests {
         assert_eq!(secret(), None);
     }
 }
+
+/// The account as every window shows it (user 2026-11-05: the overlay said "Not signed in" while the launcher was
+/// signed in). Signed in = the secret is in Credential Manager – the one source; the profile (name, avatar) is what
+/// the window that keeps the account (the launcher) last read from the server. Signed out never shows a profile.
+#[derive(Debug, Clone, serde::Serialize, PartialEq)]
+pub struct AccountView {
+    pub signed_in: bool,
+    pub user: Option<serde_json::Value>,
+}
+
+static USER: std::sync::Mutex<Option<serde_json::Value>> = std::sync::Mutex::new(None);
+
+pub fn view_of(signed_in: bool, user: Option<serde_json::Value>) -> AccountView {
+    AccountView { signed_in, user: if signed_in { user } else { None } }
+}
+
+/// The account now: Credential Manager says whether, the cached profile who.
+pub fn view() -> AccountView {
+    view_of(secret().is_some(), USER.lock().ok().and_then(|u| u.clone()))
+}
+
+/// The profile the launcher read (None on sign-out).
+pub fn set_user(user: Option<serde_json::Value>) {
+    if let Ok(mut u) = USER.lock() {
+        *u = user;
+    }
+}
+
+#[cfg(test)]
+mod view_tests {
+    use super::*;
+
+    #[test]
+    fn every_window_sees_the_same_account_and_never_a_profile_when_signed_out() {
+        let me = serde_json::json!({ "display_name": "Christoffer" });
+        assert_eq!(view_of(true, Some(me.clone())), AccountView { signed_in: true, user: Some(me.clone()) });
+        // signed in before the profile is read: signed in, no name yet – never "Not signed in"
+        assert_eq!(view_of(true, None), AccountView { signed_in: true, user: None });
+        // signed out (secret removed): a profile still cached is not shown
+        assert_eq!(view_of(false, Some(me)), AccountView { signed_in: false, user: None });
+    }
+}

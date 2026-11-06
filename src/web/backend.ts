@@ -2,7 +2,7 @@
 // is shared by the user (a window, a tab or a capture card), every changed Gallery page is read
 // (reader.ts) and handed to the app's own model (core.ts, WebAssembly). Nothing leaves the
 // browser; what it learns is kept in this browser only (localStorage).
-import type { BestValue, CurrentPage, GalleryCategory, GalleryStatus, PriceShare, SetValue, ShoppingList } from "../api";
+import type { BestValue, Coins, CurrentPage, GalleryCategory, GalleryStatus, PriceShare, SetValue, ShoppingList } from "../api";
 import { excludedIds } from "../excluded";
 import { call, core, validPoints } from "./core";
 import { trackOnce } from "../usage";
@@ -127,6 +127,11 @@ export const webApi = {
     await call("set_first_owner", { def_id: defId, value });
     await persist();
     changed();
+  },
+  /** The coin balance from the last club sync (the extension passes EA's own value along). */
+  coins: async (): Promise<Coins | null> => {
+    await restored;
+    return call<Coins | null>("coins");
   },
   bestValue: async (budget: number | null, target: number | null, steps: number | null): Promise<BestValue | null> => {
     await restored;
@@ -431,6 +436,11 @@ export interface ClubSync {
   readAt: number | null;
   cards: number;
   reading: boolean;
+  /** who the extension syncs for (v2 extension): "app" (paired), "account" (its own sign-in), null = nobody – it
+   *  won't sync until someone signs in; undefined = an older extension that doesn't say */
+  owner?: "app" | "account" | null;
+  /** when the extension last pushed a finished sync to its account (ms) */
+  pushedAt?: number | null;
 }
 let club: ClubSync = { version: null, syncAt: null, syncing: false, readAt: null, cards: 0, reading: false };
 export const webClub = () => club;
@@ -440,7 +450,7 @@ function setClub(p: Partial<ClubSync>) {
   emit("club", club);
 }
 
-type Reply = { ok?: boolean; version?: string; syncAt?: number | null; syncing?: boolean; at?: number | null; entries?: unknown[] } | null;
+type Reply = { ok?: boolean; version?: string; syncAt?: number | null; syncing?: boolean; at?: number | null; entries?: unknown[]; owner?: "app" | "account" | null; pushedAt?: number | null } | null;
 function ext(msg: object): Promise<Reply> {
   const rt = (window as unknown as { chrome?: { runtime?: { sendMessage?: (id: string, m: object, cb: (r: Reply) => void) => void; lastError?: unknown } } }).chrome?.runtime;
   if (!rt?.sendMessage) return Promise.resolve(null);
@@ -463,7 +473,9 @@ async function checkClub() {
   // "Sync my club" opens the Web App; it counts as syncing until the extension says otherwise
   // (a sync starts once the Web App is signed in) – at most a minute without its word
   const opening = Date.now() - openedAt < 60_000 && !(hello.syncAt && hello.syncAt > openedAt);
-  setClub({ version: hello.version ?? "?", syncAt: hello.syncAt ?? null, syncing: !!hello.syncing || opening });
+  const owner = "owner" in hello ? (hello.owner ?? null) : undefined;
+  // no owner: the extension won't sync (v2 rule) – nothing is coming, so never "syncing"; the page asks for a sign-in
+  setClub({ version: hello.version ?? "?", syncAt: hello.syncAt ?? null, syncing: owner === null ? false : !!hello.syncing || opening, owner, pushedAt: hello.pushedAt ?? null });
   if (!sentSets) {
     sentSets = true;
     await restored;
@@ -472,6 +484,16 @@ async function checkClub() {
   const state = await call<{ synced_at: number | null; collected: number[] }>("state");
   if (club.readAt == null) setClub({ readAt: state.synced_at, cards: state.collected.length });
   if (hello.syncAt && hello.syncAt > (state.synced_at ?? 0) && !club.reading) {
+    // the extension already pushed this very sync to its account and this page is signed in (the extension signs in
+    // with the same e-mail code): the server has it, so the page takes it from there instead of ingesting it too –
+    // two writers of one sync would show a false "both changed" prompt
+    if (owner === "account" && hello.pushedAt != null && hello.pushedAt >= hello.syncAt) {
+      const acc = await import("../account");
+      if (acc.accountState().status === "in") {
+        await acc.syncNow();
+        return;
+      }
+    }
     setClub({ reading: true });
     try {
       const sync = await ext({ type: "get-sync" });
@@ -491,6 +513,12 @@ async function checkClub() {
 void restored.then(checkClub);
 setInterval(() => document.visibilityState === "visible" && void checkClub(), 10_000);
 document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && void checkClub());
+
+/** The extension has no owner: open its popup, where its e-mail-code sign-in is. */
+export async function openExtensionSignIn() {
+  await ext({ type: "open-popup" });
+  setTimeout(() => void checkClub(), 5_000);
+}
 
 /** The page needs a newer extension: it asks the Chrome Web Store now and reloads into it. */
 export async function askExtensionUpdate() {

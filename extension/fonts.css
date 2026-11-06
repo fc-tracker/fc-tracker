@@ -1,0 +1,12 @@
+/* FC-Tracker v2 type, bundled (SIL Open Font License, see fonts/LICENSE-*.txt). Own family names so
+   they never clash with a page's fonts when the badge loads them into EA's Web App. */
+@font-face {
+  font-family: "FCT Saira";
+  src: url("fonts/saira.woff2") format("woff2");
+  font-weight: 100 900;
+  font-stretch: 50% 125%;
+  font-display: swap;
+}
+@font-face { font-family: "FCT Barlow"; src: url("fonts/barlow-400.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "FCT Barlow"; src: url("fonts/barlow-600.woff2") format("woff2"); font-weight: 500 600; font-display: swap; }
+@font-face { font-family: "FCT Barlow"; src: url("fonts/barlow-700.woff2") format("woff2"); font-weight: 700; font-display: swap; }

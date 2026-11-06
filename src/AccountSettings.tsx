@@ -11,6 +11,7 @@ import {
   removeAvatar,
   revokeDevice,
   sendCode,
+  openSiteSignedIn,
   signOut,
   startAccount,
   syncNow,
@@ -20,10 +21,10 @@ import {
   verifyCode,
   type Device,
 } from "./account";
-import { api } from "./api";
 import { t, tError } from "./i18n";
 import { timeAgo as ago } from "./SyncConflict";
 import { Avatar } from "./OverlayMenu";
+import { Btn } from "./ui";
 import "./account.css";
 
 const NAME_RE = /^[\p{L}\p{N} _.\-]{3,16}$/u;
@@ -31,7 +32,7 @@ const NAME_RE = /^[\p{L}\p{N} _.\-]{3,16}$/u;
 export function Account() {
   const acc = useAccount();
   useEffect(() => void startAccount(), []);
-  if (acc.status === "loading") return <p className="ln-note">{t("account.loading")}</p>;
+  if (acc.status === "loading") return <p className="acct-note">{t("account.loading")}</p>;
   if (acc.status === "out") return <div className="acct"><SignIn /></div>;
   // the first sign-in made the account: the profile comes first (the name others see)
   if (acc.user && !acc.user.username) return <div className="acct"><Welcome /></div>;
@@ -53,14 +54,16 @@ export function ProfileDialog({ onClose }: { onClose: () => void }) {
   }, [onClose]);
   return (
     <div className="acct-modal" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <section className="acct-dialog" role="dialog" aria-modal="true" aria-label={t("menu.profile")}>
+      <section className="panel xl ring acct-dialog" role="dialog" aria-modal="true" aria-label={t("menu.profile")}>
+        <div className="frame-scroll acct-dialog-body">
         <div className="acct-dialog-head">
-          <h2>{t("menu.profile")}</h2>
+          <h2 className="h2">{t("menu.profile")}</h2>
           <button className="acct-x" onClick={onClose} aria-label={t("web.close")}>
             ×
           </button>
         </div>
         <Account />
+        </div>
       </section>
     </div>
   );
@@ -75,7 +78,7 @@ function Welcome() {
   const ok = NAME_RE.test(name.trim()) && (ea.trim() === "" || NAME_RE.test(ea.trim()));
   return (
     <form
-      className="ln-rows"
+      className="acct-rows"
       onSubmit={(e) => {
         e.preventDefault();
         setBusy(true);
@@ -85,31 +88,31 @@ function Welcome() {
           .finally(() => setBusy(false));
       }}
     >
-      <div className="ln-row">
+      <div className="acct-row">
         <div>
           <b>{t("profile.welcome")}</b>
           <p>{t("profile.welcomeText")}</p>
         </div>
       </div>
-      <div className="ln-row stack">
+      <div className="acct-row stack">
         <div>
           <b>{t("account.username")}</b>
           <p>{busy ? t("account.saving") : (error ?? t("account.usernameText"))}</p>
         </div>
-        <div className="ln-seg">
-          <input className="ln-input wide" value={name} maxLength={16} autoFocus aria-label={t("account.username")} onChange={(e) => setName(e.target.value)} />
+        <div className="acct-ctl">
+          <input className="acct-input wide" value={name} maxLength={16} autoFocus aria-label={t("account.username")} onChange={(e) => setName(e.target.value)} />
         </div>
       </div>
-      <div className="ln-row stack">
+      <div className="acct-row stack">
         <div>
           <b>{t("account.eaName")}</b>
           <p>{t("account.eaNameText")}</p>
         </div>
-        <div className="ln-seg">
-          <input className="ln-input wide" value={ea} maxLength={16} placeholder={t("account.optional")} aria-label={t("account.eaName")} onChange={(e) => setEa(e.target.value)} />
-          <button className="ln-btn small" type="submit" disabled={busy || !ok}>
+        <div className="acct-ctl">
+          <input className="acct-input wide" value={ea} maxLength={16} placeholder={t("account.optional")} aria-label={t("account.eaName")} onChange={(e) => setEa(e.target.value)} />
+          <Btn size="s" kind="primary" type="submit" disabled={busy || !ok}>
             {t("profile.create")}
-          </button>
+          </Btn>
         </div>
       </div>
     </form>
@@ -129,7 +132,7 @@ function PictureRow() {
       .finally(() => setBusy(false));
   };
   return (
-    <div className="ln-row">
+    <div className="acct-row">
       <div className="acct-pic">
         <Avatar size={48} />
         <div>
@@ -140,8 +143,8 @@ function PictureRow() {
           <p>{busy ? t("profile.uploading") : (note ?? (acc.user?.verified ? t("profile.verifiedText") : t("profile.pictureText")))}</p>
         </div>
       </div>
-      <div className="ln-seg">
-        <label className={`ln-btn small ${busy ? "ghost" : ""}`}>
+      <div className="acct-ctl">
+        <label className={`btn btn-secondary ring btn-s ${busy ? "is-busy" : ""}`}>
           {t("profile.choose")}
           <input
             type="file"
@@ -156,7 +159,7 @@ function PictureRow() {
           />
         </label>
         {acc.user?.avatar_url && (
-          <button className="ln-btn small ghost" disabled={busy} onClick={() => run(removeAvatar)}>
+          <button className="btn btn-quiet btn-s" disabled={busy} onClick={() => run(removeAvatar)}>
             {t("profile.removePicture")}
           </button>
         )}
@@ -168,7 +171,8 @@ function PictureRow() {
 function SignIn() {
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
-  const [sentTo, setSentTo] = useState<string | null>(null);
+  // dev preview: ?mock=account-code opens on the code step (account.ts ACCOUNT_MOCK)
+  const [sentTo, setSentTo] = useState<string | null>(() => (import.meta.env.DEV && new URLSearchParams(location.search).get("mock") === "account-code" ? "player@example.com" : null));
   const [busy, setBusy] = useState<"sending" | "checking" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [resendAt, setResendAt] = useState(0);
@@ -208,16 +212,16 @@ function SignIn() {
   const wait = Math.max(0, Math.ceil((resendAt - Date.now()) / 1000));
 
   return (
-    <div className="ln-rows">
-      <div className="ln-row">
+    <div className="acct-rows">
+      <div className="acct-row">
         <div>
           <b>{t("account.title")}</b>
-          <p>{t("account.pitch")}</p>
+          <p>{t("account.pitchFree")}</p>
         </div>
       </div>
       {!sentTo ? (
         <form
-          className="ln-row stack"
+          className="acct-row stack"
           onSubmit={(e) => {
             e.preventDefault();
             void send(email);
@@ -227,9 +231,9 @@ function SignIn() {
             <b>{t("account.email")}</b>
             <p>{busy === "sending" ? t("account.sending") : error ?? t("account.emailText")}</p>
           </div>
-          <div className="ln-seg">
+          <div className="acct-ctl">
             <input
-              className="ln-input wide"
+              className="acct-input wide"
               type="email"
               autoComplete="email"
               value={email}
@@ -237,14 +241,14 @@ function SignIn() {
               aria-label={t("account.email")}
               onChange={(e) => setEmail(e.target.value)}
             />
-            <button className="ln-btn small" type="submit" disabled={busy != null || !email.includes("@")}>
+            <Btn size="s" kind="primary" type="submit" disabled={busy != null || !email.includes("@")}>
               {t("account.sendCode")}
-            </button>
+            </Btn>
           </div>
         </form>
       ) : (
         <form
-          className="ln-row stack"
+          className="acct-row stack"
           onSubmit={(e) => {
             e.preventDefault();
             void check();
@@ -256,9 +260,9 @@ function SignIn() {
               {busy === "checking" ? t("account.checking") : busy === "sending" ? t("account.sending") : error ?? t("account.codeSent", { email: sentTo })}
             </p>
           </div>
-          <div className="ln-seg">
+          <div className="acct-ctl">
             <input
-              className="ln-input code"
+              className="acct-input code"
               inputMode="numeric"
               autoComplete="one-time-code"
               maxLength={7}
@@ -268,13 +272,13 @@ function SignIn() {
               autoFocus
               onChange={(e) => setCode(e.target.value.replace(/[^\d ]/g, ""))}
             />
-            <button className="ln-btn small" type="submit" disabled={busy != null || code.replace(/\D/g, "").length !== 6}>
+            <Btn size="s" kind="primary" type="submit" disabled={busy != null || code.replace(/\D/g, "").length !== 6}>
               {t("account.verify")}
-            </button>
-            <button className="ln-btn small ghost" type="button" disabled={busy != null || wait > 0} onClick={() => void send(sentTo)}>
+            </Btn>
+            <button className="btn btn-quiet btn-s" type="button" disabled={busy != null || wait > 0} onClick={() => void send(sentTo)}>
               {wait > 0 ? t("account.resendIn", { n: wait }) : t("account.resend")}
             </button>
-            <button className="ln-btn small ghost" type="button" disabled={busy != null} onClick={() => { setSentTo(null); setError(null); }}>
+            <button className="btn btn-quiet btn-s" type="button" disabled={busy != null} onClick={() => { setSentTo(null); setError(null); }}>
               {t("account.otherEmail")}
             </button>
           </div>
@@ -322,38 +326,38 @@ function SignedIn() {
     sync.phase === "syncing" ? t("account.syncing") : sync.phase === "conflict" ? t("account.conflict.pending") : sync.phase === "error" ? tError(sync.error) : sync.at ? t("account.synced", { when: ago(sync.at) }) : t("account.syncText");
 
   return (
-    <div className="ln-rows">
-      <div className="ln-row">
+    <div className="acct-rows">
+      <div className="acct-row">
         <div>
           <b>{t("menu.profile")}</b>
           <p>{user ? t("account.signedInAs", { email: user.email }) : t("account.loading")}</p>
         </div>
-        <button className="ln-btn small ghost" disabled={busy != null} onClick={() => { setBusy("out"); void signOut().finally(() => setBusy(null)); }}>
+        <button className="btn btn-quiet btn-s" disabled={busy != null} onClick={() => { setBusy("out"); void signOut().finally(() => setBusy(null)); }}>
           {busy === "out" ? t("account.signingOut") : t("account.signOut")}
         </button>
       </div>
 
-      <div className="ln-row">
+      <div className="acct-row">
         <div>
           <b>{t("acct.dashboard")}</b>
           <p>{t("acct.dashboardText")}</p>
         </div>
-        <button className="ln-btn small" onClick={() => api.openSite("/dashboard").catch(() => {})}>
+        <button className="btn btn-secondary ring btn-s" onClick={() => void openSiteSignedIn("/dashboard").catch(() => {})}>
           {t("acct.dashboard")} ↗
         </button>
       </div>
 
       <PictureRow />
 
-      <div className="ln-row">
+      <div className="acct-row">
         <div>
           <b>{t("account.username")}</b>
           <p>{saving === "name" ? t("account.saving") : !user?.username ? t("account.pickUsername") : (note ?? t("account.usernameText"))}</p>
         </div>
-        <div className="ln-seg">
-          <input className="ln-input" value={name} maxLength={16} aria-label={t("account.username")} onChange={(e) => setName(e.target.value)} />
+        <div className="acct-ctl">
+          <input className="acct-input" value={name} maxLength={16} aria-label={t("account.username")} onChange={(e) => setName(e.target.value)} />
           <button
-            className="ln-btn small"
+            className="btn btn-secondary ring btn-s"
             disabled={saving != null || !NAME_RE.test(name.trim()) || name.trim() === user?.username}
             onClick={() => void save("name", { username: name.trim() })}
           >
@@ -362,15 +366,15 @@ function SignedIn() {
         </div>
       </div>
 
-      <div className="ln-row">
+      <div className="acct-row">
         <div>
           <b>{t("account.eaName")}</b>
           <p>{saving === "ea" ? t("account.saving") : t("account.eaNameText")}</p>
         </div>
-        <div className="ln-seg">
-          <input className="ln-input" value={ea} maxLength={16} placeholder={t("account.optional")} aria-label={t("account.eaName")} onChange={(e) => setEa(e.target.value)} />
+        <div className="acct-ctl">
+          <input className="acct-input" value={ea} maxLength={16} placeholder={t("account.optional")} aria-label={t("account.eaName")} onChange={(e) => setEa(e.target.value)} />
           <button
-            className="ln-btn small"
+            className="btn btn-secondary ring btn-s"
             disabled={saving != null || (ea.trim() !== "" && !NAME_RE.test(ea.trim())) || ea.trim() === (user?.ea_name ?? "")}
             onClick={() => void save("ea", { ea_name: ea.trim() })}
           >
@@ -379,43 +383,43 @@ function SignedIn() {
         </div>
       </div>
 
-      <div className="ln-row">
+      <div className="acct-row">
         <div>
           <b>{t("account.shownAs")}</b>
           <p>{user?.display_name ?? t("account.noName")}</p>
         </div>
-        <div className="ln-seg" role="group" aria-label={t("account.shownAs")}>
-          <button className={`ln-btn small ${user?.show_ea ? "ghost" : ""}`} aria-pressed={!user?.show_ea} disabled={saving != null} onClick={() => void save("ea", { show_ea: false })}>
-            {t("account.showUsername")}
+        <div className="acct-ctl" role="group" aria-label={t("account.shownAs")}>
+          <button className={`seg ring ${user?.show_ea ? "" : "is-on"}`} aria-pressed={!user?.show_ea} disabled={saving != null} onClick={() => void save("ea", { show_ea: false })}>
+            <span>{t("account.showUsername")}</span>
           </button>
           <button
-            className={`ln-btn small ${user?.show_ea ? "" : "ghost"}`}
+            className={`seg ring ${user?.show_ea ? "is-on" : ""}`}
             aria-pressed={!!user?.show_ea}
             disabled={saving != null || !user?.ea_name}
             onClick={() => void save("ea", { show_ea: true })}
           >
-            {t("account.showEa")}
+            <span>{t("account.showEa")}</span>
           </button>
         </div>
       </div>
 
-      <div className="ln-row">
+      <div className="acct-row">
         <div>
           <b>{t("account.sync")}</b>
           <p aria-live="polite">{syncText}</p>
         </div>
-        <button className="ln-btn small ghost" disabled={sync.phase === "syncing"} onClick={() => void syncNow()}>
+        <button className="btn btn-quiet btn-s" disabled={sync.phase === "syncing"} onClick={() => void syncNow()}>
           {t("account.syncNow")}
         </button>
       </div>
 
-      <div className="ln-row">
+      <div className="acct-row">
         <div>
           <b>{t("account.devices")}</b>
           {list == null ? (
             <p>{t("account.loadingDevices")}</p>
           ) : (
-            <ul className="ln-list">
+            <ul className="acct-list">
               {list.map((d) => (
                 <li key={d.id}>
                   <span>
@@ -423,7 +427,7 @@ function SignedIn() {
                     {d.this ? ` · ${t("account.thisDevice")}` : ` · ${t("account.lastSeen", { when: new Date(d.last_seen).toLocaleDateString() })}`}
                   </span>
                   {!d.this && (
-                    <button className="ln-btn small ghost" onClick={() => void revokeDevice(d.id).then(refreshDevices)}>
+                    <button className="btn btn-quiet btn-s" onClick={() => void revokeDevice(d.id).then(refreshDevices)}>
                       {t("account.signOutDevice")}
                     </button>
                   )}
@@ -434,17 +438,17 @@ function SignedIn() {
         </div>
       </div>
 
-      <div className="ln-row">
+      <div className="acct-row">
         <div>
           <b>{t("account.yourData")}</b>
           <p>{busy === "export" ? t("account.exporting") : busy === "delete" ? t("account.deleting") : confirmDelete ? t("account.deleteConfirm") : t("account.yourDataText")}</p>
         </div>
-        <div className="ln-seg">
-          <button className="ln-btn small ghost" disabled={busy != null} onClick={() => { setBusy("export"); void exportData().catch((e) => setNote(tError(e))).finally(() => setBusy(null)); }}>
+        <div className="acct-ctl">
+          <button className="btn btn-quiet btn-s" disabled={busy != null} onClick={() => { setBusy("export"); void exportData().catch((e) => setNote(tError(e))).finally(() => setBusy(null)); }}>
             {t("account.export")}
           </button>
           <button
-            className={`ln-btn small ${confirmDelete ? "danger" : "ghost"}`}
+            className={`btn btn-s ${confirmDelete ? "btn-danger" : "btn-quiet"}`}
             disabled={busy != null}
             onClick={() => {
               if (!confirmDelete) return setConfirmDelete(true);

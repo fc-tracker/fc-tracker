@@ -3,37 +3,25 @@ const msg = fctI18n.t;
 const send = (message) =>
   new Promise((resolve) => chrome.runtime.sendMessage(message, (res) => resolve(chrome.runtime.lastError ? null : res)));
 
+// The last theme, before the first paint (the app's theme arrives with the ping)
+try {
+  document.documentElement.dataset.theme = localStorage.getItem("fct.theme") ?? "glass";
+} catch {}
+
+// Opened as a tab (the badge's "Sign in" when Chrome can't open the popup itself)
+if (new URLSearchParams(location.search).has("tab")) document.documentElement.classList.add("tab");
+
 function translatePage(locale) {
   document.documentElement.lang = locale;
   document.querySelectorAll("[data-i18n]").forEach((el) => (el.textContent = msg(el.dataset.i18n)));
+  document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => (el.placeholder = msg(el.dataset.i18nPlaceholder)));
 }
 
-async function refresh() {
-  // Ping first: it tells the background which language the app uses.
-  const res = await send({ type: "ping" });
-  translatePage(await fctI18n.load());
-
-  const running = res && res.app === "fc-tracker";
-  const authorized = running && res.authorized;
-  $("dot").classList.toggle("on", !!authorized);
-  $("status").textContent = msg(!res ? "bgNoResponse" : !running ? "appNotRunning" : authorized ? "connected" : "notConnected");
-  // Technical detail helps debugging connection problems.
-  // "app not running" says it all; only a real answer with an error status is worth showing
-  $("error").textContent = res && !running && res.status ? res.detail ?? res.error ?? `HTTP ${res.status}` : "";
-  $("pair").hidden = !running || authorized;
-  $("unpairBtn").hidden = !authorized;
-  $("openAppBtn").hidden = !!running;
-  // Never seen the app on this PC (the extension came first): get it instead of opening it.
-  const status = await send({ type: "status" });
-  appSeen = !!running || !!status?.appSeen;
-  appFailed = !running && !!status?.openFailed;
-  $("openAppBtn").textContent = msg(appSeen && !appFailed ? "openApp" : "getApp");
-  if (appFailed) $("error").textContent = msg("openFailed");
-  const syncedAt = Number(res?.synced_at ?? 0);
-  $("lastSync").hidden = !authorized || !syncedAt;
-  if (syncedAt) $("lastSync").textContent = msg("lastSync", [ago(syncedAt)]);
-  if (running && !authorized) $("code").focus();
-  await showUpdate();
+/** An API error code as text (authError_<code>, else the generic one). */
+function errorText(code) {
+  const key = `authError_${code}`;
+  const t = msg(key);
+  return t === key ? msg("error") : t;
 }
 
 /** "3 min ago" in the app's language (Intl, no extra strings). */
@@ -45,24 +33,112 @@ function ago(ms) {
   return rtf.format(-Math.round(minutes / 1440), "day");
 }
 
+/** A named wait (every wait visible): the hero says what is happening, with the busy bar. */
+function busy(text) {
+  $("busy").hidden = !text;
+  if (text) $("sub").textContent = text;
+}
+
+let email = "";
+let codeStep = false;
+let appSeen = true;
+let appFailed = false;
+
+async function refresh() {
+  // Ping first: it tells the background the app's language and theme.
+  const res = await send({ type: "ping" });
+  const locale = await fctI18n.load();
+  const [status, app] = await Promise.all([send({ type: "status" }), send({ type: "app-account" })]);
+  translatePage(locale);
+  const theme = status?.theme ?? "glass";
+  document.documentElement.dataset.theme = theme;
+  try {
+    localStorage.setItem("fct.theme", theme);
+  } catch {}
+  requestAnimationFrame(() => document.documentElement.classList.add("ready"));
+
+  const running = res?.app === "fc-tracker";
+  const authorized = running && !!res.authorized;
+  // a saved pairing the running app doesn't know any more (reinstalled, unpaired there) is no owner
+  const paired = !!status?.paired && (!running || authorized);
+  const signedIn = !!status?.email;
+  const owner = paired ? "app" : signedIn ? "account" : null;
+  const appAccount = app?.appAccount ?? null;
+
+  // ---- hero: who gets the club sync
+  $("dot").className = `dot ${owner ? "done" : "warn"}`;
+  if (owner === "app" && running) {
+    $("title").textContent = msg("connected");
+    $("sub").textContent = !appAccount
+      ? msg("accountAppLocal")
+      : appAccount.signedIn && appAccount.email
+        ? msg("accountViaApp", [appAccount.email])
+        : msg("accountAppSignedOut");
+  } else if (owner === "app") {
+    $("title").textContent = msg("stateAppClosed");
+    $("sub").textContent = msg("subAppClosed");
+  } else if (owner === "account") {
+    $("title").textContent = msg("stateAccount");
+    $("sub").textContent = status.pushPending ? msg("subAccountPending") : msg("subAccount");
+  } else {
+    $("title").textContent = msg("stateNone");
+    $("sub").textContent = msg(running ? "subNoneApp" : "subNone");
+  }
+  const syncedAt = Math.max(Number(authorized ? res.synced_at ?? 0 : 0), Number(status?.lastSyncAt ?? 0));
+  $("lastSync").hidden = !owner || !syncedAt;
+  if (syncedAt) $("lastSync").textContent = msg("lastSync", [ago(syncedAt)]);
+
+  // ---- pairing (the app runs here but isn't connected)
+  $("pair").hidden = !running || authorized;
+
+  // ---- account
+  // paired: the hero already says whose account – the panel only when this extension is signed in too
+  $("acct").hidden = owner === "app" && !signedIn;
+  $("acctApp").hidden = owner !== "app";
+  $("acctAppText").textContent = $("sub").textContent;
+  if (owner === "app") $("acctAppText").textContent = !appAccount ? msg("accountAppLocal") : appAccount.signedIn ? msg("accountAppKeeps") : msg("accountAppSignedOut");
+  $("acctChip").hidden = !owner;
+  $("acctChip").className = `chip ${owner ? "done" : ""}`;
+  $("acctChip").textContent = owner === "app" ? msg("chipViaApp") : owner === "account" ? msg("chipSignedIn") : "";
+  $("acctIn").hidden = !signedIn;
+  $("acctEmail").textContent = status?.email ?? "";
+  $("acctPushed").hidden = !signedIn || !status?.pushedAt || owner !== "account";
+  if (status?.pushedAt) $("acctPushed").textContent = msg("accountPushed", [ago(status.pushedAt)]);
+  // the sign-in form only when nobody owns the sync (paired: the app's account is used)
+  const showForm = !owner;
+  $("acctEmailStep").hidden = !showForm || codeStep;
+  $("acctCodeStep").hidden = !showForm || !codeStep;
+  // one primary per view: the pairing code when the app runs here, else the sign-in
+  const primary = $("pair").hidden ? "btn-primary" : "btn-secondary ring";
+  $("sendBtn").className = `btn ${primary}`;
+  $("verifyBtn").className = `btn ${primary}`;
+
+  // ---- app buttons
+  $("unpairBtn").hidden = !authorized;
+  $("openAppBtn").hidden = running;
+  appSeen = running || !!status?.appSeen;
+  appFailed = !running && !!status?.openFailed;
+  $("openAppBtn").textContent = msg(appSeen && !appFailed ? "openApp" : "getApp");
+  $("error").textContent = appFailed ? msg("openFailed") : "";
+  // Technical detail helps debugging connection problems: only a real answer with an error status
+  if (res && !running && res.status) $("error").textContent = res.detail ?? res.error ?? `HTTP ${res.status}`;
+  if (!res) $("error").textContent = msg("bgNoResponse");
+
+  if (!$("pair").hidden) $("code").focus();
+  else if (showForm && !codeStep) $("email").focus();
+  else if (showForm) $("acctCode").focus();
+  await showUpdate();
+}
+
 // ---------- updates: is a newer version out, and the button that gets it ----------
 let updateInfo = null;
 async function showUpdate() {
   updateInfo = await send({ type: "update-info" });
   if (!updateInfo) return;
-  $("update").classList.toggle("new", !!updateInfo.outdated);
-  $("updateText").innerHTML = "";
-  const line = document.createElement("span");
-  line.textContent = updateInfo.outdated ? msg("updateAvailable", [updateInfo.latest]) : msg("upToDate");
-  if (updateInfo.outdated) {
-    const b = document.createElement("b");
-    b.textContent = line.textContent;
-    $("updateText").append(b);
-  } else {
-    $("updateText").append(line);
-  }
+  $("updateText").textContent = updateInfo.outdated ? msg("updateAvailable", [updateInfo.latest]) : msg("upToDate");
+  $("updateText").className = updateInfo.outdated ? "" : "small";
   $("updateBtn").textContent = msg(updateInfo.outdated ? "updateNow" : "checkUpdates");
-  $("updateBtn").className = updateInfo.outdated ? "update-btn" : "secondary";
+  $("updateBtn").className = updateInfo.outdated ? "btn btn-primary btn-s" : "btn btn-secondary btn-s ring";
 }
 
 $("updateBtn").onclick = async () => {
@@ -85,8 +161,6 @@ $("updateBtn").onclick = async () => {
 };
 
 const DOWNLOAD = "https://www.fc-tracker.com/download";
-let appSeen = true;
-let appFailed = false;
 // The background opens the app and watches for it (the popup closes when a tab opens); if it
 // doesn't answer, the next popup offers the download instead.
 $("openAppBtn").onclick = () => (!appSeen || appFailed ? chrome.tabs.create({ url: DOWNLOAD }) : send({ type: "openApp" }));
@@ -107,6 +181,60 @@ $("code").addEventListener("keydown", (e) => e.key === "Enter" && $("pairBtn").c
 
 $("unpairBtn").onclick = async () => {
   await send({ type: "unpair" });
+  refresh();
+};
+
+// ---------- sign-in without the app: e-mail → 6-digit code (no password) ----------
+$("acctEmailStep").onsubmit = async (e) => {
+  e.preventDefault();
+  email = $("email").value.trim();
+  if (!email) return $("email").focus();
+  $("error").textContent = "";
+  $("sendBtn").disabled = true;
+  busy(msg("sendingCode"));
+  const res = await send({ type: "auth-start", email });
+  busy(null);
+  $("sendBtn").disabled = false;
+  if (!res?.ok) {
+    await refresh();
+    $("error").textContent = errorText(res?.error);
+    return;
+  }
+  codeStep = true;
+  $("codeSent").textContent = msg("codeSentTo", [email]);
+  await refresh();
+};
+
+$("acctCodeStep").onsubmit = async (e) => {
+  e.preventDefault();
+  const code = $("acctCode").value.replace(/\D/g, "");
+  if (code.length !== 6) return $("acctCode").focus();
+  $("error").textContent = "";
+  $("verifyBtn").disabled = true;
+  busy(msg("verifying"));
+  const res = await send({ type: "auth-verify", email, code });
+  busy(null);
+  $("verifyBtn").disabled = false;
+  if (!res?.ok) {
+    await refresh();
+    $("error").textContent = errorText(res?.error);
+    return;
+  }
+  codeStep = false;
+  $("acctCode").value = "";
+  await refresh();
+};
+
+$("otherEmailBtn").onclick = () => {
+  codeStep = false;
+  $("acctCode").value = "";
+  refresh();
+};
+
+$("signOutBtn").onclick = async () => {
+  busy(msg("signingOut"));
+  await send({ type: "sign-out" });
+  busy(null);
   refresh();
 };
 

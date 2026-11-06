@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "FC-Tracker",
-  "version": "0.13.11",
+  "version": "0.14.0",
   "description": "__MSG_extDescription__",
   "default_locale": "en",
   "icons": {
@@ -45,6 +45,7 @@
       ],
       "js": [
         "i18n.js",
+        "badge-style.js",
         "relay.js"
       ],
       "run_at": "document_start"
@@ -52,7 +53,9 @@
     {
       "matches": [
         "https://www.fc-tracker.com/web*",
-        "https://fc-tracker.com/web*"
+        "https://fc-tracker.com/web*",
+        "https://www.fc-tracker.com/dashboard*",
+        "https://fc-tracker.com/dashboard*"
       ],
       "js": [
         "announce.js"
@@ -63,7 +66,8 @@
   "externally_connectable": {
     "matches": [
       "https://www.fc-tracker.com/*",
-      "https://fc-tracker.com/*"
+      "https://fc-tracker.com/*",
+      "https://dashboard.fc-tracker.com/*"
     ]
   }
 }

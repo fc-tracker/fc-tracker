@@ -1,0 +1,250 @@
+/* FC-Tracker brand v2 for the extension – a plain-CSS copy of design/d-draft-2/tokens.css and the
+   parts of components.css the popup and the in-page badge use (cut corners, ring, buttons, chips,
+   fields, toast). Scoped to `.fct` (the popup's <html>, the badge's shadow root) so nothing leaks
+   into EA's page. The theme is `data-theme` on that element: glass (default) / dark / light –
+   the paired app's theme when it says one (bridge protocol 2). No colours outside the theme blocks. */
+
+.fct {
+  /* brand (identical in every theme) */
+  --red: #EF4359;
+  --red-press: #D8324B;
+  --mint: #2FD6A8;
+  --amber: #F5B03B;
+
+  --f-display: "FCT Saira", "Saira", "FCT Barlow", system-ui, sans-serif;
+  --f-num: "FCT Saira", "Saira", "FCT Barlow", system-ui, sans-serif;
+  --f-body: "FCT Barlow", "Barlow", system-ui, sans-serif;
+  --display-stretch: 87.5%;
+  --num-stretch: 75%;
+  --fs-10: 10px; --fs-11: 11px; --fs-12: 12px; --fs-13: 13px; --fs-14: 14px; --fs-15: 15px;
+  --fs-16: 16px; --fs-18: 18px; --fs-20: 20px; --fs-24: 24px; --fs-28: 28px;
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 20px; --s-6: 24px;
+  --cut-xs: 3px; --cut-s: 5px; --cut-m: 8px; --cut-l: 20px;
+  --ease: cubic-bezier(.2, .7, .2, 1);
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+  --t-fast: 120ms; --t-med: 220ms; --t-slow: 420ms;
+}
+
+/* ========================================================= DARK GLASS (default, the favourite) */
+.fct, .fct[data-theme="glass"] {
+  color-scheme: dark;
+  --bg: #0D0C10;
+  --surface: rgba(18, 16, 22, .2);
+  --surface-hero: rgba(20, 18, 24, .34);
+  --surface-dense: rgba(18, 17, 23, .44);
+  --surface-2: rgba(255, 255, 255, .045);
+  --fill: rgba(255, 255, 255, .08);
+  --fill-hover: rgba(255, 255, 255, .12);
+  --line: rgba(255, 255, 255, .2);
+  --line-strong: rgba(255, 255, 255, .22);
+  --active-bg: rgba(255, 255, 255, .14);
+  --active-fg: #F4F3F6;
+  --text: #F4F3F6;
+  --text-2: rgba(244, 243, 246, .72);
+  --text-3: rgba(244, 243, 246, .6);
+  --accent: var(--red);
+  --accent-text: #FF6B7D;
+  --on-accent: #FFFFFF;
+  --done: var(--mint);
+  --done-text: #5BE3BE;
+  --done-wash: rgba(47, 214, 168, .13);
+  --warn: var(--amber);
+  --warn-text: #FFC766;
+  --warn-wash: rgba(245, 176, 59, .14);
+  --blur: blur(26px) saturate(140%);
+  --text-shadow: 0 1px 0 rgba(0, 0, 0, .55);
+  /* the badge floats over EA's page: the dense tier keeps its text readable */
+  --float: rgba(18, 17, 23, .62);
+}
+
+/* ========================================================= DARK (solid) */
+.fct[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #110D10;
+  --surface: #1A1619;
+  --surface-hero: #241E22;
+  --surface-dense: #1A1619;
+  --surface-2: #211C20;
+  --fill: #2A2428;
+  --fill-hover: #2D2C34;
+  --line: #2E282C;
+  --line-strong: #3E373C;
+  --active-bg: #322B30;
+  --active-fg: #F2F1F4;
+  --text: #F2F1F4;
+  --text-2: #ADABB4;
+  --text-3: #908E97;
+  --accent: var(--red);
+  --accent-text: #FF6B7D;
+  --on-accent: #FFFFFF;
+  --done: var(--mint);
+  --done-text: #4FDDB6;
+  --done-wash: #11271F;
+  --warn: var(--amber);
+  --warn-text: #FFC35C;
+  --warn-wash: #2B2112;
+  --blur: none;
+  --text-shadow: none;
+  --float: #1A1619;
+}
+
+/* ========================================================= LIGHT */
+.fct[data-theme="light"] {
+  color-scheme: light;
+  --bg: #F3F1EC;
+  --surface: #FFFFFF;
+  --surface-hero: #FFFFFF;
+  --surface-dense: #FFFFFF;
+  --surface-2: #F9F7F3;
+  --fill: #EEEAE2;
+  --fill-hover: #E5E3DF;
+  --line: #E2DCD1;
+  --line-strong: #CEC6B8;
+  --active-bg: #15120F;
+  --active-fg: #FFFFFF;
+  --text: #15120F;
+  --text-2: #4F4A44;
+  --text-3: #6B655D;
+  --accent: var(--red);
+  --accent-text: #C8233C;
+  --on-accent: #FFFFFF;
+  --done: #1FBF92;
+  --done-text: #0E8A69;
+  --done-wash: #E3F7F0;
+  --warn: var(--amber);
+  --warn-text: #8F5B00;
+  --warn-wash: #FDF2DD;
+  --blur: none;
+  --text-shadow: none;
+  --float: #FFFFFF;
+}
+
+/* ------------------------------------------------------------- base */
+.fct *, .fct *::before, .fct *::after { box-sizing: border-box; }
+.fct {
+  font-family: var(--f-body);
+  font-weight: 500;
+  font-size: var(--fs-14);
+  line-height: 1.45;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  text-shadow: var(--text-shadow);
+}
+.fct p, .fct h1, .fct h2 { margin: 0; }
+.fct button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-shadow: inherit; }
+.fct [hidden] { display: none !important; }
+
+/* ------------------------------------------------------------- cut corner + ring */
+.fct .cut, .fct .panel, .fct .btn, .fct .chip, .fct .field, .fct .toast {
+  --cut: var(--cut-m);
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+}
+.fct .ring { position: relative; --bw: 1px; --ring: var(--line); }
+.fct .ring::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 4;
+  --bwd: calc(var(--bw) * .909);
+  background: var(--ring);
+  clip-path: polygon(evenodd,
+    var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut), var(--cut) 0,
+    calc(var(--cut) + var(--bwd)) var(--bw), calc(100% - var(--bw)) var(--bw),
+    calc(100% - var(--bw)) calc(100% - var(--cut) - var(--bwd)),
+    calc(100% - var(--cut) - var(--bwd)) calc(100% - var(--bw)),
+    var(--bw) calc(100% - var(--bw)), var(--bw) calc(var(--cut) + var(--bwd)),
+    calc(var(--cut) + var(--bwd)) var(--bw));
+}
+
+/* ------------------------------------------------------------- type */
+.fct .brand, .fct .title, .fct .eyebrow, .fct .btn, .fct .chip, .fct .label {
+  font-family: var(--f-display); font-stretch: var(--display-stretch);
+}
+.fct .brand { font-weight: 800; font-size: var(--fs-18); letter-spacing: .01em; text-transform: uppercase; line-height: 1; }
+.fct .title { font-stretch: 75%; font-weight: 800; font-size: var(--fs-28); line-height: .9; letter-spacing: -.015em; text-transform: uppercase; }
+.fct .eyebrow { font-size: var(--fs-11); font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); line-height: 1.2; }
+.fct .muted { color: var(--text-2); }
+.fct .small { font-size: var(--fs-12); color: var(--text-3); }
+.fct .num { font-family: var(--f-num); font-stretch: var(--num-stretch); font-variant-numeric: tabular-nums lining-nums; }
+
+/* ------------------------------------------------------------- panels */
+.fct .panel {
+  --cut: var(--cut-l);
+  --ring: var(--line);
+  position: relative;
+  background: var(--surface);
+  -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+}
+.fct .panel.m { --cut: var(--cut-m); }
+.fct .hr { height: 1px; background: var(--line); border: 0; margin: 0; }
+
+/* ------------------------------------------------------------- buttons */
+.fct .btn {
+  --cut: var(--cut-m);
+  position: relative;
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2);
+  height: 40px; padding: 0 var(--s-5);
+  font-weight: 650; font-size: var(--fs-15); letter-spacing: .02em; line-height: 1;
+  white-space: nowrap; cursor: pointer; text-decoration: none;
+}
+/* hover transitions only once the theme is set (no fade from the default theme at load) */
+.fct.ready .btn { transition: background var(--t-fast) var(--ease), color var(--t-fast); }
+.fct .btn-primary { background: var(--accent); color: var(--on-accent); text-shadow: none; }
+.fct .btn-primary:hover { background: var(--red-press); }
+.fct .btn-secondary { background: var(--surface); color: var(--text); --ring: var(--line-strong); }
+.fct .btn-secondary:hover { background: var(--fill); }
+.fct .btn-quiet { background: transparent; color: var(--text-2); }
+.fct .btn-quiet:hover { background: var(--fill); color: var(--text); }
+.fct .btn-s { height: 32px; padding: 0 var(--s-3); font-size: var(--fs-13); --cut: var(--cut-s); }
+.fct .btn:disabled { background: var(--fill); color: var(--text-3); cursor: default; }
+.fct .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ------------------------------------------------------------- chips, state marks */
+.fct .chip {
+  --cut: var(--cut-s);
+  position: relative;
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 22px; padding: 0 8px;
+  font-size: var(--fs-11); font-weight: 650; letter-spacing: .08em; text-transform: uppercase; line-height: 1;
+  background: var(--fill); color: var(--text-2); white-space: nowrap;
+}
+.fct .chip.done { background: var(--done-wash); color: var(--done-text); }
+.fct .chip.warn { background: var(--warn-wash); color: var(--warn-text); }
+.fct .chip.accent { background: var(--accent); color: var(--on-accent); text-shadow: none; }
+/* the diamond: the brand's state mark (never a round dot) */
+.fct .dot { width: 8px; height: 8px; display: inline-block; flex: none; transform: rotate(45deg); background: var(--text-3); }
+.fct .dot.done { background: var(--done); }
+.fct .dot.warn { background: var(--warn); }
+.fct .dot.accent { background: var(--accent); }
+
+/* ------------------------------------------------------------- fields */
+.fct .field {
+  --cut: var(--cut-s); --ring: var(--line-strong);
+  position: relative; display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px;
+  background: var(--surface-2); color: var(--text);
+}
+.fct .field:focus-within { --ring: var(--accent); }
+.fct .field input { all: unset; flex: 1; min-width: 0; font-family: var(--f-body); font-weight: 600; font-size: var(--fs-15); color: var(--text); }
+.fct .field input::placeholder { color: var(--text-3); }
+.fct .field.code input {
+  font-family: var(--f-num); font-stretch: var(--num-stretch); font-variant-numeric: tabular-nums;
+  font-weight: 700; font-size: var(--fs-24); letter-spacing: .3em; text-align: center;
+}
+
+/* ------------------------------------------------------------- toast (the in-page badge) */
+.fct .toast {
+  --cut: var(--cut-m); --ring: var(--line);
+  position: relative; display: flex; align-items: center; gap: var(--s-3);
+  padding: 10px 12px 10px 0;
+  background: var(--float);
+  -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+}
+.fct .toast .edge { width: 3px; align-self: stretch; background: var(--accent); flex: none; }
+.fct .toast.done .edge { background: var(--done); }
+.fct .toast.warn .edge { background: var(--warn); }
+
+/* busy: a slim moving bar (every wait visible); still under reduced motion */
+.fct .busy { position: relative; height: 2px; overflow: hidden; background: var(--fill); }
+.fct .busy::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 30%; background: var(--accent); animation: fct-busy 1.1s var(--ease) infinite; }
+@keyframes fct-busy { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
+@media (prefers-reduced-motion: reduce) {
+  .fct .busy::before { animation: none; width: 100%; opacity: .5; }
+  .fct * { transition: none !important; }
+}

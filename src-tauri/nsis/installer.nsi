@@ -147,6 +147,8 @@ VIAddVersionKey "ProductVersion" "${VERSION}"
 ; Enable header images for installer and uninstaller pages when either image is configured.
 !if "${HEADERIMAGE}" != ""
   !define MUI_HEADERIMAGE
+  ; FC-Tracker v2: the mark sits on the right of the header, the page title stays left
+  !define MUI_HEADERIMAGE_RIGHT
 !else if "${UNINSTALLERHEADERIMAGE}" != ""
   !define MUI_HEADERIMAGE
 !endif
@@ -176,6 +178,8 @@ VIAddVersionKey "ProductVersion" "${VERSION}"
 ; Installer pages, must be ordered as they appear
 ; 1. Welcome Page
 !define MUI_PAGE_CUSTOMFUNCTION_PRE SkipIfPassive
+; FC-Tracker v2: the welcome says what it does and what it never does (12-installer-update)
+!define MUI_WELCOMEPAGE_TEXT "$(fctWelcome)"
 !insertmacro MUI_PAGE_WELCOME
 
 ; 2. License Page (if defined)
@@ -519,6 +523,12 @@ LangString fctAutostart ${LANG_DANISH} "Start FC-Tracker sammen med Windows (anb
 LangString fctAutostart ${LANG_GERMAN} "FC-Tracker mit Windows starten (empfohlen)"
 LangString fctAutostart ${LANG_SPANISH} "Iniciar FC-Tracker con Windows (recomendado)"
 LangString fctAutostart ${LANG_FRENCH} "Démarrer FC-Tracker avec Windows (recommandé)"
+; FC-Tracker v2: the welcome page
+LangString fctWelcome ${LANG_ENGLISH} "This installs FC-Tracker ${VERSION} for EA SPORTS FC 27 Ultimate Team.$\r$\n$\r$\nFC-Tracker reads the screen you see. It never reads the game's memory, injects anything or touches its traffic.$\r$\n$\r$\nClick Next to continue."
+LangString fctWelcome ${LANG_DANISH} "Dette installerer FC-Tracker ${VERSION} til EA SPORTS FC 27 Ultimate Team.$\r$\n$\r$\nFC-Tracker læser den skærm, du ser. Den læser aldrig spillets hukommelse, sprøjter intet ind og rører ikke dets trafik.$\r$\n$\r$\nKlik på Næste for at fortsætte."
+LangString fctWelcome ${LANG_GERMAN} "Hiermit wird FC-Tracker ${VERSION} für EA SPORTS FC 27 Ultimate Team installiert.$\r$\n$\r$\nFC-Tracker liest den Bildschirm, den du siehst. Es liest nie den Speicher des Spiels, schleust nichts ein und greift nicht in seinen Datenverkehr ein.$\r$\n$\r$\nKlicke auf Weiter, um fortzufahren."
+LangString fctWelcome ${LANG_SPANISH} "Esto instala FC-Tracker ${VERSION} para EA SPORTS FC 27 Ultimate Team.$\r$\n$\r$\nFC-Tracker lee la pantalla que ves. Nunca lee la memoria del juego, no inyecta nada ni toca su tráfico.$\r$\n$\r$\nHaz clic en Siguiente para continuar."
+LangString fctWelcome ${LANG_FRENCH} "Ceci installe FC-Tracker ${VERSION} pour EA SPORTS FC 27 Ultimate Team.$\r$\n$\r$\nFC-Tracker lit l'écran que vous voyez. Il ne lit jamais la mémoire du jeu, n'injecte rien et ne touche pas à son trafic.$\r$\n$\r$\nCliquez sur Suivant pour continuer."
 
 Function .onInit
   ${GetOptions} $CMDLINE "/P" $PassiveMode
@@ -800,6 +810,12 @@ Function .onInstSuccess
     ${GetOptions} $CMDLINE "/R" $R0
     ${IfNot} ${Errors}
       ${GetOptions} $CMDLINE "/ARGS" $R0
+      ; FC-Tracker: after an in-app update the launcher must open. The updater hands on the old
+      ; run's args – `--autostart` when Windows started it – and the new version started hidden in
+      ; the tray. An update starts it with `--updated` instead (src-tauri/src/updates.rs).
+      ${If} $UpdateMode = 1
+        StrCpy $R0 "--updated"
+      ${EndIf}
       nsis_tauri_utils::RunAsUser "$INSTDIR\${MAINBINARYNAME}.exe" "$R0"
     ${EndIf}
   ${EndIf}

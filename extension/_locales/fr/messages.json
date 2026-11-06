@@ -201,5 +201,161 @@
         "content": "$1"
       }
     }
+  },
+  "v2_extension": {
+    "message": "—",
+    "description": "Marker: the keys after this one belong to the v2-extension session (brand v2, account, no sync without an owner)."
+  },
+  "popClubSync": {
+    "message": "Synchro du club"
+  },
+  "popApp": {
+    "message": "L'app"
+  },
+  "popAccount": {
+    "message": "Compte"
+  },
+  "stateAppClosed": {
+    "message": "App fermée"
+  },
+  "subAppClosed": {
+    "message": "Ta synchro est gardée ici et transmise à l'app à sa prochaine ouverture."
+  },
+  "stateAccount": {
+    "message": "Connecté"
+  },
+  "subAccount": {
+    "message": "Ouvre la Web App : ton club se synchronise tout seul sur ton compte FC-Tracker."
+  },
+  "subAccountPending": {
+    "message": "Ta dernière synchro attend le compte : elle est renvoyée dans la minute."
+  },
+  "stateNone": {
+    "message": "Pas encore de synchro"
+  },
+  "subNone": {
+    "message": "Connecte-toi ci-dessous ou installe l'app : ton club se synchronisera tout seul."
+  },
+  "subNoneApp": {
+    "message": "Connecte l'app ou connecte-toi : ton club se synchronisera tout seul."
+  },
+  "accountViaApp": {
+    "message": "L'app garde ton club sur $EMAIL$.",
+    "placeholders": {
+      "email": {
+        "content": "$1"
+      }
+    }
+  },
+  "accountAppKeeps": {
+    "message": "Ton club va à l'app, qui le garde sur son compte."
+  },
+  "accountAppSignedOut": {
+    "message": "L'app n'est pas connectée : ton club reste sur ce PC. Connecte-toi dans l'app pour le garder sur ton compte."
+  },
+  "accountAppLocal": {
+    "message": "Ton club va à l'app FC-Tracker sur ce PC."
+  },
+  "chipViaApp": {
+    "message": "Via l'app"
+  },
+  "chipSignedIn": {
+    "message": "Connecté"
+  },
+  "accountSignedInAs": {
+    "message": "Connecté en tant que"
+  },
+  "accountPushed": {
+    "message": "Enregistré sur ton compte $WHEN$",
+    "placeholders": {
+      "when": {
+        "content": "$1"
+      }
+    }
+  },
+  "signInWhy": {
+    "message": "Pas d'app sur ce PC ? Connecte-toi avec ton e-mail et ta synchro est gardée sur ton compte FC-Tracker. Pas de mot de passe : on t'envoie un code."
+  },
+  "emailPlaceholder": {
+    "message": "ton@e-mail.com"
+  },
+  "sendCode": {
+    "message": "Envoyer le code"
+  },
+  "codeSentTo": {
+    "message": "On a envoyé un code à 6 chiffres à $EMAIL$. Il est valable 10 minutes.",
+    "placeholders": {
+      "email": {
+        "content": "$1"
+      }
+    }
+  },
+  "verifyCode": {
+    "message": "Se connecter"
+  },
+  "otherEmail": {
+    "message": "Utiliser un autre e-mail"
+  },
+  "signOut": {
+    "message": "Se déconnecter"
+  },
+  "sendingCode": {
+    "message": "Envoi du code …"
+  },
+  "verifying": {
+    "message": "Vérification du code …"
+  },
+  "signingOut": {
+    "message": "Déconnexion …"
+  },
+  "authError_email_invalid": {
+    "message": "Ce n'est pas une adresse e-mail."
+  },
+  "authError_code_invalid": {
+    "message": "Mauvais code : vérifie l'e-mail et réessaie."
+  },
+  "authError_code_expired": {
+    "message": "Le code a expiré : demandes-en un nouveau."
+  },
+  "authError_rate_limited": {
+    "message": "Trop d'essais : attends une minute et réessaie."
+  },
+  "authError_offline": {
+    "message": "Pas de connexion à FC-Tracker : vérifie ta connexion internet."
+  },
+  "authError_mail_failed": {
+    "message": "L'e-mail n'a pas pu être envoyé : réessaie dans un instant."
+  },
+  "authError_server": {
+    "message": "Le serveur de FC-Tracker n'a pas répondu : réessaie dans un instant."
+  },
+  "authError_signed_out": {
+    "message": "Tu as été déconnecté : reconnecte-toi."
+  },
+  "badgeSignInBtn": {
+    "message": "Se connecter"
+  },
+  "badgeNoOwner": {
+    "message": "Connecte-toi à FC-Tracker ou installe l'app : ton club se synchronisera tout seul."
+  },
+  "badgePushing": {
+    "message": "Enregistrement de ton club sur ton compte …"
+  },
+  "badgePushed": {
+    "message": "Enregistré sur ton compte ✓ · $COUNT$ cartes de la Galerie",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "badgePushedPlain": {
+    "message": "Enregistré sur ton compte ✓"
+  },
+  "badgePushFailed": {
+    "message": "Ton compte est injoignable : la synchro est gardée et renvoyée dans la minute."
+  },
+  "badgeSignedOut": {
+    "message": "Tu as été déconnecté : clique sur l'icône FC-Tracker et reconnecte-toi."
   }
 }

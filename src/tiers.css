@@ -1,0 +1,195 @@
+/* ============================================================================================================
+   Layout tiers – BRAND-MIGRATION rule 10 (user 2026-11-05: "Half" made everything unusable).
+   The layout follows the VIEW's own width in CSS px – container `ovframe` on .ov-frame – never the window, so
+   Full, Half, Panel, zoom 90–125 % and FC-Tracker Web all take the same rules. One set of numbers everywhere:
+
+     XL  ≥ 1600   @container ovframe (width >= 1600px)                         .ov-frame[data-tier="xl"]
+     L   1200–1599 @container ovframe (1200px <= width < 1600px)               .ov-frame[data-tier="l"]
+     M   760–1199  @container ovframe (760px <= width < 1200px)                .ov-frame[data-tier="m"]
+     S   < 760     @container ovframe (width < 760px)                          .ov-frame[data-tier="s"]
+
+   JS: tierOf(width) / type Tier in src/ui (Overlay sets data-tier with a ResizeObserver on .ov-frame).
+   XL = the mockup's 3 columns · L = Sets keeps the approved 3 columns (locked, user 2026-11-05: ref sets-xl-approved),
+   Objectives 2 columns · M = 1 column, the
+   detail opens IN PLACE of the list (✕ / Enter opens, ○ / Esc back), side cards stack · S = everything stacked.
+   Hard rules at every tier: no horizontal scrollbar, no overlap, frames enclose content (§16), text ≥ 12 px.
+   Every section's own tier rules live with the section; this file holds the shell and Sets / Objectives.
+   ============================================================================================================ */
+.ov-frame { container: ovframe / inline-size; }
+
+/* ---------------------------------------------------------------- the header ---------------------------- */
+.ov-sec-s { display: none; }
+/* the tab slab never pushes the brand or the status: it shrinks and scrolls between its keys (a fade says more) */
+.ov-top .tabbar { min-width: 0; max-width: 100%; }
+.ov-top .tabbar > .tabs { min-width: 0; overflow-x: auto; scrollbar-width: none; flex-wrap: nowrap; }
+.ov-top .tabbar > .tabs::-webkit-scrollbar { display: none; }
+.ov-top .tabbar > .tabs > .tab { flex: none; }
+.ov-top .tabbar > .tabs[data-more-right="true"] { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent); }
+.ov-top .tabbar > .tabs[data-more-left="true"] { -webkit-mask-image: linear-gradient(90deg, transparent, #000 32px); mask-image: linear-gradient(90deg, transparent, #000 32px); }
+.ov-top .tabbar > .tabs[data-more-left="true"][data-more-right="true"] { -webkit-mask-image: linear-gradient(90deg, transparent, #000 32px, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(90deg, transparent, #000 32px, #000 calc(100% - 32px), transparent); }
+
+/* The header never collides (review OV-1): Overlay.tsx measures it and sets data-fit 0–5 on .ov-top – each level
+   drops one more item in a fixed order, the tabs scroll between L1 / R1 only after the last. Level 0 is the approved XL
+   look (tabs centred on the page); from level 1 the side columns size to their content and the tabs take the rest. */
+.ov-frame .ov-top:not([data-fit="0"]) { grid-template-columns: auto minmax(0, 1fr) auto; }
+.ov-frame .ov-top:not([data-fit="0"]) .tabbar { justify-self: center; }
+.ov-frame .ov-status { flex-wrap: nowrap; min-width: 0; }
+.ov-frame .ov-top .tabbar > .tabs { flex: 0 1 auto; }
+.ov-frame .ov-top:is([data-fit="1"], [data-fit="2"], [data-fit="3"], [data-fit="4"], [data-fit="5"]) .ov-ctx { display: none; }
+.ov-frame .ov-top:is([data-fit="2"], [data-fit="3"], [data-fit="4"], [data-fit="5"]) .track-pill .track-label { display: none; }
+.ov-frame .ov-top:is([data-fit="3"], [data-fit="4"], [data-fit="5"]) .ov-synced { display: none; }
+.ov-frame .ov-top:is([data-fit="4"], [data-fit="5"]) .ov-brand .brand > span:not(.mark) { display: none; }
+.ov-frame .ov-top[data-fit="5"] .tab .n { display: none; }
+.ov-frame .ov-top[data-fit="5"] .tab { padding-inline: 12px; }
+/* M (Half): a lower bar; the status also sits in the profile menu */
+@container ovframe (width < 1200px) {
+  .ov-frame .ov-top { gap: var(--s-4); padding: 0 var(--s-5); height: 72px; }
+}
+/* S (Panel, phones): the mark + the current section with L1 / R1, everything else in the menu */
+@container ovframe (width < 760px) {
+  .ov-frame .ov-top { grid-template-columns: auto minmax(0, 1fr) auto; height: 60px; padding: 0 var(--s-4); }
+  .ov-frame .ov-top .tabbar { display: none; }
+  .ov-frame .ov-sec-s { display: flex; align-items: center; justify-content: center; gap: 10px; min-width: 0; }
+  .ov-frame .ov-status > .btn { display: none; }
+  /* the section name is the context here; the player count sits in the profile menu */
+  .ov-frame .ov-top .ov-ctx, .ov-frame .ov-top .ov-synced { display: none; }
+  .ov-frame .ov-sec-s { overflow: hidden; }
+}
+.ov-sec-name { font-family: var(--f-display); font-stretch: var(--display-stretch); font-weight: 700; font-size: var(--fs-18, 18px); text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.ov-sec-arrow { all: unset; cursor: pointer; display: inline-flex; }
+.ov-sec-arrow:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* the status in the profile menu (M / S) */
+.me-status { display: grid; gap: 6px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.me-status .me-track { display: flex; align-items: center; gap: 8px; }
+.me-status .me-note { font-size: var(--fs-13); color: var(--text-2); }
+
+/* ---------------------------------------------------------------- footer hints -------------------------- */
+@container ovframe (width < 1200px) {
+  .ov-frame .ov-foot { padding-inline: var(--s-5); gap: var(--s-4); }
+  .ov-frame .ov-foot > .hints:last-child { display: none; } /* the global shortcuts – the 3–4 view hints keep the room */
+}
+
+/* ---------------------------------------------------------------- Sets ---------------------------------- */
+/* M / S: one column that scrolls – Your Gallery first, the categories, then the list OR the opened set (in place) */
+@container ovframe (width < 1200px) {
+  .ov-frame .ov-body.sets-v2 { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-auto-rows: max-content; grid-template-areas: "cats" "mid" "det" "gal" "ml"; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; align-content: start; gap: var(--s-4); padding-bottom: var(--s-5); }
+  .ov-frame .ov-body.sets-v2 > .detail-wrap { display: none; }
+  .ov-frame .ov-body.sets-v2.detail-open > .sets-mid { display: none; }
+  .ov-frame .ov-body.sets-v2.detail-open > .detail-wrap { display: flex; }
+  /* every panel is sized by its content here (§16): the page scrolls, not the panels */
+  .ov-frame .ov-body.sets-v2 .gal-panel, .ov-frame .ov-body.sets-v2 .set-list, .ov-frame .ov-body.sets-v2 > .detail-wrap { height: auto; max-height: none; }
+  .ov-frame .ov-body.sets-v2 .gal-panel > .gal-scroll, .ov-frame .ov-body.sets-v2 .set-list > .list, .ov-frame .ov-body.sets-v2 > .detail-wrap > .detail { overflow: visible; flex: none; }
+  .ov-frame .ov-body.sets-v2 > .sets-mid { grid-template-rows: max-content max-content; }
+  .ov-frame .ov-body.sets-v2 > .ov-ml { min-height: 420px; }
+  /* Your Gallery: the stats in one row, Closest and Rarities side by side */
+  .ov-frame .ov-body.sets-v2 .gal-scroll { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--s-6); }
+  .ov-frame .ov-body.sets-v2 .gal-scroll > :is(.eyebrow, .gal-total, .gal-sets, .gal-kv) { grid-column: 1 / -1; }
+  .ov-frame .ov-body.sets-v2 .gal-kv { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .ov-frame .ov-body.sets-v2 .gal-kv > div { padding: 12px 14px; border-right: 1px solid var(--line); }
+  .ov-frame .ov-body.sets-v2 .gal-kv > div:first-child { padding-left: 0; }
+  .ov-frame .ov-body.sets-v2 .gal-kv > div:last-child { border-right: 0; }
+}
+@container ovframe (width < 760px) {
+  .ov-frame .ov-body.sets-v2 { padding-inline: var(--s-3); }
+  .ov-frame .ov-body.sets-v2 .gal-scroll { grid-template-columns: minmax(0, 1fr); }
+  .ov-frame .ov-body.sets-v2 .gal-kv { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ov-frame .ov-body.sets-v2 .gal-kv > div:nth-child(2n) { border-right: 0; }
+  .ov-frame .ov-body.sets-v2 .gal-kv > div:nth-child(2n + 1) { padding-left: 0; }
+  /* the table becomes 2-line rows: name + bar, then the numbers */
+  .ov-frame .sets-v2 .set-row { grid-template-columns: 26px minmax(0, 1fr) auto; grid-template-rows: auto auto; row-gap: 4px; }
+  /* grade | name + bar | score on top; slots | to next under them – one item per cell, nothing overprints */
+  .ov-frame .sets-v2 .set-row > .grade { grid-column: 1; grid-row: 1 / span 2; align-self: center; }
+  .ov-frame .sets-v2 .set-row > .set-row-main { grid-column: 2; grid-row: 1; }
+  .ov-frame .sets-v2 .set-row > .set-row-score { grid-column: 3; grid-row: 1; justify-self: end; align-self: start; }
+  .ov-frame .sets-v2 .set-row > .set-row-slots { grid-column: 2; grid-row: 2; justify-self: start; text-align: left; }
+  .ov-frame .sets-v2 .set-row > .set-row-next { grid-column: 3; grid-row: 2; justify-self: end; margin-top: 0; }
+}
+
+/* ---------------------------------------------------------------- Objectives ---------------------------- */
+/* L: the pitch + one column with the objectives over the brief */
+@container ovframe (1200px <= width < 1600px) {
+  .ov-frame .sq-v2 .sq-main { grid-template-columns: minmax(0, 1fr) clamp(340px, 36%, 460px); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "pitch obj" "pitch brief"; }
+}
+@container ovframe (width < 1600px) {
+  .ov-frame .sq-v2 .sq-main > .sq-pitch-col { grid-area: pitch; }
+  .ov-frame .sq-v2 .sq-main > .sq-colp:not(.sq-briefcol) { grid-area: obj; }
+  .ov-frame .sq-v2 .sq-main > .sq-briefcol { grid-area: brief; }
+}
+/* M / S: the pitch on top, then the objectives and the brief stacked – the page scrolls, the panels grow */
+@container ovframe (width < 1200px) {
+  .ov-frame .sq-v2 .sq-main { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-auto-rows: max-content; grid-template-areas: "pitch" "obj" "brief"; height: auto; }
+  .ov-frame .sq-v2 { grid-template-rows: max-content max-content; }
+  .ov-frame .sq-v2.sq-session { height: auto !important; }
+  .ov-frame .sq-v2 .sq-pitch-col { height: 800px; }
+  .ov-frame .sq-v2 .sq-colp { height: auto; overflow: visible; }
+  .ov-frame .sq-v2 .sq-colp-body { overflow: visible; }
+  .ov-frame .sq-toprow { flex-wrap: wrap; }
+  .ov-frame .sq-toprow > .sq-sessions-row { flex-basis: 100%; }
+  .ov-frame .sq-toprow .sq-stats { margin-left: 0; }
+}
+@container ovframe (width < 760px) {
+  .ov-frame .sq-v2 .sq-pitch-col { height: 680px; }
+  .ov-frame .sq-pitch-head { flex-wrap: wrap; }
+}
+
+/* ---------------------------------------------------------------- text ≥ 12 px (rule 10) ----------------- */
+/* Every piece of text in the overlay reads at 12 px or more, at every tier. Graphic labels drawn as part of an
+   object keep their own scale: the card art (.fut), rank shields (.rk), grade diamonds, keycaps and the FO marks. */
+.ov-frame { --fs-9: 12px; --fs-10: 12px; --fs-11: 12px; }
+/* the few sizes set in px rather than by token */
+.ov-frame :is(.sq-mark, .bl .ic, .unit-q, .num > .faint, .sq-progress small, .sq-session-group h4, .ch5-th span, .ch5-th .r,
+  .sq-chip span, .sq-card-top span, .step-mark i, .sec-new) { font-size: 12px !important; }
+/* the older small print in Sets and Objectives (10–11 px in px rules): never below 12 */
+.ov-frame :is(.sets-v2, .sq-v2) :is(small, .sq-bench-why, .sq-card-top > span) { font-size: max(12px, .82em) !important; }
+/* the set card is a vertical scroller: its cards' entry slide never shows a sideways scrollbar */
+.ov-frame .sets-v2 .detail-wrap > .detail { overflow-x: hidden; }
+/* M / S: the opened set card's way back (the controller's ○ / Esc says the same) */
+.detail-back { display: inline-flex; align-items: center; gap: 8px; align-self: flex-start; margin: 14px 0 0 var(--s-6); flex: none; }
+.ov-frame .sq-legend { font-size: 12px; }
+/* the status words shrink (ellipsis) inside the pill; the pill itself never clips its dot */
+.ov-frame .track-pill .track-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ov-frame .ov-status > .track-pill { overflow: visible; }
+/* M / S (review OV-3): the sets come first – the categories and the list (or the opened set) open the page, Your
+   Gallery follows under them, the docked side panel last */
+@container ovframe (width < 1200px) {
+  .ov-frame .ov-body.sets-v2 > .gal-panel { order: 3; }
+}
+/* L with the side panel docked in the view (/web 1440, review OV-2): four columns left the set list 250 px and no
+   names – Your Gallery stacks under the list there, so list and card keep their room; XL keeps the approved four */
+@container ovframe (1200px <= width < 1600px) {
+  .ov-frame .ov-body.sets-v2.with-ml { grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) minmax(300px, 340px); grid-template-rows: auto minmax(0, 1.2fr) minmax(0, 1fr); grid-template-areas: "cats cats ml" "mid det ml" "gal det ml"; }
+}
+
+/* short windows (≤ 900 px tall: 1366×768, 1280×720, Panel): the chrome gives height to the content (review OV-9) –
+   a lower header and footer, a smaller page title, the bench as one slim line – so the pitch's cards grow */
+@media (max-height: 900px) {
+  .ov-frame .ov-top { height: 68px; }
+  .ov-frame .ov-foot { height: 48px; }
+  .ov-frame .sq-v2 .sq-pitch-title .h1 { font-size: 32px; }
+  .ov-frame .sq-v2 .sq-bench-row { padding: 4px 12px; gap: 6px 14px; }
+  .ov-frame .sq-v2 .sq-bench-row .sq-bench-label { font-size: 12px; }
+  .ov-frame .sq-bench-chip { grid-template-columns: 32px minmax(0, 150px) auto; gap: 8px; }
+  .ov-frame .sq-bench-chip .face-w { --s: 32px !important; }
+  .ov-frame .sq-bench-chip small { display: none; }
+}
+/* Objectives (review OV-8): the session tabs never share a squeezed row – below XL they get the full row and "what are
+   you playing · squad settings" sits on its own row under them; each tab ellipsizes inside its own frame */
+@container ovframe (width < 1600px) {
+  .ov-frame .planner-body .sq:has(.sq-v2) > .sq-toprow { grid-column: 1 / -1; grid-row: 1; }
+  .ov-frame .planner-body .sq:has(.sq-v2) > .sq-head { grid-column: 1 / -1; grid-row: 2; justify-content: flex-end; flex-wrap: wrap; }
+}
+.ov-frame .sq-sessions .seg { max-width: 280px; }
+.ov-frame .sq-sessions .seg > .ellip { overflow-x: clip; text-overflow: ellipsis; }
+
+/* Objectives (user 2026-11-05: "the squad jumps every time I click a player"): the squad section takes the view's own
+   height – never its columns' content (the swap panel or the objectives list set it before). The columns scroll inside. */
+.ov-frame .planner-body > .detail-wrap:has(.sq-v2) { container-type: size; }
+@container ovframe (width >= 1200px) {
+  .ov-frame .planner-body .sq > .sq-v2.sq-session { height: calc(100cqh - 46px); grid-template-rows: minmax(0, 1fr); }
+  .ov-frame .planner-body .sq > .sq-v2.sq-session > .sq-main { height: 100%; grid-template-rows: minmax(0, 1fr); }
+  .ov-frame .planner-body .sq > .sq-v2.sq-session .sq-colp { height: 100%; min-height: 0; }
+}
+@container ovframe (1200px <= width < 1600px) {
+  .ov-frame .planner-body .sq > .sq-v2.sq-session { height: calc(100cqh - 94px); }
+  .ov-frame .planner-body .sq > .sq-v2.sq-session > .sq-main { grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
+}

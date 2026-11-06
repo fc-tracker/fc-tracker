@@ -27,24 +27,44 @@
   // The three sync lanes (club · Gallery · SBCs and the rest), shown together on one line.
   const lanes = { club: 0, gDone: 0, gTotal: 0, xDone: 0, xTotal: 0 };
 
+  // Who gets a sync (background `owner()`): "app", "account" or null – null = no sync, sign in first.
+  let owner = null;
+  let theme = "glass";
+  let parts = null;
+
+  // The badge: a v2 lower-third in its own closed shadow root, styled from a string
+  // (badge-style.js) – nothing of ours is loaded into or fetchable by EA's page outside the host.
   function ensureBadge() {
     if (badge || !document.body) return badge;
-    badge = document.createElement("div");
-    badge.style.cssText =
-      "position:fixed;right:16px;bottom:16px;z-index:2147483647;background:#0f1420;color:#e8ecf5;" +
-      "border:1px solid #f5c542;border-radius:10px;padding:10px 14px;font:13px 'Segoe UI',sans-serif;" +
-      "box-shadow:0 4px 20px rgba(0,0,0,.4);display:flex;gap:12px;align-items:center";
+    badge = document.createElement("fc-tracker-badge");
+    badge.style.cssText = "position:fixed;right:16px;bottom:16px;z-index:2147483647;display:block;max-width:min(560px,calc(100vw - 32px))";
+    const root = badge.attachShadow({ mode: "closed" });
+    const style = document.createElement("style");
+    style.textContent = fctBadgeCss;
+    const wrap = document.createElement("div");
+    wrap.className = "fct";
+    wrap.dataset.theme = theme;
+    const toast = document.createElement("div");
+    toast.className = "toast ring";
+    toast.setAttribute("role", "status");
+    const edge = document.createElement("i");
+    edge.className = "edge";
+    const body = document.createElement("div");
+    body.className = "body";
+    const eyebrow = document.createElement("span");
+    eyebrow.className = "eyebrow";
+    eyebrow.textContent = "FC-Tracker";
     const text = document.createElement("span");
+    text.className = "text";
+    body.append(eyebrow, text);
+    const acts = document.createElement("div");
+    acts.className = "acts";
     const btn = document.createElement("button");
-    btn.textContent = msg("syncNow");
-    btn.style.cssText =
-      "background:#f5c542;color:#1a1a1a;border:0;border-radius:6px;padding:5px 10px;font-weight:600;cursor:pointer";
-    btn.onclick = requestSync;
+    btn.className = "btn btn-primary btn-s";
+    btn.onclick = () => (owner ? requestSync() : send({ type: "open-popup" }));
     const open = document.createElement("a");
+    open.className = "btn btn-secondary btn-s ring";
     open.href = "fctracker://open";
-    open.textContent = msg("openApp");
-    open.style.cssText =
-      "background:#3fe0b8;color:#04130e;border-radius:6px;padding:5px 10px;font-weight:700;text-decoration:none;white-space:nowrap";
     open.onclick = (e) => {
       if (!appSeen) {
         e.preventDefault();
@@ -53,20 +73,38 @@
       }
       waitForApp();
     };
-    badge.append(text, btn, open);
+    acts.append(btn, open);
+    const bar = document.createElement("div");
+    bar.className = "busy";
+    toast.append(edge, body, acts, bar);
+    wrap.append(toast);
+    root.append(style, wrap);
+    parts = { wrap, toast, text, btn, open, bar };
+    requestAnimationFrame(() => wrap.classList.add("ready"));
     document.body.appendChild(badge);
     return badge;
   }
 
+  /**
+   * One line of status. The eyebrow already says FC-Tracker, so a leading "FC-Tracker:" in the
+   * (older) texts is dropped. Edge: amber = the user has to act, mint = done, red = working.
+   */
   function render(text, showButton = !done, urgent = false) {
-    const b = ensureBadge();
-    if (!b) return;
-    b.children[0].textContent = text;
-    b.children[0].style.fontWeight = urgent ? "700" : "";
-    b.style.borderColor = urgent ? "#ff6b6b" : "#f5c542";
-    b.children[1].style.display = showButton ? "" : "none";
-    b.children[2].style.display = appUp ? "none" : "";
-    b.children[2].textContent = msg(appSeen ? "openApp" : "getApp");
+    if (!ensureBadge()) return;
+    const rest = String(text).replace(/^FC-Tracker\s*[:–-]\s*/, "");
+    const line = rest.charAt(0).toLocaleUpperCase() + rest.slice(1);
+    const ok = !urgent && line.includes("✓");
+    parts.wrap.dataset.theme = theme;
+    parts.text.textContent = line;
+    parts.text.classList.toggle("urgent", urgent);
+    parts.toast.className = `toast ring ${urgent ? "warn" : ok ? "done" : ""}`;
+    // working = no buttons and no result yet: the busy bar shows it moving
+    parts.bar.hidden = urgent || ok || showButton || !syncing;
+    parts.btn.textContent = msg(owner ? "syncNow" : "badgeSignInBtn");
+    parts.btn.style.display = showButton || !owner ? "" : "none";
+    // the app is closed: offer to open it – not when the account gets the sync (no app needed)
+    parts.open.style.display = appUp || owner === "account" ? "none" : "";
+    parts.open.textContent = msg(appSeen ? "openApp" : "getApp");
   }
 
   // After "Open FC-Tracker": watch for the app (the background then delivers what was saved).
@@ -116,6 +154,8 @@
 
   /** Starts the sync once the Web App is signed in – never without a session. */
   function requestSync() {
+    // nobody to receive it (no app paired, not signed in): no sync – ask for the sign-in instead
+    if (!owner) return noOwner();
     if (loginState === "signed_in") return startClubSync();
     pendingStart = true;
     clearTimeout(loginTimer);
@@ -158,8 +198,22 @@
     clearInterval(abortWatch);
     done = true;
     syncing = false;
-    render(msg("badgeSending"), false);
+    render(msg(owner === "account" ? "badgePushing" : "badgeSending"), false);
+    syncing = true; // the busy bar stays while it is sent
     const res = await send({ type: "done", closeTab: syncActive });
+    syncing = false;
+    // Signed in without the app: the server merged it into the account (or it is sent again soon)
+    if (res?.account) {
+      if (res.pushed) {
+        if (nameless >= 3) return render(msg("badgeNamesMissing", [String(nameless)]), true);
+        return render(res.collected != null ? msg("badgePushed", [String(res.collected)]) : msg("badgePushedPlain"), false);
+      }
+      if (res.error === "signed_out") {
+        owner = null;
+        return render(msg("badgeSignedOut"), false, true);
+      }
+      return render(msg("badgePushFailed"), false, true);
+    }
     // App closed: the sync is saved in the extension and delivered when the app runs.
     if (res?.queued) return render(msg("badgeSaved"), false);
     // No app, FC-Tracker Web: the page picks it up by itself
@@ -189,10 +243,10 @@
         if (data.phase === "club") lanes.club = data.count ?? lanes.club;
         if (data.phase === "gallery") Object.assign(lanes, { gDone: data.done + 1, gTotal: data.total });
         if (data.phase === "extras") Object.assign(lanes, { xDone: data.done + 1, xTotal: data.total });
-        const parts = [msg("laneClub", [String(lanes.club)])];
-        if (lanes.gTotal) parts.push(msg("laneGallery", [String(Math.min(lanes.gDone, lanes.gTotal)), String(lanes.gTotal)]));
-        if (lanes.xTotal) parts.push(msg("laneExtras", [String(Math.min(lanes.xDone, lanes.xTotal)), String(lanes.xTotal)]));
-        return render("FC-Tracker: " + parts.join(" · "), false);
+        const read = [msg("laneClub", [String(lanes.club)])];
+        if (lanes.gTotal) read.push(msg("laneGallery", [String(Math.min(lanes.gDone, lanes.gTotal)), String(lanes.gTotal)]));
+        if (lanes.xTotal) read.push(msg("laneExtras", [String(Math.min(lanes.xDone, lanes.xTotal)), String(lanes.xTotal)]));
+        return render(read.join(" · "), false);
       }
       case "login":
         loginState = data.state;
@@ -220,18 +274,51 @@
   // - the user opened the Web App → sync once (not again within 15 minutes), tab stays open;
   // - the app isn't running → the same, and the extension saves it for the app.
   // The ping also tells the background the app's language, so load translations after it.
+  // - nobody owns the sync (no app paired, not signed in) → no sync; the badge offers the sign-in
+  //   and the sync starts by itself once the user signed in or connected the app.
+  /** No owner: the sign-in (popup) instead of a sync. Text says whether the app runs here. */
+  function noOwner() {
+    pendingStart = false;
+    render(msg(appUp ? "badgeNotPaired" : "badgeNoOwner"), false, true);
+  }
+
+  /** Who owns the sync now, from the background's status (and the theme to draw in). */
+  function takeStatus(res, status) {
+    appUp = !!(res && res.app === "fc-tracker");
+    appSeen = appUp || !!status?.appSeen;
+    theme = status?.theme ?? "glass";
+    // a saved pairing the running app doesn't accept any more is no owner
+    const paired = !!status?.paired && (!appUp || !!res.authorized);
+    owner = paired ? "app" : status?.email ? "account" : null;
+  }
+
+  function startIfDue(res, status) {
+    syncActive = appUp && !!res?.authorized && !!res.sync_active;
+    const lastSync = Math.max(Number(status?.lastSyncAt ?? 0), Number((appUp && res?.authorized && res.synced_at) || 0));
+    if (syncActive || Date.now() - lastSync > AUTO_SYNC_AFTER_MS) return requestSync();
+    if (owner === "account") return render(status?.pushPending ? msg("badgePushFailed") : msg("badgeReady"), true, !!status?.pushPending);
+    render(appUp ? msg("badgeReady") : status?.saved ? msg("badgeSaved") : msg("badgeReady"));
+  }
+
   Promise.all([send({ type: "ping" }), send({ type: "status" })]).then(async ([res, status]) => {
     await fctI18n.load();
     whenBody(() => {
-      appUp = !!(res && res.app === "fc-tracker");
-      appSeen = appUp || !!status?.appSeen;
-      if (appUp && !res.authorized) return render(msg("badgeNotPaired"), false);
-      if (!appUp && !status?.paired && !status?.web) return render(msg("badgeNoApp"), false);
-      if (!appUp && status?.paired) render(msg("badgeAppClosed"), false);
-      syncActive = appUp && !!res.sync_active;
-      const lastSync = Math.max(Number(status?.lastSyncAt ?? 0), Number((appUp && res.synced_at) || 0));
-      if (syncActive || Date.now() - lastSync > AUTO_SYNC_AFTER_MS) return requestSync();
-      render(appUp ? msg("badgeReady") : status?.saved ? msg("badgeSaved") : msg("badgeReady"));
+      takeStatus(res, status);
+      if (!owner) return noOwner();
+      if (owner === "app" && !appUp) render(msg("badgeAppClosed"), false);
+      startIfDue(res, status);
     });
+  });
+
+  // Signed in (popup) or connected to the app while this page is open: the sync starts by itself.
+  chrome.storage.onChanged.addListener(async (changes, area) => {
+    if (area !== "local" || !(changes.acct || changes.token || changes.theme)) return;
+    const [res, status] = await Promise.all([send({ type: "ping" }), send({ type: "status" })]);
+    const had = owner;
+    takeStatus(res, status);
+    if (syncing || pendingStart) return;
+    if (!owner) return noOwner();
+    if (!had) return startIfDue(res, status);
+    if (changes.theme && parts) parts.wrap.dataset.theme = theme;
   });
 })();

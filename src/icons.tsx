@@ -1,19 +1,11 @@
-/** FUT coin, drawn (no emoji) so it matches every theme. */
+import "./ui/ui.css";
+
+/** FUT coin – the brand v2 glyph (src/ui Coin: gold ring, black face), sized in px. */
 export function Coin({ size = 10 }: { size?: number }) {
-  return (
-    <svg className="coin" width={size} height={size} viewBox="0 0 10 10" aria-hidden="true">
-      <circle cx="5" cy="5" r="4.4" />
-      <circle className="coin-inner" cx="5" cy="5" r="2.6" />
-    </svg>
-  );
+  return <i className="coin" style={{ width: size, height: size }} aria-hidden="true" />;
 }
 
-/** Mint "gem" used next to every Gallery score, like in FC27. */
+/** Mint gem before every Gallery score – the brand v2 gem (src/ui Gem), sized in px (its diagonal). */
 export function Gem({ size = 12 }: { size?: number }) {
-  return (
-    <svg className="gem" width={size} height={size} viewBox="0 0 12 12" aria-hidden="true">
-      <path d="M6 0 12 6 6 12 0 6Z" />
-      <path className="gem-shine" d="M6 0 12 6 6 6Z" />
-    </svg>
-  );
+  return <i className="gem" style={{ width: size * 0.7, height: size * 0.7, marginRight: size * 0.3 }} aria-hidden="true" />;
 }

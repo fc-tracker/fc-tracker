@@ -5,6 +5,7 @@
  * silently; until then that part isn't synced.
  */
 import { useState } from "react";
+import "./ui/ui.css";
 import "./account.css";
 import { resolveConflicts, useAccount, type Part } from "./account";
 import { t, type MessageKey } from "./i18n";
@@ -38,8 +39,9 @@ export default function SyncConflict() {
   };
   return (
     <div className="acct-modal">
-      <section className="acct-dialog acct" role="alertdialog" aria-modal="true" aria-labelledby="acct-conflict-t">
-        <h2 id="acct-conflict-t">{t("account.conflict.title")}</h2>
+      <section className="panel xl ring signed acct-dialog acct" role="alertdialog" aria-modal="true" aria-labelledby="acct-conflict-t">
+        <div className="frame-scroll acct-dialog-body">
+        <h2 className="h2" id="acct-conflict-t">{t("account.conflict.title")}</h2>
         <p>{busy ? t("account.conflict.working") : t("account.conflict.text")}</p>
         <ul className="acct-parts">
           {list.map((c) => (
@@ -53,15 +55,16 @@ export default function SyncConflict() {
           ))}
         </ul>
         <div className="acct-choices">
-          <button className="ln-btn small" disabled={busy} onClick={() => choose("both")}>
+          <button className="btn btn-primary btn-s" disabled={busy} onClick={() => choose("both")}>
             {t("account.conflict.useBoth")}
           </button>
-          <button className="ln-btn small ghost" disabled={busy} onClick={() => choose("cloud")}>
+          <button className="btn btn-secondary ring btn-s" disabled={busy} onClick={() => choose("cloud")}>
             {t("account.conflict.useCloud")}
           </button>
-          <button className="ln-btn small ghost" disabled={busy} onClick={() => choose("local")}>
+          <button className="btn btn-secondary ring btn-s" disabled={busy} onClick={() => choose("local")}>
             {t("account.conflict.useLocal")}
           </button>
+        </div>
         </div>
       </section>
     </div>

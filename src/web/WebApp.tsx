@@ -5,11 +5,12 @@ import Overlay from "../Overlay";
 import { t, useLocale, type MessageKey } from "../i18n";
 import { num } from "../format";
 import { useTheme } from "../theme";
-import { captureDevices, onClub, startCapture, stopCapture, syncClub, webApi, webClub, webEvents, webStatus, webStream, type ClubSync, type Source, type WebStatus } from "./backend";
+import { captureDevices, onClub, openExtensionSignIn, startCapture, stopCapture, syncClub, webApi, webClub, webEvents, webStatus, webStream, type ClubSync, type Source, type WebStatus } from "./backend";
 import { formatAge } from "../api";
 import type { Box } from "./reader";
 import WebUpdate from "./WebUpdate";
 import SyncConflict from "../SyncConflict";
+import { browserPad } from "../browserPad";
 
 const DOWNLOAD = "/download";
 const EXTENSION = "/download/extension";
@@ -70,7 +71,7 @@ function Preview({ status }: { status: WebStatus }) {
     if (!looked) return;
     const k = Math.min(c.width / looked.w, c.height / looked.h);
     const ox = (c.width - looked.w * k) / 2, oy = (c.height - looked.h * k) / 2;
-    g.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--accent-2").trim() || "#3fe0b8";
+    g.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#EF4359";
     g.lineWidth = Math.max(1, devicePixelRatio);
     for (const b of looked.boxes) g.strokeRect(ox + b.x * k, oy + b.y * k, b.w * k, b.h * k);
   }, [looked]);
@@ -94,6 +95,14 @@ function ClubChip() {
         <span className="wb-club-dot off" aria-hidden="true" />
         {t("web.sync.get")}
       </a>
+    );
+  // the extension (v2) has no owner – no app paired, nobody signed in – so it won't sync: say so and open its sign-in
+  if (c.owner === null)
+    return (
+      <button className="wb-club warn" onClick={() => void openExtensionSignIn()} title={t("v2web.ext.signInHint")}>
+        <span className="wb-club-dot off" aria-hidden="true" />
+        {t("v2web.ext.signIn")}
+      </button>
     );
   if (c.reading)
     return (
@@ -161,7 +170,7 @@ function SourcePicker({ onClose }: { onClose: () => void }) {
               <option key={d.deviceId} value={d.deviceId}>{d.label || t("web.card.unnamed")}</option>
             ))}
           </select>
-          <button className="wb-btn" onClick={() => { onClose(); void startCapture("card", device); }}>{t("web.card.start")}</button>
+          <button className="btn btn-primary btn-s wb-btn" onClick={() => { onClose(); void startCapture("card", device); }}>{t("web.card.start")}</button>
         </div>
       )}
       {cardError && <p className="wb-note bad">{t("web.error.no_device")}</p>}
@@ -178,11 +187,44 @@ function Nudge({ ms, onLater }: { ms: number | null; onLater: () => void }) {
       <b>{ms != null ? t("web.nudge.title", { ms: num(ms) }) : t("web.cta")}</b>
       <p>{t("web.nudge.text")}</p>
       <div className="wb-nudge-row">
-        <a className="wb-btn" href={DOWNLOAD} target="_blank" rel="noopener">{t("web.nudge.button")}</a>
-        <button className="wb-btn ghost" onClick={onLater}>{t("web.nudge.later")}</button>
+        <a className="btn btn-primary btn-s wb-btn" href={DOWNLOAD} target="_blank" rel="noopener">{t("web.nudge.button")}</a>
+        <button className="btn btn-secondary ring btn-s wb-btn" onClick={onLater}>{t("web.nudge.later")}</button>
       </div>
     </aside>
   );
+}
+
+/** Install FC-Tracker Web as its own app (PWA, user 2026-11-05: "so it feels like you really download it"): the
+ *  browser's install prompt, offered in the header while it can be installed; gone once it runs as the app. */
+type InstallPrompt = Event & { prompt(): Promise<void>; userChoice: Promise<{ outcome: string }> };
+function useInstall() {
+  const standalone = () => matchMedia("(display-mode: standalone)").matches || matchMedia("(display-mode: window-controls-overlay)").matches;
+  const [ev, setEv] = useState<InstallPrompt | null>(null);
+  const [installed, setInstalled] = useState(standalone);
+  useEffect(() => {
+    const on = (e: Event) => {
+      e.preventDefault();
+      setEv(e as InstallPrompt);
+    };
+    const done = () => {
+      setEv(null);
+      setInstalled(true);
+    };
+    window.addEventListener("beforeinstallprompt", on);
+    window.addEventListener("appinstalled", done);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", on);
+      window.removeEventListener("appinstalled", done);
+    };
+  }, []);
+  const run = async () => {
+    if (!ev) return;
+    await ev.prompt();
+    const { outcome } = await ev.userChoice;
+    setEv(null);
+    if (outcome === "accepted") setInstalled(true);
+  };
+  return { can: !!ev && !installed, installed, run };
 }
 
 /** The always-on-top mini window (Document Picture-in-Picture): the side panel for the set on screen. */
@@ -194,7 +236,7 @@ function usePip() {
     const w = await dpip.requestWindow({ width: 380, height: 560 });
     for (const node of document.head.querySelectorAll("style, link[rel=stylesheet]")) w.document.head.append(node.cloneNode(true));
     w.document.documentElement.dataset.view = "missing";
-    w.document.documentElement.dataset.theme = document.documentElement.dataset.theme ?? "midnight";
+    w.document.documentElement.dataset.theme = document.documentElement.dataset.theme ?? "glass";
     w.document.documentElement.lang = document.documentElement.lang;
     w.document.title = "FC-Tracker";
     w.addEventListener("pagehide", () => setPip(null));
@@ -217,6 +259,7 @@ export default function WebApp() {
     }
   });
   const { pip, open: openPip, supported: pipSupported } = usePip();
+  const install = useInstall();
 
   useEffect(() => webEvents.onStatus(setStatus), []);
   useEffect(() => {
@@ -227,69 +270,84 @@ export default function WebApp() {
   useEffect(() => {
     if (pip) pip.document.documentElement.dataset.theme = theme;
   }, [pip, theme]);
+  // the intro closes for good: after the first read, its ×, Esc or ○ / B
+  const closeIntro = () => {
+    setIntro(false);
+    try {
+      localStorage.setItem("fct.web.intro", "done");
+    } catch {}
+  };
   useEffect(() => {
-    if (status.phase === "read" && intro) {
-      setIntro(false);
-      try {
-        localStorage.setItem("fct.web.intro", "done");
-      } catch {}
-    }
+    if (status.phase === "read" && intro) closeIntro();
   }, [status.phase, intro]);
+  // Esc / ○ B closes the top panel: the source picker, else the intro
+  useEffect(() => {
+    if (!picker && !intro) return;
+    const back = () => (picker ? setPicker(false) : closeIntro());
+    const key = (e: KeyboardEvent) => e.key === "Escape" && back();
+    window.addEventListener("keydown", key);
+    const off = browserPad.onNav((a) => a === "back" && back());
+    return () => {
+      window.removeEventListener("keydown", key);
+      off();
+    };
+  }, [picker, intro]);
 
   const live = status.phase !== "off";
   const s = statusText(status);
   const nudge = status.reads >= nudgeAt && status.phase === "read";
+  const introShown = intro && !live && !picker;
+  // one red primary per view: the header's Share only while no panel carries its own
+  const actions = (
+    <span className="wb-acts">
+      <ClubChip />
+      {live ? (
+        <>
+          {pipSupported && (
+            <button className="btn btn-secondary ring btn-s wb-btn" onClick={openPip} title={t("web.pipHint")} disabled={!!pip}>{t("web.pip")}</button>
+          )}
+          <button className="btn btn-secondary ring btn-s wb-btn" onClick={() => stopCapture()}>{t("web.stop")}</button>
+        </>
+      ) : (
+        <button className={`btn ${introShown || picker ? "btn-secondary ring" : "btn-primary"} btn-s wb-btn`} onClick={() => setPicker(true)}>{t("web.share")}</button>
+      )}
+      {install.can ? (
+        <button className="btn btn-secondary ring btn-s wb-btn" onClick={() => void install.run()} title={t("web.install.hint")}>{t("web.install.button")}</button>
+      ) : (
+        !install.installed && <a className="btn btn-secondary ring btn-s wb-btn" href={DOWNLOAD} target="_blank" rel="noopener" title={t("web.ctaHint")}>{t("web.cta")}</a>
+      )}
+    </span>
+  );
 
   return (
     <div className="wb">
-      <header className="wb-bar">
-        <a className="wb-brand" href="/" target="_blank" rel="noopener">
-          <span className="brand-mark" aria-hidden="true" />
-          <span className="wb-brand-name">FC-Tracker</span>
-          <span className="wb-badge">{t("web.badge")}</span>
-        </a>
-        <p className={`wb-status ${s.tone}`} role="status" aria-live="polite">
-          <span className="wb-dot" aria-hidden="true" />
-          {s.text}
-        </p>
-        <ClubChip />
-        <div className="wb-actions">
-          {live ? (
-            <>
-              {pipSupported && (
-                <button className="wb-btn ghost" onClick={openPip} title={t("web.pipHint")} disabled={!!pip}>{t("web.pip")}</button>
-              )}
-              <button className="wb-btn ghost" onClick={() => stopCapture()}>{t("web.stop")}</button>
-            </>
-          ) : (
-            <button className="wb-btn" onClick={() => setPicker(true)}>{t("web.share")}</button>
-          )}
-          <a className="wb-btn app" href={DOWNLOAD} target="_blank" rel="noopener" title={t("web.ctaHint")}>{t("web.cta")}</a>
-        </div>
-      </header>
 
       {/* the overlay holds Best selection | Buy next itself (like the app in full screen) */}
+      {/* one header: the overlay's own, with what is being read and the web's actions in it (no bar above it) */}
       <div className="wb-main">
         <div className="wb-ov">
-          <Overlay />
+          <Overlay web={{ label: status.phase === "off" && !status.error ? t("web.status.idle") : s.text, tone: s.tone, actions }} />
         </div>
       </div>
 
       <Preview status={status} />
       <WebUpdate />
 
-      {intro && !live && !picker && (
-        <section className="wb-intro" aria-labelledby="wb-intro-t">
-          <h1 id="wb-intro-t">{t("web.intro.title")}</h1>
+      {introShown && (
+        <section className="wb-intro" role="dialog" aria-labelledby="wb-intro-t">
+          <div className="wb-picker-head">
+            <h1 id="wb-intro-t">{t("web.intro.title")}</h1>
+            <button className="wb-x" onClick={closeIntro} aria-label={t("web.close")} title={t("v2web.intro.closeHint")}>×</button>
+          </div>
           <ol>
             <li>{t("web.intro.step1")}</li>
             <li>{t("web.intro.step2")}</li>
-            <li>{t("web.intro.step3")}</li>
+            <li>{t("v2web.intro.step3")}</li>
           </ol>
           <p className="wb-note">{t("web.intro.private")}</p>
           <div className="wb-nudge-row">
-            <button className="wb-btn" onClick={() => setPicker(true)}>{t("web.share")}</button>
-            <a className="wb-btn ghost" href={DOWNLOAD} target="_blank" rel="noopener">{t("web.intro.app")}</a>
+            <button className="btn btn-primary btn-s wb-btn" onClick={() => setPicker(true)}>{t("web.share")}</button>
+            <a className="btn btn-secondary ring btn-s wb-btn" href={DOWNLOAD} target="_blank" rel="noopener">{t("web.intro.app")}</a>
           </div>
           <p className="wb-note">{t("web.console")}</p>
         </section>

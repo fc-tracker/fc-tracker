@@ -2,13 +2,6 @@
 // from a shared window, tab or capture card in this tab. Built with `npm run build:web`.
 import React from "react";
 import ReactDOM from "react-dom/client";
-import "@fontsource/barlow-condensed/500.css";
-import "@fontsource/barlow-condensed/600.css";
-import "@fontsource/barlow-condensed/700.css";
-import "@fontsource/manrope/400.css";
-import "@fontsource/manrope/600.css";
-import "@fontsource/manrope/700.css";
-import "@fontsource/manrope/800.css";
 import { LOCALES, setLocale, t, type Locale } from "../i18n";
 import WebApp from "./WebApp";
 import { browserPad } from "../browserPad";
@@ -42,6 +35,8 @@ backend.onClubSynced(() => syncSoon(2_000));
 startObjectives();
 backend.onClubSynced(() => void objectivesAfterSync());
 browserPad.requireFocus(true);
+// installable as its own app (PWA): the worker sits at the root, its scope is this page
+if ("serviceWorker" in navigator && !import.meta.env.DEV) void navigator.serviceWorker.register("/web-sw.js", { scope: "/web" }).catch(() => {});
 // local testing only: feed a picture instead of a shared screen
 if (location.hostname === "localhost") Object.assign(window, { __fctWeb: { attach: backend.attach, reader } });
 

@@ -7,6 +7,14 @@
 //! - The extension pairs once with a 6-digit code shown in the app; after that a secret
 //!   token is sent in the `X-FCT-Token` header.
 //! - The extension never forwards EA's session token – only response bodies.
+//!
+//! Protocol (v2, 2026-11): routes and fields only ever get added, never renamed or removed – the
+//! extension 0.13.11 (Chrome Web Store and the .zip) must keep working with every newer app, and
+//! a newer extension with the 0.1.101 app. `protocol` in `/ping` says what this app speaks:
+//! - 2: `/ping` (paired) carries `account` – which FC-Tracker account the app is signed in to.
+//!   A paired extension's club sync always goes to the app, and the app keeps it on its account
+//!   (src/account.ts). The extension gets no token of the account – it only shows whose it is.
+//!   Missing (an older app): paired still means the app owns the sync.
 
 use crate::store::{Store, Summary};
 use serde::{Deserialize, Serialize};
@@ -50,7 +58,23 @@ pub struct Bridge {
     unpaired_seen: Option<std::time::Instant>,
     /// Last check-in with a valid token (the extension pings on start and every minute).
     authorized_seen: Option<std::time::Instant>,
+    /// The e-mail of the FC-Tracker account the app is signed in to (None = signed out).
+    account: fn() -> Option<String>,
+    /// The app's theme (light / dark / glass) – the paired extension's popup and badge follow it.
+    theme: Option<String>,
 }
+
+pub const THEMES: [&str; 3] = ["light", "dark", "glass"];
+
+/// The app's account (Windows Credential Manager, account.rs): only its e-mail, never the token.
+fn app_account() -> Option<String> {
+    let secret: Value = serde_json::from_str(&crate::account::secret()?).ok()?;
+    secret.get("refresh")?;
+    secret.get("email").and_then(Value::as_str).map(str::to_string)
+}
+
+/// What this app's bridge speaks (see the top).
+pub const PROTOCOL: u32 = 2;
 
 pub const LOCALES: [&str; 5] = ["en", "es", "fr", "de", "da"];
 
@@ -91,7 +115,16 @@ impl Bridge {
     pub fn load(dir: &PathBuf) -> Self {
         let pairing_path = dir.join("pairing.json");
         let saved = fs::read_to_string(&pairing_path).ok().and_then(|s| serde_json::from_str::<Pairing>(&s).ok()).unwrap_or_default();
-        Self { pairing_path, token: saved.token, pairing_code: random_code(), locale: "en".into(), extension_version: saved.extension_version, unpaired_seen: None, authorized_seen: None }
+        Self { pairing_path, token: saved.token, pairing_code: random_code(), locale: "en".into(), extension_version: saved.extension_version, unpaired_seen: None, authorized_seen: None, account: app_account, theme: None }
+    }
+
+    /// The UI tells the bridge its theme (at start and on every change).
+    pub fn set_theme(&mut self, theme: &str) -> bool {
+        let ok = THEMES.contains(&theme);
+        if ok {
+            self.theme = Some(theme.to_string());
+        }
+        ok
     }
 
     pub fn locale(&self) -> &str {
@@ -242,6 +275,15 @@ pub fn spawn(
     notify: impl Fn(BridgeEvent) + Send + 'static,
 ) -> Result<(), String> {
     let server = Server::http(("127.0.0.1", PORT)).map_err(|e| format!("bridge_port_in_use:{PORT} ({e})"))?;
+    serve(server, store, bridge, notify)
+}
+
+fn serve(
+    server: Server,
+    store: Arc<Mutex<Store>>,
+    bridge: Arc<Mutex<Bridge>>,
+    notify: impl Fn(BridgeEvent) + Send + 'static,
+) -> Result<(), String> {
     std::thread::Builder::new()
         .name("bridge".into())
         .spawn(move || {
@@ -273,7 +315,7 @@ fn handle(
     match (req.method(), path.as_str()) {
         (Method::Options, _) => Response::from_string("").with_status_code(204),
         (Method::Get, "/ping") => {
-            let (authorized, locale) = {
+            let (authorized, locale, account, theme) = {
                 let mut b = bridge.lock().unwrap();
                 let authorized = b.authorized(req);
                 // Only extensions ping; one without our token wants to be paired.
@@ -281,8 +323,12 @@ fn handle(
                 if authorized {
                     b.authorized_seen = Some(std::time::Instant::now());
                 }
-                (authorized, b.locale.clone())
+                (authorized, b.locale.clone(), b.account, b.theme.clone())
             };
+            // the account only for the paired extension (it shows whose account the sync lands on)
+            let account = authorized.then(account).map(|email| {
+                serde_json::json!({ "signed_in": email.is_some(), "email": email })
+            });
             let (sync_active, abort, synced_at) = {
                 let s = store.lock().unwrap();
                 (authorized && s.sync_active, authorized && s.sync_abort, s.summary().synced_at)
@@ -301,7 +347,12 @@ fn handle(
                     // the extension version that belongs to this app – the extension offers an update
                     "extension_latest": extension_latest(),
                     // older than this and the extension updates itself right away (updates.rs)
-                    "extension_required": crate::updates::EXTENSION_REQUIRED
+                    "extension_required": crate::updates::EXTENSION_REQUIRED,
+                    // v2 (additions only – an older extension ignores them)
+                    "protocol": PROTOCOL,
+                    "account": account,
+                    // null until the UI has told it (the extension then keeps dark glass)
+                    "theme": theme
                 }),
             )
         }
@@ -389,5 +440,162 @@ fn handle(
             json_response(200, serde_json::json!({ "items": items }))
         }
         _ => json_response(404, serde_json::json!({ "error": "not_found" })),
+    }
+}
+
+/// The bridge protocol as the extensions speak it – a real server on a free port, raw HTTP.
+/// The 0.13.11 extension (Chrome Web Store and .zip) must keep working with this app, and a newer
+/// extension with the 0.1.101 app: every route and field it uses is checked here.
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+    use std::net::TcpStream;
+
+    const OLD_PING_FIELDS: [&str; 8] = ["app", "authorized", "sync_active", "abort", "synced_at", "locale", "extension_latest", "extension_required"];
+    const OLD_EXT: (&str, &str) = ("X-FCT-Version", "0.13.11");
+    const JSON: (&str, &str) = ("Content-Type", "application/json");
+
+    struct Fixture {
+        port: u16,
+        bridge: Arc<Mutex<Bridge>>,
+    }
+
+    fn start(account: fn() -> Option<String>) -> Fixture {
+        let dir = std::env::temp_dir().join(format!("fct-bridge-{}-{}", std::process::id(), random_hex(6)));
+        fs::create_dir_all(&dir).unwrap();
+        let store = Arc::new(Mutex::new(Store::load(dir.clone())));
+        let mut b = Bridge::load(&dir);
+        b.account = account;
+        let bridge = Arc::new(Mutex::new(b));
+        let server = Server::http(("127.0.0.1", 0)).unwrap();
+        let port = server.server_addr().to_ip().unwrap().port();
+        serve(server, store, bridge.clone(), |_| {}).unwrap();
+        Fixture { port, bridge }
+    }
+
+    /// One request → (status, head lower-cased, JSON body).
+    fn req(port: u16, method: &str, path: &str, headers: &[(&str, &str)], body: Option<Value>) -> (u16, String, Value) {
+        let mut s = TcpStream::connect(("127.0.0.1", port)).unwrap();
+        let body = body.map(|b| b.to_string()).unwrap_or_default();
+        let mut head = format!("{method} {path} HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\nContent-Length: {}\r\n", body.len());
+        for (k, v) in headers {
+            head.push_str(&format!("{k}: {v}\r\n"));
+        }
+        s.write_all(format!("{head}\r\n{body}").as_bytes()).unwrap();
+        let mut raw = String::new();
+        s.read_to_string(&mut raw).unwrap();
+        let (top, rest) = raw.split_once("\r\n\r\n").unwrap_or((&raw, ""));
+        let status = top.split_whitespace().nth(1).unwrap().parse().unwrap();
+        // the JSON is everything from the first { to the last } (tiny_http may answer chunked)
+        let json = match (rest.find('{'), rest.rfind('}')) {
+            (Some(a), Some(b)) => serde_json::from_str(&rest[a..=b]).unwrap_or(Value::Null),
+            _ => Value::Null,
+        };
+        (status, top.to_ascii_lowercase(), json)
+    }
+
+    fn pair(f: &Fixture) -> String {
+        let code = f.bridge.lock().unwrap().pairing_code.clone();
+        let (status, _, body) = req(f.port, "POST", "/pair", &[OLD_EXT, JSON], Some(serde_json::json!({ "code": code })));
+        assert_eq!(status, 200);
+        body["token"].as_str().unwrap().to_string()
+    }
+
+    #[test]
+    fn an_unpaired_ping_has_every_field_the_old_extension_reads() {
+        let f = start(|| None);
+        let (status, _, body) = req(f.port, "GET", "/ping", &[OLD_EXT], None);
+        assert_eq!(status, 200);
+        for k in OLD_PING_FIELDS {
+            assert!(body.get(k).is_some(), "/ping lost `{k}`: {body}");
+        }
+        assert_eq!(body["app"], "fc-tracker");
+        assert_eq!(body["authorized"], false);
+        assert_eq!(body["synced_at"], Value::Null);
+        assert_eq!(body["protocol"], PROTOCOL);
+        // the account is only for the paired extension
+        assert_eq!(body["account"], Value::Null);
+        assert_eq!(body["theme"], Value::Null, "no theme until the UI told it");
+        assert!(f.bridge.lock().unwrap().set_theme("light"));
+        assert!(!f.bridge.lock().unwrap().set_theme("midnight"));
+        let (_, _, body) = req(f.port, "GET", "/ping", &[], None);
+        assert_eq!(body["theme"], "light");
+        let info = f.bridge.lock().unwrap().info();
+        assert!(info.needs_pairing);
+        assert_eq!(info.extension_version.as_deref(), Some("0.13.11"));
+    }
+
+    #[test]
+    fn pairing_then_the_paired_routes() {
+        let f = start(|| Some("player@example.com".into()));
+        let (status, _, body) = req(f.port, "POST", "/pair", &[JSON], Some(serde_json::json!({ "code": "nope" })));
+        assert_eq!((status, body["error"].as_str()), (401, Some("wrong_code")));
+        let first_code = f.bridge.lock().unwrap().pairing_code.clone();
+        let token = pair(&f);
+        assert_eq!(token.len(), 64);
+        assert_ne!(f.bridge.lock().unwrap().pairing_code, first_code, "a used code is rotated");
+        let auth = ("X-FCT-Token", token.as_str());
+
+        let (_, _, ping) = req(f.port, "GET", "/ping", &[OLD_EXT, auth], None);
+        for k in OLD_PING_FIELDS {
+            assert!(ping.get(k).is_some(), "/ping lost `{k}`");
+        }
+        assert_eq!(ping["authorized"], true);
+        assert_eq!(ping["sync_active"], false);
+        assert_eq!(ping["abort"], false);
+        assert_eq!(ping["account"], serde_json::json!({ "signed_in": true, "email": "player@example.com" }));
+        assert!(f.bridge.lock().unwrap().info().extension_live);
+
+        let (status, _, sets) = req(f.port, "GET", "/gallery-sets", &[auth], None);
+        assert_eq!(status, 200);
+        assert!(sets["sets"].as_array().is_some_and(|s| !s.is_empty() && s.iter().all(|x| x["key"].is_string())));
+
+        let at = 1_700_000_000_000u64;
+        let (status, _, r) = req(f.port, "POST", "/capture", &[auth, JSON], Some(serde_json::json!({ "url": "fct://webapp/names", "body": { "leagues": {} }, "at": at })));
+        assert_eq!(status, 200);
+        assert!(r["items"].is_u64());
+        let (status, _, _) = req(f.port, "POST", "/sync-blocked", &[auth, JSON], Some(serde_json::json!({ "reason": "not_signed_in" })));
+        assert_eq!(status, 200);
+        let (status, _, summary) = req(f.port, "POST", "/sync-done", &[auth, JSON], Some(serde_json::json!({ "at": at })));
+        assert_eq!(status, 200);
+        assert!(summary.is_object());
+    }
+
+    #[test]
+    fn a_signed_out_app_says_so_without_an_e_mail() {
+        let f = start(|| None);
+        let token = pair(&f);
+        let (_, _, ping) = req(f.port, "GET", "/ping", &[("X-FCT-Token", &token)], None);
+        assert_eq!(ping["account"], serde_json::json!({ "signed_in": false, "email": null }));
+    }
+
+    #[test]
+    fn without_the_token_nothing_goes_in() {
+        let f = start(|| None);
+        pair(&f);
+        for path in ["/capture", "/sync-done", "/sync-blocked"] {
+            let (status, _, body) = req(f.port, "POST", path, &[OLD_EXT, JSON, ("X-FCT-Token", "0000")], Some(serde_json::json!({})));
+            assert_eq!((status, body["error"].as_str()), (401, Some("not_paired")), "{path}");
+        }
+        let (status, _, _) = req(f.port, "GET", "/gallery-sets", &[], None);
+        assert_eq!(status, 401);
+        let (status, _, _) = req(f.port, "GET", "/nope", &[], None);
+        assert_eq!(status, 404);
+    }
+
+    #[test]
+    fn websites_are_refused_and_extensions_get_cors() {
+        let f = start(|| None);
+        let (status, _, body) = req(f.port, "GET", "/ping", &[("Origin", "https://evil.example")], None);
+        assert_eq!((status, body["error"].as_str()), (403, Some("extension_only")));
+        let ext = "chrome-extension://bpinmgkhbofecfagbehkmpmcnnehclem";
+        let (status, head, _) = req(f.port, "OPTIONS", "/capture", &[("Origin", ext)], None);
+        assert_eq!(status, 204);
+        assert!(head.contains(&format!("access-control-allow-origin: {ext}")));
+        assert!(head.contains("x-fct-token") && head.contains("x-fct-version"));
+        assert!(head.contains("access-control-allow-private-network: true"));
+        let (status, _, body) = req(f.port, "GET", "/ping", &[("Origin", ext)], None);
+        assert_eq!((status, body["app"].as_str()), (200, Some("fc-tracker")));
     }
 }
