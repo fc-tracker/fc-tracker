@@ -137,6 +137,20 @@ impl WebData {
     /// The shared objectives list (`{at, groups, names, formations}`): the user's own events, with
     /// their progress, always win; events only the list has are added (no progress yet – the
     /// user's next sync brings it). Name lists and formations fill in where this PC has none.
+/// English words EA's objective texts are made of – function words and verbs only (the same list as the
+/// server's, server/src/objectives.rs): mode names (SBC, Squad Battles, Rivals) are the same in every language.
+const EN: [&str; 37] = ["the", "any", "while", "having", "your", "match", "matches", "win", "score", "complete", "play", "goal", "goals", "with", "of", "least", "player", "players", "starting", "assist", "separate", "earn", "use", "using", "equipped", "hit", "targets", "clean", "sheet", "sheets", "minutes", "games", "game", "from", "for", "on", "and"];
+
+/// Whether a group's objective texts are English (most of them carry an English word).
+pub fn english_group(g: &Value) -> bool {
+    let texts: Vec<&str> = g.get("objectives").and_then(Value::as_array).map(|a| a.iter().filter_map(|o| o.get("description").and_then(Value::as_str)).filter(|t| !t.trim().is_empty()).collect()).unwrap_or_default();
+    if texts.is_empty() {
+        return true;
+    }
+    let en = texts.iter().filter(|t| t.split(|c: char| !c.is_alphabetic()).any(|w| Self::EN.contains(&w.to_lowercase().as_str()))).count();
+    en * 2 >= texts.len()
+}
+
     pub fn absorb_shared_objectives(&mut self, cat: &Value) -> bool {
         let at = cat.get("at").and_then(Value::as_u64).unwrap_or(0);
         let shared = cat.get("groups").and_then(Value::as_array).cloned().unwrap_or_default();
@@ -148,9 +162,35 @@ impl WebData {
         let list = own.body["groups"].as_array_mut().unwrap();
         for g in shared {
             let id = g.get("id").and_then(Value::as_u64);
-            if id.is_some() && !list.iter().any(|m| m.get("id").and_then(Value::as_u64) == id) {
-                list.push(g);
-                changed = true;
+            if id.is_none() || !Self::english_group(&g) {
+                continue;
+            }
+            match list.iter_mut().find(|m| m.get("id").and_then(Value::as_u64) == id) {
+                None => {
+                    list.push(g);
+                    changed = true;
+                }
+                // our own copy in another language (a German Web App's texts reached the account,
+                // 2026-11-05 – the planner reads EA's English texts): the English words, our progress
+                Some(mine) if !Self::english_group(mine) => {
+                    if let Some(t) = g.get("title") {
+                        mine["title"] = t.clone();
+                    }
+                    if let (Some(theirs), Some(ours)) = (g.get("objectives").and_then(Value::as_array), mine.get_mut("objectives").and_then(Value::as_array_mut)) {
+                        for o in ours.iter_mut() {
+                            let oid = o.get("id").and_then(Value::as_u64);
+                            if let Some(t) = theirs.iter().find(|t| t.get("id").and_then(Value::as_u64) == oid) {
+                                for k in ["name", "description"] {
+                                    if let Some(v) = t.get(k) {
+                                        o[k] = v.clone();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    changed = true;
+                }
+                Some(_) => {}
             }
         }
         for (slot, key) in [(&mut self.names, "names"), (&mut self.formations, "formations")] {

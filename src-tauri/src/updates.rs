@@ -130,6 +130,17 @@ async fn fetch(app: &AppHandle) -> Result<Option<UpdateInfo>, String> {
     Ok(update.map(|u| info(&u.current_version, &u.version, u.raw_json.get("required").and_then(|v| v.as_str()))))
 }
 
+/// The extension version the Chrome Web Store gives out now (the website asks the store's own update
+/// service, cached 5 min) – Windows' own HTTP client, no extra dependency.
+fn store_extension() -> Option<String> {
+    use windows::{core::HSTRING, Foundation::Uri, Web::Http::HttpClient};
+    let client = HttpClient::new().ok()?;
+    let uri = Uri::CreateUri(&HSTRING::from("https://www.fc-tracker.com/api/store-version")).ok()?;
+    let body = client.GetStringAsync(&uri).ok()?.join().ok()?.to_string();
+    let v: serde_json::Value = serde_json::from_str(&body).ok()?;
+    v["version"].as_str().filter(|s| s.chars().all(|c| c.is_ascii_digit() || c == '.') && !s.is_empty()).map(str::to_string)
+}
+
 /// Checks now; tells every window when the answer changed.
 async fn refresh(app: &AppHandle) -> Result<Option<UpdateInfo>, String> {
     let found = fetch(app).await?;
@@ -157,6 +168,10 @@ pub fn start(app: AppHandle) {
     let installer = app.clone();
     std::thread::spawn(move || auto_install(installer));
     std::thread::spawn(move || loop {
+        // what the store has decides whether the extension is "outdated" (bridge.rs extension_latest_for)
+        if let Some(v) = store_extension() {
+            *crate::bridge::STORE_EXTENSION.lock().unwrap() = Some(v);
+        }
         let _ = tauri::async_runtime::block_on(refresh(&app));
         let (lock, cv) = &KICK;
         let mut kicked = lock.lock().unwrap();

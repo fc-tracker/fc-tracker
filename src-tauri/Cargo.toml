@@ -1,6 +1,6 @@
 [package]
 name = "fc-tracker"
-version = "0.2.0"
+version = "0.2.1"
 description = "Launcher + overlay for EA SPORTS FC 27"
 authors = ["fc-tracker contributors"]
 edition = "2021"
@@ -54,6 +54,8 @@ windows = { version = "0.62", features = [
   "Win32_Graphics_Dxgi",
   "Win32_Graphics_Dxgi_Common",
   "Win32_System_WinRT",
+  # the Chrome Web Store's extension version (updates.rs store_extension)
+  "Web_Http",
   "Win32_System_WinRT_Direct3D11",
   "Win32_System_WinRT_Graphics_Capture",
   # borderless capture access (no yellow frame around the game)

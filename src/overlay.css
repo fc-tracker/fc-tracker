@@ -1803,7 +1803,7 @@ html[data-view="overlay"], html[data-view="missing"], html[data-view="toast"] {
 .ov-top { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: var(--s-5); padding: 0 var(--s-9); border-bottom: 1px solid var(--line); background: var(--surface); }
 :root[data-theme="glass"] .ov-top, :root[data-theme="glass"] .ov-foot { background: var(--ov-chrome); }
 .ov-brand { display: flex; align-items: center; gap: var(--s-5); min-width: 0; }
-.ov-brand .brand { white-space: nowrap; }
+.ov-brand .brand { white-space: nowrap; align-items: center; }
 .ov-ctx { font-family: var(--f-display); font-stretch: var(--display-stretch); font-size: var(--fs-13); font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--text-3); padding-left: var(--s-5); border-left: 1px solid var(--line); line-height: 28px; white-space: nowrap; }
 .ov-top .tabbar { justify-self: center; }
 .ov-top .tab { white-space: nowrap; }

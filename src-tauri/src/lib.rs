@@ -2040,3 +2040,33 @@ mod real_plan {
         }
     }
 }
+
+/// The user's own plan right now (his real data: snapshot, webdata, ui.json), written for the browser preview
+/// (`src/squadsDemo.json`) – screenshots of v2 with nothing invented. Run with
+/// `FCT_REAL_DIR=<app data dir> FCT_SQUADS_OUT=<file> cargo test --lib real_plan_now -- --ignored`.
+#[cfg(test)]
+mod real_plan_now {
+    #[test]
+    #[ignore]
+    fn real_plan_now() {
+        let (Ok(dir), Ok(out)) = (std::env::var("FCT_REAL_DIR"), std::env::var("FCT_SQUADS_OUT")) else { return };
+        let src = std::path::PathBuf::from(dir);
+        let tmp = std::env::temp_dir().join(format!("fct-real-plan-{}", crate::store::now_ms()));
+        std::fs::create_dir_all(tmp.join("captures")).unwrap();
+        for f in ["snapshot.json", "webdata.json"] {
+            std::fs::copy(src.join(f), tmp.join(f)).unwrap();
+        }
+        let mut store = crate::store::Store::load(tmp);
+        // the shared list as the app takes it (FCT_SHARED = a saved answer of /v1/objectives)
+        if let Ok(p) = std::env::var("FCT_SHARED") {
+            let cat: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(p).unwrap()).unwrap();
+            println!("shared applied: {}", store.web.absorb_shared_objectives(&cat));
+        }
+        let ui: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(src.join("ui.json")).unwrap_or_default()).unwrap_or_default();
+        let prefs: crate::squads::SquadPrefs = serde_json::from_value(ui["squads"].clone()).unwrap_or_default();
+        let input = crate::squads_input(&store);
+        let view = crate::squads::plan(&input, &prefs);
+        println!("groups {} · club {} · sessions {}", input.groups.len(), input.club.len(), view.combos.len());
+        std::fs::write(out, serde_json::to_string_pretty(&view).unwrap()).unwrap();
+    }
+}

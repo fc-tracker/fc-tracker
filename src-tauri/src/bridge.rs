@@ -39,11 +39,32 @@ struct Pairing {
 }
 
 /// The extension version this app ships with (the one on the website).
-pub fn extension_latest() -> String {
+/// The extension this app was released with.
+pub fn extension_bundled() -> String {
     serde_json::from_str::<Value>(include_str!("../../extension/manifest.json"))
         .ok()
         .and_then(|m| m["version"].as_str().map(str::to_string))
         .unwrap_or_default()
+}
+
+/// What the Chrome Web Store gives out now (updates.rs asks every 10 minutes); None = not known yet.
+pub static STORE_EXTENSION: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
+
+/// The newest extension the user can get now (user 2026-11-06: 0.2.0 said "Action needed – update to
+/// v0.14.0" while the store still reviewed 0.14.0): this app's own, never past what the store gives out.
+/// The store not known: the extension's own version – never ask for an update nobody can install.
+pub fn extension_latest_for(own: Option<&str>) -> String {
+    let bundled = extension_bundled();
+    match STORE_EXTENSION.lock().unwrap().clone() {
+        Some(store) if !store.is_empty() => {
+            if crate::updates::older(&store, &bundled) {
+                store
+            } else {
+                bundled
+            }
+        }
+        _ => own.map(str::to_string).unwrap_or_default(),
+    }
 }
 
 pub struct Bridge {
@@ -145,7 +166,7 @@ impl Bridge {
             paired: self.token.is_some(),
             pairing_code: self.pairing_code.clone(),
             extension_version: self.extension_version.clone(),
-            extension_latest: extension_latest(),
+            extension_latest: extension_latest_for(self.extension_version.as_deref()),
             extension_required: crate::updates::EXTENSION_REQUIRED.to_string(),
             needs_pairing: self.token.is_none() || self.unpaired_seen.is_some_and(|t| t.elapsed() < std::time::Duration::from_secs(600)),
             // The extension checks in every 30 s (every 60 s before 0.10.1).
@@ -315,15 +336,16 @@ fn handle(
     match (req.method(), path.as_str()) {
         (Method::Options, _) => Response::from_string("").with_status_code(204),
         (Method::Get, "/ping") => {
-            let (authorized, locale, account, theme) = {
+            let (authorized, locale, account, theme, latest) = {
                 let mut b = bridge.lock().unwrap();
+                let latest = extension_latest_for(b.extension_version.as_deref());
                 let authorized = b.authorized(req);
                 // Only extensions ping; one without our token wants to be paired.
                 b.unpaired_seen = if authorized { None } else { Some(std::time::Instant::now()) };
                 if authorized {
                     b.authorized_seen = Some(std::time::Instant::now());
                 }
-                (authorized, b.locale.clone(), b.account, b.theme.clone())
+                (authorized, b.locale.clone(), b.account, b.theme.clone(), latest)
             };
             // the account only for the paired extension (it shows whose account the sync lands on)
             let account = authorized.then(account).map(|email| {
@@ -345,7 +367,7 @@ fn handle(
                     "synced_at": if authorized { synced_at } else { None },
                     "locale": locale,
                     // the extension version that belongs to this app – the extension offers an update
-                    "extension_latest": extension_latest(),
+                    "extension_latest": latest,
                     // older than this and the extension updates itself right away (updates.rs)
                     "extension_required": crate::updates::EXTENSION_REQUIRED,
                     // v2 (additions only – an older extension ignores them)
