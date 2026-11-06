@@ -1086,8 +1086,31 @@ fn set_match_reminders(app: AppHandle, prefs: remind::Prefs) -> ui::UiPrefs {
 
 /// Objective squads (SQUADS.md): the open events with squad objectives, the best XI from the
 /// club for each and realistic cards for what it misses. Computed in the background.
+/// One plan at a time (user 2026-11-06: "objectives is slow"): every window asked for its own plan on the same
+/// change (overlay, launcher, side panel, Club – four ~1 s solves fighting for the CPU). The others wait for
+/// the one running and take its answer; a plan with the same settings is reused for a few seconds.
+static PLAN_LOCK: tauri::async_runtime::Mutex<Option<(String, std::time::Instant, squads::SquadsView)>> = tauri::async_runtime::Mutex::const_new(None);
+const PLAN_REUSE: std::time::Duration = std::time::Duration::from_secs(3);
+
 #[tauri::command]
 async fn squads_plan(app: AppHandle) -> squads::SquadsView {
+    let mut last = PLAN_LOCK.lock().await;
+    let key = serde_json::to_string(&app.state::<AppState>().ui.lock().unwrap().squads).unwrap_or_default();
+    if let Some((k, at, view)) = last.as_ref() {
+        if *k == key && at.elapsed() < PLAN_REUSE {
+            return view.clone();
+        }
+    }
+    let view = squads_plan_now(&app).await;
+    // the next plan keeps this formation unless another is clearly better (squads.rs FORMATION_STEADY)
+    if let Some(f) = view.combos.first().and_then(|c| c.squad.as_ref()).map(|q| q.formation.clone()) {
+        *squads::STEADY_FORMATION.lock().unwrap() = Some(f);
+    }
+    *last = Some((key, std::time::Instant::now(), view.clone()));
+    view
+}
+
+async fn squads_plan_now(app: &AppHandle) -> squads::SquadsView {
     let (input, prefs) = {
         let state = app.state::<AppState>();
         let prefs = state.ui.lock().unwrap().squads.clone();
@@ -2065,8 +2088,42 @@ mod real_plan_now {
         let ui: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(src.join("ui.json")).unwrap_or_default()).unwrap_or_default();
         let prefs: crate::squads::SquadPrefs = serde_json::from_value(ui["squads"].clone()).unwrap_or_default();
         let input = crate::squads_input(&store);
+        let t = std::time::Instant::now();
         let view = crate::squads::plan(&input, &prefs);
+        println!("plan took {:?}", t.elapsed());
+        for i in 0..3 {
+            let again = crate::squads::plan(&input, &prefs);
+            let f = |v: &crate::squads::SquadsView| v.combos.first().and_then(|c| c.squad.as_ref()).map(|q| (q.formation.clone(), q.met, q.slots.iter().map(|s| s.name.clone()).collect::<Vec<_>>().join(",")));
+            println!("run {i}: same as first = {}  {:?}", f(&again) == f(&view), f(&again).map(|x| (x.0, x.1)));
+        }
+        let mut p2 = prefs.clone();
+        p2.reroll = 1;
+        let t = std::time::Instant::now();
+        let r = crate::squads::plan(&input, &p2);
+        println!("reroll took {:?} → {:?}", t.elapsed(), r.combos.first().and_then(|c| c.squad.as_ref()).map(|q| (q.formation.clone(), q.met)));
         println!("groups {} · club {} · sessions {}", input.groups.len(), input.club.len(), view.combos.len());
+        // the click-to-swap path (Squads.tsx swapTo): each slot of the first XI, another club card for that
+        // position picked – it must be in the new XI at that position
+        if let Some(sq) = view.combos.first().and_then(|c| c.squad.clone()) {
+            let mut ok = 0;
+            let mut bad = Vec::new();
+            for slot in &sq.slots {
+                let Some(c) = input.club.iter().find(|p| p.positions.contains(&slot.pos) && !sq.slots.iter().any(|s| s.key == p.key)) else { continue };
+                let mut p = prefs.clone();
+                p.swaps.push(crate::squads::SwapOut { key: slot.key, pos: slot.pos.clone() });
+                p.pins.push(crate::squads::SwapOut { key: c.key, pos: slot.pos.clone() });
+                let v = crate::squads::plan(&input, &p);
+                let q = v.combos.first().and_then(|x| x.squad.clone());
+                let got = q.as_ref().map(|q| q.slots.iter().any(|s| s.key == c.key && s.pos == slot.pos)).unwrap_or(false);
+                if got {
+                    ok += 1
+                } else {
+                    let where_ = q.as_ref().and_then(|q| q.slots.iter().find(|s| s.key == c.key).map(|s| s.pos.clone()));
+                    bad.push(format!("{} {} -> {} (in XI at {:?}, formation {:?})", slot.name, slot.pos, c.name, where_, q.map(|q| q.formation)));
+                }
+            }
+            println!("swap picks: {ok} ok, {} not taken: {:#?}", bad.len(), bad);
+        }
         std::fs::write(out, serde_json::to_string_pretty(&view).unwrap()).unwrap();
     }
 }

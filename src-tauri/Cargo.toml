@@ -1,6 +1,6 @@
 [package]
 name = "fc-tracker"
-version = "0.2.1"
+version = "0.2.2"
 description = "Launcher + overlay for EA SPORTS FC 27"
 authors = ["fc-tracker contributors"]
 edition = "2021"

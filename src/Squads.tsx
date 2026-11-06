@@ -27,7 +27,8 @@ const slotCard = (s: SlotView): FutCardData => ({
 });
 
 /** What the squad views may change (the overlay and the side panel; none in read-only views). */
-type Edit = { prefs: SquadPrefs; onPrefs: (p: SquadPrefs) => void; club: ClubEntry[] };
+/** `busy`: a new plan is being worked out (any change – a swap, Reroll, an include, the settings). */
+type Edit = { prefs: SquadPrefs; onPrefs: (p: SquadPrefs) => void; club: ClubEntry[]; busy?: boolean };
 const EditCtx = createContext<Edit | null>(null);
 
 const slotKey = (s: SlotView) => s.key ?? s.def_id;
@@ -307,11 +308,16 @@ export function usePlanCount(): number | null {
 export function useSquads(): [SquadsView | null, boolean, (p: SquadPrefs) => void] {
   const [view, setView] = useState<SquadsView | null>(cachedPlan);
   const [busy, setBusy] = useState(cachedPlan == null);
+  // only the newest request's answer is shown: an older plan (worked out before a swap was saved) arriving
+  // last must never undo the swap (user 2026-11-06: "click → swap doesn't work")
+  const seq = useRef(0);
   const load = () => {
+    const mine = ++seq.current;
     setBusy(true);
     api
       .squadsPlan()
       .then((v) => {
+        if (mine !== seq.current) return;
         cachedPlan = v;
         cachedAt = Date.now();
         planStale = false;
@@ -319,7 +325,7 @@ export function useSquads(): [SquadsView | null, boolean, (p: SquadPrefs) => voi
         window.dispatchEvent(new window.Event(PLAN_EVENT));
       })
       .catch(() => {})
-      .finally(() => setBusy(false));
+      .finally(() => mine === seq.current && setBusy(false));
   };
   useEffect(() => {
     watchPlanInputs();
@@ -348,6 +354,8 @@ export function useSquads(): [SquadsView | null, boolean, (p: SquadPrefs) => voi
       if (next) cachedPlan = next;
       return next;
     });
+    // the app also tells every window (squads-changed); the web has no such event – the same plan comes once
+    // (one solve at a time, reused – lib.rs squads_plan), the newest answer shown
     api.setSquadPrefs(p).then(same ? undefined : load).catch(() => {});
   };
   // the game shows an event's hub: that's what the user plays now (they can pick another)
@@ -1028,10 +1036,11 @@ export function benchOf(s: SessionPlan): BenchCard[] {
   return [...evos, ...picks];
 }
 
-/** How much one pitch line overlaps the next, as a share of a card's height (FUT's formation view). */
-const OVERLAP = 0.16;
+/** How much one pitch line overlaps the next when their cards meet sideways: never (user 2026-11-06: "sometimes the
+ *  cards overlap" – a card must always be whole). */
+const OVERLAP: number = 0;
 /** Two lines whose cards never meet sideways interleave this far (a share of a card). */
-const INTERLEAVE = 0.5;
+const INTERLEAVE: number = 0.5;
 
 export function Pitch({ e, compact = false, bench = [] }: { e: SquadSource; compact?: boolean; bench?: BenchCard[] }) {
   const subs = useContext(SubCtx);
@@ -1064,7 +1073,9 @@ export function Pitch({ e, compact = false, bench = [] }: { e: SquadSource; comp
       const left = el.getBoundingClientRect().left;
       const lineEls = Array.from(el.querySelectorAll<HTMLElement>(":scope > .sq-line"));
       const centres = lineEls.map((l) => Array.from(l.children).map((c) => { const r = c.getBoundingClientRect(); return (r.left + r.width / 2 - left) * k; }));
-      const touch = (i: number, w: number) => centres[i].some((x) => centres[i + 1].some((y) => Math.abs(x - y) < w + 10));
+      // cards closer than a card and a margin meet (the centres move a little with the size – the margin keeps a
+      // line that only nearly clears another from sliding under it)
+      const touch = (i: number, w: number) => centres[i].some((x) => centres[i + 1].some((y) => Math.abs(x - y) < w + 28));
       const shares = (w: number) => centres.slice(1).map((_, i) => (touch(i, w) ? OVERLAP : INTERLEAVE));
       const size = (pt: number, pb: number) => {
         let w = byW;
@@ -1111,13 +1122,15 @@ export function Pitch({ e, compact = false, bench = [] }: { e: SquadSource; comp
     setTicked([]);
   }, [e.id]);
   // a swap / leave-out re-solves the squad: the pitch says so until the new plan arrives (every wait visible)
-  const [rebuilding, setRebuilding] = useState(false);
+  const [rebuildingSwap, setRebuilding] = useState(false);
   useEffect(() => setRebuilding(false), [sq]);
+  // any new plan being worked out shows FC-Tracker's rebuild on the pitch (user 2026-11-06: "our loading is gone")
+  const rebuilding = rebuildingSwap || !!edit?.busy;
   useEffect(() => {
-    if (!rebuilding) return;
+    if (!rebuildingSwap) return;
     const id = window.setTimeout(() => setRebuilding(false), 20_000);
     return () => window.clearTimeout(id);
-  }, [rebuilding]);
+  }, [rebuildingSwap]);
   if (!sq) return <p className="sq-muted">{t("squads.noSquad")}</p>;
   const canEdit = !!edit && !edit.prefs.locked;
   const finish = (p: SquadPrefs) => {
@@ -1168,7 +1181,7 @@ export function Pitch({ e, compact = false, bench = [] }: { e: SquadSource; comp
                   <span className="row sq-foot-acts" style={{ gap: 8 }}>
                     {/* Reroll (user 2026-11-05): a fresh solve, not a pile of swaps – the swaps are reset and the next-best
                         formation's squad comes in (squads.rs reroll) */}
-                    <button data-f className="btn btn-s btn-secondary ring sq-reroll-btn" onClick={() => edit!.onPrefs({ ...edit!.prefs, swaps: [], reroll: (edit!.prefs.reroll ?? 0) + 1 })} title={t("v2.sq.rerollHint")}>
+                    <button data-f className="btn btn-s btn-secondary ring sq-reroll-btn" disabled={rebuilding} aria-busy={rebuilding} onClick={() => edit!.onPrefs({ ...edit!.prefs, swaps: [], reroll: (edit!.prefs.reroll ?? 0) + 1 })} title={t("v2.sq.rerollHint")}>
                       {t("v2.sq.reroll")}
                     </button>
                     <button data-f className="btn btn-s btn-secondary ring sq-change-btn" aria-pressed={false} onClick={() => (setMulti(true), setTicked([]), setOpen(null))}>
@@ -1890,7 +1903,7 @@ export default function Squads() {
   const prefs = view.prefs ?? defaultSquadPrefs;
   const formations = Array.from(new Set(FORMATIONS.concat((view.combos ?? []).flatMap((c) => (c.squad ? [c.squad.formation] : [])))));
   return (
-    <EditCtx.Provider value={{ prefs, onPrefs: setPrefs, club: view.club }}>
+    <EditCtx.Provider value={{ prefs, onPrefs: setPrefs, club: view.club, busy }}>
     <SubProvider prefs={prefs} onPrefs={setPrefs}>
     <section className="sq">
       <header className="sq-head" title={view.read_at ? t("squads.read", { age: formatAge(view.read_at) }) : t("squads.notYet")}>
@@ -2302,7 +2315,7 @@ export function SquadQuick({ inMatch = false }: { inMatch?: boolean }) {
   const st = s?.stages.find((x) => x.from <= s.played + 1 && (x.to == null || s.played + 1 <= x.to)) ?? null;
   const shown = s && st ? { id: s.id, reqs: st.reqs, squad: st.squad } : s;
   return (
-    <EditCtx.Provider value={{ prefs: view.prefs ?? defaultSquadPrefs, onPrefs: setPrefs, club: view.club }}>
+    <EditCtx.Provider value={{ prefs: view.prefs ?? defaultSquadPrefs, onPrefs: setPrefs, club: view.club, busy }}>
     <SubProvider prefs={view.prefs ?? defaultSquadPrefs} onPrefs={setPrefs}>
     <div className="ml-frame sq-quick">
       <header className="ml-head">

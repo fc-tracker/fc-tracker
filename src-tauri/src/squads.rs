@@ -1495,7 +1495,11 @@ fn solve_with(players: &[Player], reqs: &[Req], formations: &[Formation], prefs:
         }
         // the user's order of preferred formations (Settings, user 2026-11-04: a ranked list): each step down the
         // list costs a little, so the first one wins unless another is clearly better
-        let ranked = |fi: usize, score: f64| score - FORMATION_RANK * picked.iter().position(|n| formations[fi].name == *n || formations[fi].label == *n).unwrap_or(0) as f64;
+        // the formation on screen now keeps a small edge (user 2026-11-06: "the formation still jumps around" – new
+        // prices or objectives moved the winner by a hair): another one takes over only when clearly better
+        let steady = STEADY_FORMATION.lock().unwrap().clone();
+        let shown = |fi: usize| steady.as_deref().is_some_and(|s| formations[fi].name == s || formations[fi].label == s);
+        let ranked = |fi: usize, score: f64| score + if shown(fi) { FORMATION_STEADY } else { 0.0 } - FORMATION_RANK * picked.iter().position(|n| formations[fi].name == *n || formations[fi].label == *n).unwrap_or(0) as f64;
         if best.as_ref().is_none_or(|b| ranked(*fi, cand.score) > ranked(b.0, b.1.score)) {
             best = Some((*fi, cand));
         }
@@ -1505,6 +1509,9 @@ fn solve_with(players: &[Player], reqs: &[Req], formations: &[Formation], prefs:
 
 /// One step down the user's ranked formations weighs like ~half a rating point of one card.
 const FORMATION_RANK: f64 = 0.6;
+/// The formation shown last (lib.rs squads_plan) and its edge: about one rating point of one card.
+pub static STEADY_FORMATION: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
+const FORMATION_STEADY: f64 = 1.0;
 
 // ---------- output ----------
 
@@ -3865,8 +3872,12 @@ fn options_for(r: &Req, sq: &SquadView, input: &Input, owned: &BTreeSet<u64>, li
     // slots a new card could take: not counting for any requirement, weakest first
     let mut free: Vec<&SlotView> = sq.slots.iter().filter(|s| s.counts_for.is_empty()).collect();
     free.sort_by(|a, b| a.strength.total_cmp(&b.strength));
-    // the slot a card would take (the weakest free one it can play) and how strong that card is
-    let fits = |p: &Player| free.iter().find(|s| p.positions.iter().any(|x| *x == s.pos)).map(|s| (s.pos.clone(), s.strength));
+    // every slot counts for something (user 2026-11-06: "Min. 2 United States – none in reach" once Trubin came in,
+    // with 97 Americans to search for): the other slots, weakest first – never a card the user picked or must have
+    let mut taken: Vec<&SlotView> = sq.slots.iter().filter(|s| !s.counts_for.is_empty() && !s.must).collect();
+    taken.sort_by(|a, b| a.strength.total_cmp(&b.strength));
+    // the slot a card would take (the weakest free one it can play, else the weakest other one) and how strong that card is
+    let fits = |p: &Player| free.iter().chain(taken.iter()).find(|s| p.positions.iter().any(|x| *x == s.pos)).map(|s| (s.pos.clone(), s.strength));
     let mut out: Vec<GetOption> = Vec::new();
     let mut seen: BTreeSet<(String, u64)> = BTreeSet::new();
     let mut priced: Vec<Buy> = Vec::new();
