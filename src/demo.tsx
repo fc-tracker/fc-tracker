@@ -29,8 +29,9 @@ document.documentElement.classList.add("demo");
 window.addEventListener("message", (e) => {
   if (e.origin !== location.origin) return;
   if (e.data?.type === "fct-theme" && (THEMES as readonly string[]).includes(e.data.theme)) {
+    // the browser key theme.ts reads on a web page ("fct.theme" is the app's) – the site shares it, same origin
     try {
-      localStorage.setItem("fct.theme", e.data.theme);
+      localStorage.setItem("fct-theme", e.data.theme);
     } catch {}
     window.dispatchEvent(new Event("fct-theme-change"));
   }

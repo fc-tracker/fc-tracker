@@ -21,26 +21,41 @@ Everything below can be checked in the code; the file is named for each point.
 - **Reads the screen, nothing else.** In the game's menus it looks at the game window the way a
   recording program does (Windows Graphics Capture, `src-tauri/src/watch.rs`, `src-tauri/src/wgc.rs`)
   and recognises text and numbers on it (`src-tauri/src/scan.rs`). It never opens the game process,
-  reads its memory, injects code or touches its network traffic. During a match it reads no pages.
-  The only exception is the **Champions tracker (beta)**, and only in Champions matches: one small
-  look at the scoreboard a second (score and clock) and the result screens right after full time
-  (`src-tauri/src/champions.rs`). It is off until you switch it on in *Settings → Champions
-  tracker* (and off again any time, even mid-match); without it, one look every few seconds notices
-  when you are back in the menus.
-- **Champions matches stay on your PC.** What the tracker reads (results, scores, the opponent's club,
-  record and gamertag) is kept in `%APPDATA%\dk.fctracker.app\champions.json` and is never sent
-  anywhere. Only if you join the **Champions leaderboard** yourself (*Settings → Champions
+  reads its memory, injects code or touches its network traffic. During a match it reads no pages,
+  only the scoreboard: the **match clock** for your match reminders (*Settings → Match reminders*,
+  on by default, `src-tauri/src/remind.rs`), as often as *Settings → Tracking speed* says. The
+  **Champions tracker (beta)** adds the score in Champions matches and the result screens right after
+  full time (`src-tauri/src/champions.rs`). It is off until you switch it on in *Settings → Champions
+  tracker* (and off again any time, even mid-match).
+- **Opponents stay on your PC.** What the tracker reads (results, scores, the opponent's club,
+  record and gamertag) is kept in `%APPDATA%\dk.fctracker.app\champions.json`. If you sign in to an
+  FC-Tracker account, your matches go to it **without** any opponent's gamertag (the test
+  `opponents_gamertags_never_go_to_the_account` in `src-tauri/src/account.rs`). Only if you join the
+  **Champions leaderboard** yourself (*Settings → Champions
   leaderboard*, a name you pick) does the app send your own weekend – wins, losses, goals, rank, and
   each of your matches' result, score, extra time / lost connection and goal minutes – to `https://www.fc-tracker.com/api/champions` (`src/championsBoard.ts`,
   `site/api/champions.mjs`). Never an opponent, never a gamertag read from the screen.
 - **Saves no pictures or video.** Each picture is read in memory and dropped. Pictures are only saved
   if you switch on *Settings → Diagnostics* yourself: then for 30 minutes, on your own PC
   (`src-tauri/src/diag.rs`).
-- **Keeps your data on your PC.** Your club and Gallery data are stored in
-  `%APPDATA%\dk.fctracker.app\` and nowhere else. There is no account and no FC-Tracker server with
-  your data (`src-tauri/src/store.rs`).
-- **Never asks for your EA login.** The app has no login and never sees your EA password or session.
+- **Keeps your data on your PC – and in your account only if you sign in.** Your club and Gallery data
+  are stored in `%APPDATA%\dk.fctracker.app\` (`src-tauri/src/store.rs`), with or without an account.
+  The FC-Tracker account is optional (sign-in by an e-mail code, no password). Signed in, the same data
+  is also kept on FC-Tracker's own server in the EU, so it follows you to other PCs and FC-Tracker Web:
+  sent in parts, gzipped, and encrypted again by the server (`src-tauri/src/account.rs`,
+  `src/account.ts`). You can download or delete it in *Settings → Account* at any time.
+- **Never asks for your EA login.** It never sees your EA password or session.
 - **Network connections – the complete list:**
+  - `https://api.fc-tracker.com/v1/…` – FC-Tracker's own API. **Only if you sign in:** your account
+    (e-mail code, the synced parts of your data, your devices, squads you choose to share)
+    (`src/account.ts`). **For everyone, without any id or club:** the shared price pool
+    (`/v1/prices`, below), the open objectives list (`/v1/objectives`, `src/objectives.ts`: titles,
+    texts, targets and end times, never your progress or who sent them), what users found out about
+    where cards can be obtained (`/v1/availability`) and card definitions (`/v1/cards`, no ownership).
+  - `https://www.fc-tracker.com/gallery-sets.json` – the Gallery set list, so new sets arrive without
+    an update (`src/gallerySets.ts`).
+  - `https://www.fc-tracker.com/api/store-version` – which extension version the Chrome Web Store
+    gives out, so the app never asks for one the store doesn't have yet (`src-tauri/src/updates.rs`).
   - `https://www.fc-tracker.com/updates/latest.json` – the update check, and the update download from
     fc-tracker.com when you accept one. Updates are signed; the app only installs files signed with the
     project's key (`src-tauri/tauri.conf.json`, `plugins.updater`).
@@ -51,14 +66,14 @@ Everything below can be checked in the code; the file is named for each point.
     Off in *Settings → Anonymous usage statistics*.
   - `https://www.fc-tracker.com/api/beat` – while the app runs, every 15 minutes: the same random
     number, the app version and "app". It gives the "online now" count and how many installations
-    are in use; what is kept is listed in `site/api/_presence.mjs` on the website (ids only, no IP).
-    The same setting turns it off.
-  - `https://www.fc-tracker.com/api/prices` – the shared price pool. EA sends its own market
+    are in use (ids only, no IP). `https://www.fc-tracker.com/api/online` reads that count back for
+    the launcher. The same setting turns sending off.
+  - `https://api.fc-tracker.com/v1/prices` – the shared price pool. EA sends its own market
     average with your club cards and your own market searches, but never with the Gallery card
     lists, so a card you lack has no price until someone has seen it. Every 30 minutes the app sends
     the averages it saw – card id, price, when, and whether you're on the PC or the console market –
-    and downloads the pool of your market back (`src/prices.ts`, `site/api/prices.mjs`). No id,
-    no club, no account. Sending follows the same setting; the download is always on.
+    and downloads the pool of your market back (`src/prices.ts`). No id, no club, no account.
+    Sending follows the same setting; the download is always on.
   - `127.0.0.1` (your own PC only) – the bridge the Chrome extension talks to
     (`src-tauri/src/bridge.rs`). It never listens on the network.
   - Links you click (the EA Web App, fc-tracker.com, the support page) open in your normal browser.
@@ -81,7 +96,9 @@ Everything below can be checked in the code; the file is named for each point.
   `extension/relay.js`) – or, if you use FC-Tracker Web (fc-tracker.com/web), keeps the last sync
   in the extension and hands it to that page in your own browser when it asks (only fc-tracker.com
   may ask: `externally_connectable` in `extension/manifest.json`; the page keeps it in the browser).
-  It never sends anything to any server.
+  Only if the extension is signed in to an FC-Tracker account without the app does it send the
+  finished sync to that account, `https://api.fc-tracker.com/v1/club-sync` (`extension/background.js`).
+  Not paired and not signed in, it doesn't sync at all.
 - Never reads, stores or sends your EA login, session or token – responses from login and token
   endpoints are dropped before anything is read (`BLOCKED`, `SECRET_KEYS` in `extension/hook.js`).
 
@@ -94,6 +111,31 @@ If you would rather not use it, skip the extension: the app then works from what
 
 If you find anything in the code that contradicts this list, please open an issue – see
 [SECURITY.md](SECURITY.md).
+
+## Common questions
+
+**Can it track my Weekend League automatically?** Yes, on PC. The Champions tracker (beta, off until you
+switch it on) reads the scoreboard during FUT Champions matches and saves each result, the score, the goal
+minutes and your weekend record after full time. No typing, no photos. Opponents' names stay on your PC
+(`src-tauri/src/champions.rs`).
+
+**How does it know which cards are first owner?** From what the game shows: the first owner triangle on your
+set pages and packs or rewards on New Items, and with the club sync EA's own owner count. A card is not counted
+as first owner until one of these proves it.
+
+**Does EA's Optimize button give the best Gallery score?** No. It fills each slot with the card that has the
+most points on its own and does not count the bonus tags. On a real Starter Set it took the Total Score from
+98,298 down to 67,789. FC-Tracker's best selection counts every tag
+([the full example](https://www.fc-tracker.com/fc-27-gallery-optimize)).
+
+**Does it work on PlayStation or Xbox?** In the browser: [FC-Tracker Web](https://www.fc-tracker.com/web)
+reads the game from a capture card or Xbox Cloud Gaming. The overlay on top of the game is Windows only.
+
+**Is it safe for my account?** It is built to be as passive as possible: it never reads or changes the game's
+memory and never trades. It is still an unofficial tool, so EA's terms apply. See the list above and the
+[FAQ](https://www.fc-tracker.com/faq).
+
+**Is it free?** Yes. No ads, no subscription. An account is optional.
 
 ## Download
 
@@ -116,7 +158,8 @@ build is the in-app updater's signature, added by the project's key; it does not
 A browser version at **https://www.fc-tracker.com/web** – nothing to install. You share the game
 window, an Xbox Cloud tab or a capture card (PlayStation / Xbox) with the page; it reads your Gallery
 screens in the tab with the same model as the app (`web-core/` builds the app's own Rust files for
-WebAssembly, `src/web/`). What it reads stays in your browser. It is slower than the app and has no
+WebAssembly, `src/web/`). What it reads stays in your browser unless you sign in to your FC-Tracker
+account. It is slower than the app and has no
 overlay on top of the game. The club sync works there too, through the extension below.
 
 ## Install the extension yourself
